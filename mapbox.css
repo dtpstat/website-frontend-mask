@@ -1,0 +1,2 @@
+.mapbox-map { position:absolute; inset:0; z-index:0; }
+.mapboxgl-popup-content { padding:12px; color:var(--navy); }

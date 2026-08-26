@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#18334a" />
+    <title>Скачать данные — Карта ДТП</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="../" aria-label="Карта ДТП — главная" data-i18n-aria="homeAria"><span class="brand-mark">●</span><span>Карта ДТП</span></a>
+      <nav aria-label="Основная навигация" data-i18n-aria="navigationAria">
+        <a href="../blog/" data-i18n="blog">Блог и исследования</a>
+        <a href="../#statistics" data-i18n="statistics">Статистика</a>
+        <a class="current" href="./" data-i18n="downloads">Скачать данные</a>
+        <a href="../about/" data-i18n="about">О проекте</a>
+      </nav>
+      <button id="language" class="language" type="button" aria-label="Switch language">EN</button>
+      <button class="support" type="button" data-i18n="support">Поддержать проект</button>
+      <button id="menu" class="menu" type="button" aria-label="Открыть меню" data-i18n-aria="menuAria"><i></i><i></i><i></i></button>
+    </header>
+
+    <main class="content">
+      <section class="intro" aria-labelledby="page-title">
+        <div class="intro-heading">
+          <h1 id="page-title" data-i18n="downloads">Скачать данные</h1>
+          <button id="api-help" class="api-help" type="button" aria-expanded="false" aria-controls="api-panel" data-i18n="apiHelp">Инструкция для API</button>
+        </div>
+        <p data-i18n="intro">Здесь вы можете скачать данные по ДТП, чтобы использовать их в исследованиях и анализировать с помощью своих инструментов. Первоисточник данных — официальный сайт ГИБДД, но эти данные приведены с изменениями (например, корректировки координат).</p>
+        <div id="api-panel" class="api-panel" hidden>
+          <code>GET /api/dtp_load/?year=2024&amp;region_slug=moskva&amp;format=json</code>
+          <span data-i18n="apiNote">Загрузка выполняется в браузере запросом к API.</span>
+        </div>
+      </section>
+
+      <section class="dataset" aria-labelledby="regional-title">
+        <div class="dataset-toolbar">
+          <h2 id="regional-title" class="sr-only" data-i18n="regionalData">Данные по регионам</h2>
+          <label class="search"><span class="sr-only" data-i18n="searchRegions">Найти регион</span><input id="region-search" type="search" autocomplete="off" data-i18n-placeholder="searchRegions" placeholder="Найти регион" /></label>
+        </div>
+        <div id="regional-rows" class="rows" aria-live="polite"></div>
+        <p id="regional-empty" class="empty" hidden data-i18n="nothingFound">Ничего не найдено</p>
+      </section>
+
+      <section class="years dataset" aria-labelledby="years-title">
+        <h2 id="years-title" data-i18n="annualData">Аккумулированные данные по годам</h2>
+        <div class="dataset-toolbar">
+          <label class="search"><span class="sr-only" data-i18n="searchYears">Найти год</span><input id="year-search" type="search" inputmode="numeric" autocomplete="off" data-i18n-placeholder="searchYears" placeholder="Найти год" /></label>
+        </div>
+        <div id="year-rows" class="rows" aria-live="polite"></div>
+        <p id="year-empty" class="empty" hidden data-i18n="nothingFound">Ничего не найдено</p>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        <section class="project"><a class="brand" href="../"><span class="brand-mark">●</span><span>Карта ДТП</span></a><p data-i18n="footerAbout">Проект посвящен проблеме дорожно-транспортных происшествий в России. Цель проекта — повышение безопасности дорожного движения и снижение смертности в ДТП.</p></section>
+        <section><h2 data-i18n="contact">Связаться:</h2><p>@shehovsov_md</p><p>dtp.stat@gmail.com</p></section>
+        <section class="footer-nav"><h2 data-i18n="siteMap">Карта сайта:</h2><a href="../blog/" data-i18n="blog">Блог и исследования</a><a href="../#statistics" data-i18n="statistics">Статистика</a><a href="./" data-i18n="downloads">Скачать данные</a><a href="../about/" data-i18n="about">О проекте</a></section>
+      </div>
+      <div class="footer-bottom"><span data-i18n="license">Использование материалов возможно с указанием активной ссылки на сайт.</span><span aria-label="Creative Commons Attribution">CC BY</span></div>
+    </footer>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="DTP Stat blog and research">
+  <title>DTP Stat — Блог и исследования</title>
+  <link rel="stylesheet" href="blog.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="logo" href="../" aria-label="DTP Stat">DTP <span>STAT</span></a>
+    <nav class="nav" aria-label="Main navigation">
+      <a class="active" href="./" data-i18n="blog">Блог и исследования</a>
+      <a href="../#statistics" data-i18n="rating">Рейтинг регионов</a>
+      <a href="../data/" data-i18n="download">Скачать данные</a>
+      <a href="../about/" data-i18n="about">О проекте</a>
+    </nav>
+    <div class="header-actions">
+      <button class="lang" type="button" aria-label="Switch language">EN</button>
+      <button class="support" type="button" data-i18n="support">Поддержать проект</button>
+      <button class="menu" type="button" aria-expanded="false" aria-label="Open menu"><i></i><i></i><i></i></button>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="content">
+      <div class="heading-row">
+        <h1 data-i18n="blog">Блог и исследования</h1>
+        <div class="tools">
+          <label class="field"><span class="sr-only" data-i18n="tags">Все теги</span><select id="tag-filter"><option value="all" data-i18n="allTags">Все теги</option></select></label>
+          <label class="field"><span class="sr-only" data-i18n="sort">Сначала новые</span><select id="sort"><option value="new" data-i18n="newest">Сначала новые</option><option value="old" data-i18n="oldest">Сначала старые</option></select></label>
+          <button class="icon-button calendar-toggle" type="button" aria-expanded="false" aria-label="Calendar">⌄</button>
+          <button class="search-toggle" type="button" aria-expanded="false" aria-label="Search">⌕</button>
+        </div>
+      </div>
+      <form class="search" role="search" hidden><input type="search" data-i18n-placeholder="search" placeholder="Поиск"><button type="submit" data-i18n="find">Найти</button></form>
+      <section class="calendar-panel" hidden aria-label="Calendar"></section>
+      <section class="posts" aria-live="polite"></section>
+    </section>
+
+    <footer class="footer" id="about">
+      <div class="footer-inner">
+        <div class="fundraiser">
+          <div class="fund-head"><span data-i18n="raised">Собрано: 15 546 ₽ из 50 000 ₽</span><span data-i18n="days">До конца сбора 6 дней</span><button type="button" data-i18n="support">Поддержать проект</button></div>
+          <div class="progress"><b></b></div>
+        </div>
+        <div class="footer-grid">
+          <div><h2 data-i18n="project">Карта ДТП</h2><p data-i18n="footerCopy">Мы собираем и показываем данные о дорожных происшествиях, чтобы улицы становились безопаснее.</p></div>
+          <div><h2 data-i18n="contact">Связаться:</h2><p>@shehovsov_md<br>dtp.stat@gmail.com</p></div>
+          <div id="data"><h2 data-i18n="siteMap">Карта сайта:</h2><p><a href="./" data-i18n="blog">Блог и исследования</a><br><a href="../#statistics" data-i18n="rating">Рейтинг регионов</a><br><a href="../data/" data-i18n="download">Скачать данные</a><br><a href="../about/" data-i18n="about">О проекте</a><br><a href="../team/" data-i18n="team">Станьте частью команды</a></p></div>
+        </div>
+        <div class="footer-bottom"><span class="cc">CC BY</span><div class="social"><button aria-label="Telegram">↗</button><button aria-label="VKontakte">vk</button><button aria-label="Email">@</button></div><p data-i18n="license">Использование материалов возможно с указанием активной ссылки на сайт.</p></div>
+      </div>
+    </footer>
+  </main>
+  <script type="module" src="blog.js"></script>
+</body>
+</html>

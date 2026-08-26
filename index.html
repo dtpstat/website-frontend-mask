@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#18334a" />
+    <title>Карта ДТП</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.29.0/mapbox-gl.css" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="mapbox.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#map" aria-label="Карта ДТП — главная" data-i18n-aria="brandAria"><img src="assets/logo.svg" width="170" height="24" alt="Карта ДТП" /></a>
+      <nav aria-label="Основная навигация">
+        <a href="blog/" data-i18n="blog">Блог</a>
+        <a href="#statistics" data-i18n="statistics">Статистика</a>
+        <a href="data/" data-i18n="data">Данные</a>
+        <a href="about/" data-i18n="about">О проекте</a>
+        <button id="language" type="button" aria-label="Switch language">EN</button>
+      </nav>
+      <a class="support" href="support/" data-i18n="support">Поддержать проект</a>
+      <button id="mobile-menu-button" class="mobile-menu-button" type="button" aria-label="Открыть меню">☰</button>
+    </header>
+    <dialog id="mobile-menu" class="mobile-menu">
+      <button id="close-mobile-menu" class="icon-button" type="button" aria-label="Закрыть меню">×</button>
+      <a href="./" data-i18n="map">Карта</a><a href="blog/" data-i18n="blog">Блог</a><a href="data/" data-i18n="data">Данные</a><a href="about/" data-i18n="about">О проекте</a><a href="team/" data-i18n="team">Команда</a><a href="support/" data-i18n="support">Поддержать</a>
+    </dialog>
+
+    <main id="map" class="map-page">
+      <div id="yandex-map" class="yandex-map" hidden aria-label="Интерактивная карта ДТП" data-i18n-aria="mapAria"></div>
+      <div id="mapbox-map" class="mapbox-map" hidden aria-label="Интерактивная карта ДТП" data-i18n-aria="mapAria"></div>
+      <div id="leaflet-map" class="leaflet-map" aria-label="Интерактивная карта ДТП" data-i18n-aria="mapAria"></div>
+      <div class="map-switcher">
+        <button id="map-switcher-button" class="map-switcher-button" type="button" aria-label="Выбрать карту" aria-expanded="false" data-i18n-aria="mapSource"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6Zm6-3v15m6-15v15"/></svg></button>
+        <div id="map-switcher-menu" class="map-switcher-menu" hidden role="group" aria-label="Источник карты" data-i18n-aria="mapSource"><strong data-i18n="mapSource">Карта</strong><button type="button" data-map-client="leaflet">OpenStreetMap</button><button type="button" data-map-client="yandex">Яндекс.Карты</button><button type="button" data-map-client="mapbox">Mapbox</button></div>
+      </div>
+      <section id="heat-controls" class="heat-controls" aria-label="Настройка тепловой карты">
+        <label><span id="heat-radius-label" data-i18n="heatRadius">Радиус</span><output id="heat-radius-value">6 px</output><input id="heat-radius" type="range" min="1" max="30" value="6"></label>
+        <label><span id="heat-blur-label" data-i18n="heatBlur">Размытие</span><output id="heat-blur-value">9 px</output><input id="heat-blur" type="range" min="0" max="30" value="9"></label>
+        <label><span id="heat-opacity-label" data-i18n="heatOpacity">Мин. непрозрачность</span><output id="heat-opacity-value">5%</output><input id="heat-opacity" type="range" min="0" max="50" value="5"></label>
+      </section>
+      <aside id="filters" class="filters" aria-label="Фильтры карты">
+        <div class="filters-heading">
+          <div>
+            <p class="eyebrow" data-i18n="dataPeriod">Период данных</p>
+            <h1 data-i18n="basicFilter">Базовый фильтр</h1>
+          </div>
+        </div>
+        <button id="hide-filters" class="icon-button" type="button" aria-label="Свернуть фильтры" aria-expanded="true">⌃</button>
+
+        <label class="region-field"><span data-i18n="region">Регион</span>
+          <select id="region-filter"></select>
+        </label>
+
+        <div class="date-fields">
+          <button id="date-range-button" class="date-range-button" type="button" aria-haspopup="dialog" aria-expanded="false">
+            <span id="date-range-value"></span>
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="5" width="17" height="15" rx="1.5"/><path d="M7.5 3.5v3M16.5 3.5v3M3.5 9h17"/></svg>
+          </button>
+          <input id="start-date" type="hidden" value="2024-01-01" />
+          <input id="end-date" type="hidden" value="2024-12-31" />
+        </div>
+
+        <section>
+          <p class="eyebrow" data-i18n="participants">Участники ДТП</p>
+          <div id="participants" class="participant-list" aria-live="polite"></div>
+        </section>
+
+        <section>
+          <p class="eyebrow" data-i18n="injurySeverity">Вред здоровью</p>
+          <div class="severity-list">
+            <label class="unavailable"><input type="checkbox" disabled /> <span data-i18n="noInjured">Без пострадавших (нет данных)</span></label>
+            <label><input type="checkbox" name="severity" value="1" checked /> <i class="dot light"></i><span data-i18n="light">Лёгкий</span></label>
+            <label><input type="checkbox" name="severity" value="3" checked /> <i class="dot serious"></i><span data-i18n="serious">Тяжёлый</span></label>
+            <label><input type="checkbox" name="severity" value="4" checked /> <i class="dot fatal"></i><span data-i18n="fatal">С погибшими</span></label>
+          </div>
+        </section>
+
+        <button id="professional-toggle" class="professional-toggle" type="button" data-i18n="professionalFilter">Профессиональный фильтр</button>
+        <section class="quick-filters" aria-label="Карта">
+          <p class="eyebrow" data-i18n="map">Карта</p>
+          <div class="quick-filter-list"><button type="button" data-quick-map="mapbox">Стандарт</button><button type="button" data-quick-map="leaflet">OpenStreetMap</button><button type="button" data-quick-map="yandex">Яндекс.Карты</button></div>
+        </section>
+        <p id="collapsed-summary" class="collapsed-summary"></p>
+        <p id="filter-status" class="filter-status" data-i18n="loading">Загружаем данные…</p>
+      </aside>
+
+      <aside id="month-picker" class="month-picker" hidden aria-label="Выбор периода">
+        <p id="month-picker-title" class="month-picker-title"></p>
+        <div class="month-picker-content"><div id="month-picker-years" class="month-picker-years"></div><div id="month-picker-months" class="month-picker-months" hidden></div></div>
+      </aside>
+
+      <aside id="advanced-filter" class="advanced-filter" hidden aria-label="Расширенный фильтр">
+        <button id="close-advanced" class="icon-button" type="button" aria-label="Закрыть">⌃</button>
+        <div class="advanced-top-controls"><select id="advanced-region-filter" aria-label="Регион"></select><button id="advanced-date-range-button" class="date-range-button" type="button" aria-haspopup="dialog" aria-expanded="false"><span id="advanced-date-range-value"></span><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="5" width="17" height="15" rx="1.5"/><path d="M7.5 3.5v3M16.5 3.5v3M3.5 9h17"/></svg></button></div>
+        <section class="advanced-summary"><p data-i18n="participants">Участники ДТП</p><div id="advanced-participants" class="advanced-checkboxes"></div></section>
+        <section class="advanced-summary"><p data-i18n="injurySeverity">Вред здоровью</p><div id="advanced-severity" class="advanced-checkboxes"></div></section>
+        <section class="advanced-category"><div class="advanced-type-heading"><p data-i18n="accidentKind">Вид ДТП</p><input id="advanced-search" class="advanced-search" type="search" placeholder="Поиск" /></div><div id="advanced-options" class="advanced-options"></div></section>
+        <button id="apply-advanced" class="apply-advanced" type="button" data-i18n="apply">Применить</button>
+      </aside>
+
+      <section id="statistics" class="statistics" aria-live="polite">
+        <div class="place"><strong id="region-name">Москва</strong><span data-i18n="officialData">Официальные данные</span></div>
+        <div><span data-i18n="accidents">ДТП</span><strong id="count">—</strong></div>
+        <div><span data-i18n="injured">Пострадали</span><strong id="injured" class="yellow">—</strong></div>
+        <div><span data-i18n="dead">Погибли</span><strong id="dead" class="red">—</strong></div>
+        <button id="chart-button" type="button" data-i18n="statistics">Статистика</button>
+      </section>
+
+      <section id="chart" class="chart" hidden aria-labelledby="chart-title">
+        <div class="chart-heading"><div><h2 id="chart-title" data-i18n="distribution">Распределение по дням</h2><p id="chart-period" data-i18n="selectedPeriod">За выбранный период</p></div><button id="close-chart" class="icon-button" type="button" aria-label="Закрыть статистику">×</button></div>
+        <div id="chart-tabs" class="chart-tabs" role="tablist">
+          <button type="button" data-mode="days" class="active" data-i18n="byDays">По дням</button>
+          <button type="button" data-mode="hours" data-i18n="byHours">По часам</button>
+          <button type="button" data-mode="types" data-i18n="byTypes">По типам</button>
+        </div>
+        <div id="bars" class="bars" aria-label="Диаграмма количества ДТП"></div>
+        <p class="chart-note" data-i18n="chartNote">Диаграмма показывает ориентировочное распределение за выбранный период.</p>
+      </section>
+    </main>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script src="maps-config.js"></script>
+    <script type="module" src="app.js?v=8"></script>
+  </body>
+</html>

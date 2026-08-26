@@ -1,0 +1,11 @@
+{
+  "name": "dtpstat-pages",
+  "private": true,
+  "scripts": {
+    "build": "rm -rf dist && tsc && cp -R index.html styles.css mapbox.css _headers README.md about blog data support team details assets dist/ && set -a && . ./.env && set +a && node -e 'require(\"fs\").writeFileSync(\"dist/maps-config.js\", \"window.YANDEX_MAPS_KEY=\" + JSON.stringify(process.env.YANDEX_MAPS_KEY || \"\") + \";window.MAPBOX_ACCESS_TOKEN=\" + JSON.stringify(process.env.MAPBOX_ACCESS_TOKEN || \"\") + \";\")'",
+    "check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}
