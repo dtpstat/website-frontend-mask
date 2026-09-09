@@ -35,7 +35,19 @@ const filterMetadata = {
   category: { fatal:["пешеход", "велосипед", "сим", "гужевой", "животное", "лицо", "падение пассажира", "опрокидывание", "съезд с дороги", "столкновение"], serious:["возгорание", "препятствие", "стоящее тс", "падение груза"] },
   violations: { fatal:["алкогол", "наркот", "встречн", "переезд", "скорост", "обгон", "пешеходн", "светофор", "опасн", "сон за рул", "переутом", "нетрудоспособност"], serious:["ремн", "мотошлем", "дет", "дистанц", "интервал", "перестроен", "преимущ", "очередност", "разворот", "задним ход", "сигнал", "разметк", "знак", "велосипед", "сим", "мопед", "мобильн"] }
 };
-const number = () => new Intl.NumberFormat(state.language === "ru" ? "ru-RU" : "en-US");
+// Форматтеры Intl дорогие — создаём один раз на язык (в попапах их ждут тысячи точек)
+const intlCache = new Map<string, any>();
+function intlFormatter(kind: string, options: Intl.DateTimeFormatOptions | undefined) {
+  const key = `${kind}:${state.language}`;
+  let formatter = intlCache.get(key);
+  if (!formatter) {
+    const locale = state.language === "ru" ? "ru-RU" : "en-US";
+    formatter = kind === "number" ? new Intl.NumberFormat(locale) : new Intl.DateTimeFormat(locale, options);
+    intlCache.set(key, formatter);
+  }
+  return formatter;
+}
+const number = () => intlFormatter("number", undefined) as Intl.NumberFormat;
 const t = (key) => copy[state.language][key];
 function uiTone(filter, value) { const metadata = filterMetadata[filter.key || filter.name], text = String(value.preview || "").toLocaleLowerCase(); if (!metadata) return; if (metadata[value.value]) return metadata[value.value].ui_tone; return metadata.fatal?.some((term) => text.includes(term)) ? "fatal" : metadata.serious?.some((term) => text.includes(term)) ? "serious" : "light"; }
 function enrichFilters(filters) { return filters.map((filter) => ({ ...filter, values:(filter.values || []).map((value) => ({ ...value, ...(uiTone(filter, value) ? { ui_tone:uiTone(filter, value) } : {}) })) })); }
@@ -47,7 +59,7 @@ function setStatus(message) { $("#filter-status").textContent = message; }
 function monthValue(value) { return value.slice(0, 7); }
 function monthStartValue(value) { return `${value}-01`; }
 function monthEndValue(value) { const [year, month] = value.split("-").map(Number); return `${year}-${String(month).padStart(2, "0")}-${new Date(year, month, 0).getDate()}`; }
-function displayMonth(value) { return new Intl.DateTimeFormat(state.language === "ru" ? "ru-RU" : "en-US", { month: "long", year: "numeric" }).format(new Date(`${value}-01T00:00:00`)); }
+function displayMonth(value) { return intlFormatter("month-year", { month: "long", year: "numeric" }).format(new Date(`${value}-01T00:00:00`)); }
 
 function renderDateFields() {
   const value = `${displayMonth(monthValue($("#start-date").value))} — ${displayMonth(monthValue($("#end-date").value))}`;
@@ -62,7 +74,7 @@ function renderMonthPicker() {
   const minimum = monthValue(state.minDate), maximum = monthValue(state.maxDate), firstYear = Number(minimum.slice(0, 4)), lastYear = Number(maximum.slice(0, 4)), selectedStart = monthValue(state.picker.start);
   years.replaceChildren(...Array.from({ length: lastYear - firstYear + 1 }, (_, index) => lastYear - index).map((value) => { const button = document.createElement("button"); button.type = "button"; button.textContent = String(value); button.disabled = target === "end" && value < Number(selectedStart.slice(0, 4)); button.classList.toggle("active", value === year); button.addEventListener("click", () => { state.picker.year = value; renderMonthPicker(); }); return button; }));
   months.hidden = year === null; if (year === null) { months.replaceChildren(); return; }
-  months.replaceChildren(...Array.from({ length: 12 }, (_, index) => { const value = `${year}-${String(index + 1).padStart(2, "0")}`, button = document.createElement("button"); button.type = "button"; button.textContent = new Intl.DateTimeFormat(state.language === "ru" ? "ru-RU" : "en-US", { month: "long" }).format(new Date(year, index, 1)); button.disabled = value < minimum || value > maximum || (target === "end" && value < selectedStart); button.classList.toggle("active", value === monthValue(target === "start" ? state.picker.start : state.picker.end)); button.addEventListener("click", () => selectPickerMonth(value)); return button; }));
+  months.replaceChildren(...Array.from({ length: 12 }, (_, index) => { const value = `${year}-${String(index + 1).padStart(2, "0")}`, button = document.createElement("button"); button.type = "button"; button.textContent = intlFormatter("month", { month: "long" }).format(new Date(year, index, 1)); button.disabled = value < minimum || value > maximum || (target === "end" && value < selectedStart); button.classList.toggle("active", value === monthValue(target === "start" ? state.picker.start : state.picker.end)); button.addEventListener("click", () => selectPickerMonth(value)); return button; }));
 }
 
 function selectPickerMonth(value) {
@@ -152,9 +164,9 @@ const markers = new Map<string, any>();
 const heatSettings = { radius: 6, blur: 9, minOpacity: .05 };
 const heat = L.heatLayer([], { ...heatSettings, maxZoom: 12, gradient: { 0:"rgba(126, 171, 85, 0.0)", .2:"rgba(126, 171, 85, 0.6)", .4:"rgba(255, 254, 85, 0.7)", .6:"rgba(245, 193, 66, 0.8)", .8:"rgba(223, 130, 68, 0.9)", 1:"rgba(176, 36, 24, 1)" } }).addTo(map);
 const yandexHeatSettings = { radius: 15, opacity: .5, intensityOfMidpoint: .5 };
-const yandex = { map: null as any, points: null as any, heat: null as any, render: null as any, loading: null as Promise<void> };
+const yandex = { map: null as any, points: null as any, heat: null as any, loading: null as Promise<void> };
 const mapboxHeatSettings = { radius: 15, opacity: .5, intensity: .5 };
-const mapbox = { map: null as any, render: null as any, loading: null as Promise<void> };
+const mapbox = { map: null as any, loading: null as Promise<void> };
 function mapboxHeatPaint() {
   const { radius, intensity, opacity } = mapboxHeatSettings;
   return { radius:["interpolate", ["linear"], ["zoom"], 4, radius * .75, 7, radius * .9, 10, radius, 12, radius * 1.15], intensity:["interpolate", ["linear"], ["zoom"], 4, intensity * .7, 7, intensity * .85, 10, intensity, 12, intensity * 1.1], opacity };
@@ -164,9 +176,11 @@ function leafletView() { const bounds = map.getBounds(), center = map.getCenter(
 function yandexView() { const center = yandex.map.getCenter(), bounds = yandex.map.getBounds(); return { center: { latitude: center[1], longitude: center[0] }, zoom: yandex.map.getZoom(), bounds: { west: bounds[0][0], south: bounds[0][1], east: bounds[1][0], north: bounds[1][1] } }; }
 function mapboxView() { const center = mapbox.map.getCenter(), bounds = mapbox.map.getBounds(); return { center: { latitude: center.lat, longitude: center.lng }, zoom: mapbox.map.getZoom(), bounds: { west: bounds.getWest(), south: bounds.getSouth(), east: bounds.getEast(), north: bounds.getNorth() } }; }
 function currentView() { return state.mapClient === "yandex" && yandex.map ? yandexView() : state.mapClient === "mapbox" && mapbox.map ? mapboxView() : leafletView(); }
-function heatFeatures(points) { return points.map(([latitude, longitude]) => ({ type: "Feature", geometry: { type: "Point", coordinates: [longitude, latitude] }, properties: { weight: 1 } })); }
+function heatFeatures(points) { return points.map(([latitude, longitude, weight]) => ({ type: "Feature", geometry: { type: "Point", coordinates: [longitude, latitude] }, properties: { weight: weight || 1 } })); }
 const EMPTY_HEAT: number[][] = [];
 const EMPTY_COLLECTION = heatFeatures(EMPTY_HEAT);
+// Последний посчитанный срез — к нему переприсовываются слои при смене клиента карты
+const lastRender = { visible: [] as any[], heatPoints: EMPTY_HEAT, heatVisible: false };
 // Тепловая карта строится только по видимой области с запасом в пол-экрана:
 // тепловой слой Яндекса перерисовывается на каждое изменение границ карты,
 // и при полном наборе точек (вся Россия — 90k+) это замораживает карту
@@ -191,25 +205,35 @@ function renderLeaflet(visible, heatPoints, heatVisible) {
 }
 const yandexMarkers = new Map<string, any>();
 const yandexHeatCache = { points: null as any, collection: null as any, applied: undefined as any };
+// Слой тепла Яндекса перерисовывается на каждое движение карты, стоимость линейна
+// от числа точек: полный набор (100k+) замораживает интерфейс на секунды.
+// Прореживаем точки с компенсацией веса (weight = шаг) — картинка та же.
+const yandexHeatLimit = 12000;
+function decimateHeat(points: number[][]) {
+  if (points.length <= yandexHeatLimit) return points;
+  const stride = Math.ceil(points.length / yandexHeatLimit), sampled: number[][] = [];
+  for (let index = 0; index < points.length; index += stride) sampled.push([points[index][0], points[index][1], stride]);
+  return sampled;
+}
 function renderYandex(visible, heatPoints, heatVisible) {
-  yandex.render = { visible, heatPoints, heatVisible };
   if (!yandex.map) return;
   // Коллекцию строим один раз на набор точек и не дёргаем setData без изменений данных
-  if (yandexHeatCache.points !== heatPoints) { yandexHeatCache.points = heatPoints; yandexHeatCache.collection = heatFeatures(heatPoints); }
+  if (yandexHeatCache.points !== heatPoints) { yandexHeatCache.points = heatPoints; yandexHeatCache.collection = heatFeatures(decimateHeat(heatPoints)); }
   const target = heatVisible ? yandexHeatCache.collection : EMPTY_COLLECTION;
   if (yandexHeatCache.applied !== target) { yandex.heat?.setData(target); yandexHeatCache.applied = target; }
   // Placemark'и обновляем диффом, а не пересозданием всех на каждый сдвиг карты
   const alive = new Set(heatVisible ? [] : visible.map((item) => item.id));
   for (const [id, placemark] of yandexMarkers) if (!alive.has(id)) { yandex.points.remove(placemark); yandexMarkers.delete(id); }
   if (!heatVisible) for (const item of visible) if (!yandexMarkers.has(item.id)) {
-    // Маленькая плоская точка с цветом по тяжести вместо крупных пресетов CircleDot
-    const placemark = new (window as any).ymaps.Placemark([item.point.longitude, item.point.latitude], { balloonContent: markerPopup(item) }, { preset: "islands#circleIcon", iconColor: markerColor(item) });
+    // Маленькая плоская точка с цветом по тяжести вместо крупных пресетов CircleDot.
+    // Балун строим только по клику: на зуме добавляются сотни точек разом
+    const placemark = new (window as any).ymaps.Placemark([item.point.longitude, item.point.latitude], {}, { preset: "islands#circleIcon", iconColor: markerColor(item) });
+    placemark.events.add("click", (event) => { event.stopPropagation(); yandex.map.balloon.open(event.get("coords"), { content: markerPopup(item) }, { autoPan: false }); });
     yandexMarkers.set(item.id, placemark);
     yandex.points.add(placemark);
   }
 }
 function renderMapbox(visible, heatPoints, heatVisible) {
-  mapbox.render = { visible, heatPoints, heatVisible };
   if (!mapbox.map?.isStyleLoaded()) return;
   mapbox.map.getSource("dtp-heat")?.setData({ type:"FeatureCollection", features: heatVisible ? heatFeatures(heatPoints) : [] });
   mapbox.map.getSource("dtp-points")?.setData({ type:"FeatureCollection", features: heatVisible ? [] : visible.map((item) => ({ type:"Feature", geometry:{ type:"Point", coordinates:[item.point.longitude, item.point.latitude] }, properties:{ severity:item.severity, popup:markerPopup(item) } })) });
@@ -231,7 +255,7 @@ async function ensureYandex(view) {
   yandex.map = new ymaps.Map("yandex-map", { center: [view.center.longitude, view.center.latitude], zoom: view.zoom, controls: ["zoomControl"] }, { maxZoom: 20, minZoom: 1, avoidFractionalZoom: true, yandexMapDisablePoiInteractivity: true, suppressMapOpenBlock: true });
   yandex.points = new ymaps.GeoObjectCollection(); yandex.map.geoObjects.add(yandex.points);
   yandex.heat = new ymaps.Heatmap([], { ...yandexHeatSettings, dissipating: false, gradient: { 0: "rgba(126, 171, 85, 0.0)", .2: "rgba(126, 171, 85, 0.6)", .4: "rgba(255, 254, 85, 0.7)", .6: "rgba(245, 193, 66, 0.8)", .8: "rgba(223, 130, 68, 0.9)", 1: "rgba(176, 36, 24, 1)" } });
-  yandex.heat.setMap(yandex.map, {}); if (yandex.render) renderYandex(yandex.render.visible, yandex.render.heatPoints, yandex.render.heatVisible);
+  yandex.heat.setMap(yandex.map, {}); renderYandex(lastRender.visible, lastRender.heatPoints, lastRender.heatVisible);
   yandex.map.events.add("boundschange", () => { if (state.mapClient === "yandex") scheduleMapLoad(); });
 }
 function loadMapboxScript() {
@@ -250,7 +274,7 @@ async function ensureMapbox(view) {
     mapbox.map.addLayer({ id:"dtp-heat", type:"heatmap", source:"dtp-heat", paint:{ "heatmap-weight":["get", "weight"], "heatmap-intensity":paint.intensity, "heatmap-radius":paint.radius, "heatmap-opacity":paint.opacity, "heatmap-color":["interpolate", ["linear"], ["heatmap-density"], 0,"rgba(126, 171, 85, 0)", .2,"rgba(126, 171, 85, .6)", .4,"rgba(255, 254, 85, .7)", .6,"rgba(245, 193, 66, .8)", .8,"rgba(223, 130, 68, .9)", 1,"rgba(176, 36, 24, 1)"] } });
     mapbox.map.addLayer({ id:"dtp-points", type:"circle", source:"dtp-points", paint:{ "circle-radius":["case", ["==", ["get", "severity"], 4], 6.5, 5.5], "circle-color":["match", ["get", "severity"], 4,"#FF001A", 3,"#FF7F24", 1,"#FFB81F", "rgba(24, 51, 74, 0.5)"], "circle-stroke-width":0, "circle-opacity":1 } });
     mapbox.map.on("click", "dtp-points", (event) => new mapboxgl.Popup().setLngLat(event.features[0].geometry.coordinates).setHTML(event.features[0].properties.popup).addTo(mapbox.map));
-    if (mapbox.render) renderMapbox(mapbox.render.visible, mapbox.render.heatPoints, mapbox.render.heatVisible);
+    renderMapbox(lastRender.visible, lastRender.heatPoints, lastRender.heatVisible);
   });
   mapbox.map.on("moveend", () => { if (state.mapClient === "mapbox") scheduleMapLoad(); });
 }
@@ -259,10 +283,10 @@ async function switchMapClient(client) {
   if (client === state.mapClient) return;
   const view = currentView(); state.mapClient = client; localStorage.setItem("map-client", client); renderMapSwitcher(); renderHeatControls();
   $("#leaflet-map").hidden = client !== "leaflet"; $("#yandex-map").hidden = client !== "yandex"; $("#mapbox-map").hidden = client !== "mapbox";
-  if (client === "leaflet") { map.setView([view.center.latitude, view.center.longitude], view.zoom, { animate: false }); map.invalidateSize(); return; }
+  if (client === "leaflet") { map.setView([view.center.latitude, view.center.longitude], view.zoom, { animate: false }); map.invalidateSize(); renderLeaflet(lastRender.visible, lastRender.heatPoints, lastRender.heatVisible); return; }
   try {
-    if (client === "yandex") { await ensureYandex(view); if (yandex.render) renderYandex(yandex.render.visible, yandex.render.heatPoints, yandex.render.heatVisible); }
-    else { await ensureMapbox(view); if (mapbox.render) renderMapbox(mapbox.render.visible, mapbox.render.heatPoints, mapbox.render.heatVisible); mapbox.map.resize(); }
+    if (client === "yandex") { await ensureYandex(view); renderYandex(lastRender.visible, lastRender.heatPoints, lastRender.heatVisible); }
+    else { await ensureMapbox(view); renderMapbox(lastRender.visible, lastRender.heatPoints, lastRender.heatVisible); mapbox.map.resize(); }
   } catch { state.mapClient = "leaflet"; localStorage.setItem("map-client", "leaflet"); $("#yandex-map").hidden = true; $("#mapbox-map").hidden = true; $("#leaflet-map").hidden = false; renderMapSwitcher(); renderHeatControls(); setStatus(t("unavailable")); }
 }
 
@@ -281,14 +305,20 @@ function pluralPeople(count) {
   const last = count % 10, two = count % 100;
   return last >= 2 && last <= 4 && (two < 10 || two > 20) ? (state.language === "ru" ? "человека" : "people") : (state.language === "ru" ? "человек" : "people");
 }
+// HTML попапа кэшируется: один и тот же пункт попадает в попап/GeoJSON многократно
+const popupCache = new WeakMap<object, string>();
 function markerPopup(item) {
+  const cached = popupCache.get(item);
+  if (cached) return cached;
   const place = item.address || item.street || t("accidentsInArea");
   const escape = (value) => String(value || "").replace(/[&<>\"]/g, (character) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '\"':"&quot;" })[character]);
   const details = state.language === "en" ? "Accident details" : "Подробности ДТП";
-  const day = new Intl.DateTimeFormat(state.language === "ru" ? "ru-RU" : "en-GB", { day:"2-digit", month:"2-digit", year:"numeric" }).format(new Date(item.datetime));
+  const day = intlFormatter("day", { day:"2-digit", month:"2-digit", year:"numeric" }).format(new Date(item.datetime));
   const injured = item.injured > 0 ? `<p class="popup-injured">${number().format(item.injured)} ${pluralPeople(item.injured)} ${state.language === "ru" ? (item.injured === 1 && item.injured % 100 !== 11 ? "пострадал" : "пострадали") : item.injured === 1 ? "was injured" : "were injured"}</p>` : "";
   const dead = item.dead > 0 ? `<p class="popup-dead">${number().format(item.dead)} ${pluralPeople(item.dead)} ${state.language === "ru" ? (item.dead % 10 === 1 && item.dead % 100 !== 11 ? "погиб" : "погибло") : item.dead === 1 ? "died" : "died"}</p>` : "";
-  return `<div class="marker-popup"><strong>${escape(item.category_name)}</strong><span>${escape(day)}, ${escape(item.datetime.slice(11, 16))}</span><span>${escape(place)}</span>${injured}${dead}<a href="details/?id=${encodeURIComponent(item.id)}&lang=${state.language}">${details}</a></div>`;
+  const html = `<div class="marker-popup"><strong>${escape(item.category_name)}</strong><span>${escape(day)}, ${escape(item.datetime.slice(11, 16))}</span><span>${escape(place)}</span>${injured}${dead}<a href="details/?id=${encodeURIComponent(item.id)}&lang=${state.language}">${details}</a></div>`;
+  popupCache.set(item, html);
+  return html;
 }
 function dynamicValues(filter) { return filter.key === "street" && !filter.values.length ? [...new Set(state.rawItems.map((item) => item.street).filter(Boolean))].sort().map((value) => ({ value, preview:value })) : filter.values || []; }
 function renderAdvancedFilters() {
@@ -391,9 +421,11 @@ function renderMapData(view) {
   if (!$("#chart").hidden) renderChart();
   const heatVisible = view.zoom < 12 || visible.length >= 1000;
   const heatPoints = heatVisible ? heatInView(filtered, view) : EMPTY_HEAT;
-  renderLeaflet(visible, heatPoints, heatVisible);
-  renderYandex(visible, heatPoints, heatVisible);
-  renderMapbox(visible, heatPoints, heatVisible);
+  // Слои переприсовываются только у активного клиента — остальные догонят при переключении
+  Object.assign(lastRender, { visible, heatPoints, heatVisible });
+  if (state.mapClient === "leaflet") renderLeaflet(visible, heatPoints, heatVisible);
+  else if (state.mapClient === "yandex") renderYandex(visible, heatPoints, heatVisible);
+  else renderMapbox(visible, heatPoints, heatVisible);
   // Прямая ссылка на конкретное ДТП открывает его попап (?popup=<em_number>)
   const linkedMarker = mapQuery.get("popup") && markers.get(mapQuery.get("popup"));
   if (linkedMarker) linkedMarker.openPopup();
@@ -507,8 +539,8 @@ function renderHeatControls() {
   $("#heat-radius").max = "30"; $("#heat-radius").value = String(heatSettings.radius); $("#heat-blur").min = "0"; $("#heat-blur").max = "30"; $("#heat-blur").value = String(heatSettings.blur); $("#heat-opacity").max = "50"; $("#heat-opacity").value = String(heatSettings.minOpacity * 100); $("#heat-radius-value").textContent = `${heatSettings.radius} px`; $("#heat-blur-value").textContent = `${heatSettings.blur} px`; $("#heat-opacity-value").textContent = `${Math.round(heatSettings.minOpacity * 100)}%`;
 }
 function updateHeatControls() {
-  if (state.mapClient === "yandex") { yandexHeatSettings.radius = Number($("#heat-radius").value); yandexHeatSettings.intensityOfMidpoint = Number($("#heat-blur").value) / 100; yandexHeatSettings.opacity = Number($("#heat-opacity").value) / 100; yandex.heat?.options.set(yandexHeatSettings); if (yandex.render) renderYandex(yandex.render.visible, yandex.render.heatPoints, yandex.render.heatVisible); }
-  else if (state.mapClient === "mapbox") { mapboxHeatSettings.radius = Number($("#heat-radius").value); mapboxHeatSettings.intensity = Number($("#heat-blur").value) / 100; mapboxHeatSettings.opacity = Number($("#heat-opacity").value) / 100; if (mapbox.render) renderMapbox(mapbox.render.visible, mapbox.render.heatPoints, mapbox.render.heatVisible); }
+  if (state.mapClient === "yandex") { yandexHeatSettings.radius = Number($("#heat-radius").value); yandexHeatSettings.intensityOfMidpoint = Number($("#heat-blur").value) / 100; yandexHeatSettings.opacity = Number($("#heat-opacity").value) / 100; yandex.heat?.options.set(yandexHeatSettings); renderYandex(lastRender.visible, lastRender.heatPoints, lastRender.heatVisible); }
+  else if (state.mapClient === "mapbox") { mapboxHeatSettings.radius = Number($("#heat-radius").value); mapboxHeatSettings.intensity = Number($("#heat-blur").value) / 100; mapboxHeatSettings.opacity = Number($("#heat-opacity").value) / 100; renderMapbox(lastRender.visible, lastRender.heatPoints, lastRender.heatVisible); }
   else { heatSettings.radius = Number($("#heat-radius").value); heatSettings.blur = Number($("#heat-blur").value); heatSettings.minOpacity = Number($("#heat-opacity").value) / 100; heat.setOptions(heatSettings); }
   renderHeatControls();
 }
