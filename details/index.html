@@ -6,9 +6,15 @@
     <title>Подробности ДТП</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <link rel="stylesheet" href="styles.css" />
-    <link rel="stylesheet" href="override.css" />
   </head>
   <body>
+    <header class="header">
+      <a class="logo" href="../" aria-label="Карта ДТП"><i></i><b>Карта ДТП</b></a>
+      <nav aria-label="Основная навигация">
+        <a href="../blog/" data-nav="blog">Блог и исследования</a><a href="../#statistics" data-nav="stats">Статистика</a><a href="../data/" data-nav="download">Скачать данные</a><a href="../about/" data-nav="about">О проекте</a>
+      </nav>
+      <a class="support" href="../support/" data-nav="support">Поддержать проект</a>
+    </header>
     <main id="detail" class="loading" aria-live="polite">Загружаем данные ДТП…</main>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="../maps-config.js"></script>
