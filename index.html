@@ -11,23 +11,6 @@
     <link rel="stylesheet" href="mapbox.css" />
   </head>
   <body>
-    <header class="topbar">
-      <a class="brand" href="#map" aria-label="Карта ДТП — главная" data-i18n-aria="brandAria"><img src="assets/logo.svg" width="170" height="24" alt="Карта ДТП" /></a>
-      <nav aria-label="Основная навигация">
-        <a href="blog/" data-i18n="blog">Блог</a>
-        <a href="#statistics" data-i18n="statistics">Статистика</a>
-        <a href="data/" data-i18n="data">Данные</a>
-        <a href="about/" data-i18n="about">О проекте</a>
-        <button id="language" type="button" aria-label="Switch language">EN</button>
-      </nav>
-      <a class="support" href="support/" data-i18n="support">Поддержать проект</a>
-      <button id="mobile-menu-button" class="mobile-menu-button" type="button" aria-label="Открыть меню">☰</button>
-    </header>
-    <dialog id="mobile-menu" class="mobile-menu">
-      <button id="close-mobile-menu" class="icon-button" type="button" aria-label="Закрыть меню">×</button>
-      <a href="./" data-i18n="map">Карта</a><a href="blog/" data-i18n="blog">Блог</a><a href="data/" data-i18n="data">Данные</a><a href="about/" data-i18n="about">О проекте</a><a href="team/" data-i18n="team">Команда</a><a href="support/" data-i18n="support">Поддержать</a>
-    </dialog>
-
     <main id="map" class="map-page">
       <div id="yandex-map" class="yandex-map" hidden aria-label="Интерактивная карта ДТП" data-i18n-aria="mapAria"></div>
       <div id="mapbox-map" class="mapbox-map" hidden aria-label="Интерактивная карта ДТП" data-i18n-aria="mapAria"></div>
@@ -50,10 +33,6 @@
         </div>
         <button id="hide-filters" class="icon-button" type="button" aria-label="Свернуть фильтры" aria-expanded="true">⌃</button>
 
-        <label class="region-field"><span data-i18n="region">Регион</span>
-          <select id="region-filter"></select>
-        </label>
-
         <div class="date-fields">
           <button id="date-range-button" class="date-range-button" type="button" aria-haspopup="dialog" aria-expanded="false">
             <span id="date-range-value"></span>
@@ -72,9 +51,9 @@
           <p class="eyebrow" data-i18n="injurySeverity">Вред здоровью</p>
           <div class="severity-list">
             <label class="unavailable"><input type="checkbox" disabled /> <span data-i18n="noInjured">Без пострадавших (нет данных)</span></label>
-            <label><input type="checkbox" name="severity" value="1" checked /> <i class="dot light"></i><span data-i18n="light">Лёгкий</span></label>
-            <label><input type="checkbox" name="severity" value="3" checked /> <i class="dot serious"></i><span data-i18n="serious">Тяжёлый</span></label>
-            <label><input type="checkbox" name="severity" value="4" checked /> <i class="dot fatal"></i><span data-i18n="fatal">С погибшими</span></label>
+            <label class="severity-tone light"><input type="checkbox" name="severity" value="1" checked /> <span data-i18n="light">Лёгкий</span></label>
+            <label class="severity-tone serious"><input type="checkbox" name="severity" value="3" checked /> <span data-i18n="serious">Тяжёлый</span></label>
+            <label class="severity-tone fatal"><input type="checkbox" name="severity" value="4" checked /> <span data-i18n="fatal">С погибшими</span></label>
           </div>
         </section>
 
@@ -94,10 +73,10 @@
 
       <aside id="advanced-filter" class="advanced-filter" hidden aria-label="Расширенный фильтр">
         <button id="close-advanced" class="icon-button" type="button" aria-label="Закрыть">⌃</button>
-        <div class="advanced-top-controls"><select id="advanced-region-filter" aria-label="Регион"></select><button id="advanced-date-range-button" class="date-range-button" type="button" aria-haspopup="dialog" aria-expanded="false"><span id="advanced-date-range-value"></span><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="5" width="17" height="15" rx="1.5"/><path d="M7.5 3.5v3M16.5 3.5v3M3.5 9h17"/></svg></button></div>
-        <section class="advanced-summary"><p data-i18n="participants">Участники ДТП</p><div id="advanced-participants" class="advanced-checkboxes"></div></section>
-        <section class="advanced-summary"><p data-i18n="injurySeverity">Вред здоровью</p><div id="advanced-severity" class="advanced-checkboxes"></div></section>
-        <section class="advanced-category"><div class="advanced-type-heading"><p data-i18n="accidentKind">Вид ДТП</p><input id="advanced-search" class="advanced-search" type="search" placeholder="Поиск" /></div><div id="advanced-options" class="advanced-options"></div></section>
+        <div class="advanced-top-controls"><button id="advanced-date-range-button" class="date-range-button" type="button" aria-haspopup="dialog" aria-expanded="false"><span id="advanced-date-range-value"></span><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="5" width="17" height="15" rx="1.5"/><path d="M7.5 3.5v3M16.5 3.5v3M3.5 9h17"/></svg></button></div>
+        <details class="advanced-collapse" open><summary><span data-i18n="participants">Участники ДТП</span></summary><div id="advanced-participants" class="advanced-checkboxes"></div></details>
+        <details class="advanced-collapse" open><summary><span data-i18n="injurySeverity">Вред здоровью</span></summary><div id="advanced-severity" class="advanced-checkboxes"></div></details>
+        <div id="advanced-dynamic" class="advanced-dynamic"></div>
         <button id="apply-advanced" class="apply-advanced" type="button" data-i18n="apply">Применить</button>
       </aside>
 
@@ -123,6 +102,6 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <script src="maps-config.js"></script>
-    <script type="module" src="app.js?v=8"></script>
+    <script type="module" src="app.js?v=10"></script>
   </body>
 </html>

@@ -1,9 +1,14 @@
-const api = "https://dtpstat-api.dexoon.workers.dev/api";
+const api = "https://dtpstat-api.dexoon.workers.dev/api/upstream";
 const $ = (selector) => document.querySelector(selector);
+const dataRange = { min:"2015-01-01", max:"2026-08-31" };
 type MonthPickerState = { open: boolean; target: "start" | "end"; year: number | null; start: string; end: string };
-type MapState = { language: string; mapClient: "leaflet" | "yandex" | "mapbox"; participants: any[]; filters: any[]; regions: any[]; selectedFilters: Record<string, any[]>; activeFilter: string | null; abort: AbortController | null; items: any[]; chartMode: string; minDate: string; maxDate: string; picker: MonthPickerState };
+type MapState = { language: string; mapClient: "leaflet" | "yandex" | "mapbox"; participants: any[]; filters: any[]; selectedFilters: Record<string, any[]>; abort: AbortController | null; items: any[]; rawItems: any[]; rawItemsKey: string; dataLoadId: number; chartMode: string; minDate: string; maxDate: string; picker: MonthPickerState };
+type Bounds = { west: number; south: number; east: number; north: number };
 const persistedMapClient = localStorage.getItem("map-client");
-const state: MapState = { language: new URLSearchParams(location.search).get("lang") || localStorage.getItem("language") || "ru", mapClient: persistedMapClient === "yandex" || persistedMapClient === "mapbox" ? persistedMapClient : "leaflet", participants: [], filters: [], regions: [], selectedFilters: {}, activeFilter: null, abort: null, items: [], chartMode: "days", minDate: "2015-01-01", maxDate: "2024-12-31", picker: { open: false, target: "start", year: null, start: "2024-01-01", end: "2024-12-31" } };
+const state: MapState = { language: new URLSearchParams(location.search).get("lang") || localStorage.getItem("language") || "ru", mapClient: persistedMapClient === "yandex" || persistedMapClient === "mapbox" ? persistedMapClient : "leaflet", participants: [], filters: [], selectedFilters: {}, abort: null, items: [], rawItems: [], rawItemsKey: "", dataLoadId: 0, chartMode: "days", minDate: "2015-01-01", maxDate: "2024-12-31", picker: { open: false, target: "start", year: null, start: "2024-01-01", end: "2024-12-31" } };
+// Кэш загруженных точек: ключ запроса (период + фильтры) → id региона → точки.
+// Регионы докачиваются по одному, уже скачанные не запрашиваются повторно.
+const regionCache = new Map<string, Map<number, any[]>>();
 const copy = {
   ru: { brandAria:"Карта ДТП — главная", mapAria:"Интерактивная карта ДТП", mapSource:"Выбрать карту", map:"Карта", blog:"Блог и исследования", data:"Скачать данные", about:"О проекте", team:"Команда", support:"Поддержать проект", statistics:"Статистика", filters:"Фильтры", analytics:"Аналитика", apply:"Применить", cancel:"Отмена", allTime:"За всё время", basicFilter:"Базовый фильтр", professionalFilter:"Профессиональный фильтр", startPeriod:"Начало периода", endPeriod:"Конец периода", chooseYear:"Выберите год", chooseMonth:"Выберите месяц", search:"Поиск", dataPeriod:"Период данных", accidentsInRussia:"ДТП в России", region:"Регион", allRegions:"Все регионы", from:"С", to:"По", participants:"Участники ДТП", injurySeverity:"Вред здоровью", light:"Лёгкий", serious:"Тяжёлый", fatal:"С погибшими", accidentTypes:"Типы ДТП", violations:"Нарушения ПДД", weather:"Погода", streets:"Улицы", heatRadius:"Радиус", heatBlur:"Размытие", heatOpacity:"Мин. непрозрачность", loading:"Загружаем данные…", loadingMap:"Обновляем карту…", unavailable:"Не удалось получить данные. Попробуйте позднее.", officialData:"Официальные данные", accidents:"ДТП", injured:"Пострадали", dead:"Погибли", distribution:"Распределение по дням", selectedPeriod:"За выбранный период", byDays:"По дням", byHours:"По часам", byTypes:"По типам ДТП", chartNote:"Диаграмма построена по ДТП в видимой области.", accidentsInArea:"ДТП в видимой области", people:"чел.", deaths:"погибших" },
   en: { brandAria:"Road accident map — home", mapAria:"Interactive road accident map", mapSource:"Choose map", map:"Map", blog:"Blog & research", data:"Download data", about:"About the project", team:"Team", support:"Support the project", statistics:"Statistics", filters:"Filters", analytics:"Analytics", apply:"Apply", cancel:"Cancel", allTime:"All time", basicFilter:"Basic filter", professionalFilter:"Professional filter", startPeriod:"Start of period", endPeriod:"End of period", chooseYear:"Select year", chooseMonth:"Select month", search:"Search", dataPeriod:"Data period", accidentsInRussia:"Road accidents in Russia", region:"Region", allRegions:"All regions", from:"From", to:"To", participants:"Road users", injurySeverity:"Injury severity", light:"Minor", serious:"Serious", fatal:"Fatal", accidentTypes:"Accident types", violations:"Traffic violations", weather:"Weather", streets:"Streets", heatRadius:"Radius", heatBlur:"Blur", heatOpacity:"Min. opacity", loading:"Loading data…", loadingMap:"Updating map…", unavailable:"Could not load data. Please try again later.", officialData:"Official data", accidents:"Accidents", injured:"Injured", dead:"Deaths", distribution:"Distribution by day", selectedPeriod:"Selected period", byDays:"By day", byHours:"By hour", byTypes:"By type", chartNote:"The chart is based on accidents in the visible area.", accidentsInArea:"Accidents in area", people:"people", deaths:"deaths" },
@@ -14,13 +19,19 @@ Object.assign(copy.ru, { heatIntensity:"Интенсивность", heatMapOpac
 Object.assign(copy.en, { heatIntensity:"Intensity", heatMapOpacity:"Opacity" });
 const participantTranslations = { "Все участники":"All users", "Пешеходы":"Pedestrians", "Велосипедисты":"Cyclists", "Мотоциклисты":"Motorcyclists", "Общ. транспорт":"Public transport", "Дети":"Children", "Без участника":"No road user" };
 const participantIcons = ["all", "pedestrian", "cyclist", "motorcycle", "public_transport", "kids", "driver"];
+const filterMetadata = {
+  severity: { 1:{ ui_tone:"light" }, 3:{ ui_tone:"serious" }, 4:{ ui_tone:"fatal" } },
+  category: { fatal:["пешеход", "велосипед", "сим", "гужевой", "животное", "лицо", "падение пассажира", "опрокидывание", "съезд с дороги", "столкновение"], serious:["возгорание", "препятствие", "стоящее тс", "падение груза"] },
+  violations: { fatal:["алкогол", "наркот", "встречн", "переезд", "скорост", "обгон", "пешеходн", "светофор", "опасн", "сон за рул", "переутом", "нетрудоспособност"], serious:["ремн", "мотошлем", "дет", "дистанц", "интервал", "перестроен", "преимущ", "очередност", "разворот", "задним ход", "сигнал", "разметк", "знак", "велосипед", "сим", "мопед", "мобильн"] }
+};
 const number = () => new Intl.NumberFormat(state.language === "ru" ? "ru-RU" : "en-US");
 const t = (key) => copy[state.language][key];
+function uiTone(filter, value) { const metadata = filterMetadata[filter.key || filter.name], text = String(value.preview || "").toLocaleLowerCase(); if (!metadata) return; if (metadata[value.value]) return metadata[value.value].ui_tone; return metadata.fatal?.some((term) => text.includes(term)) ? "fatal" : metadata.serious?.some((term) => text.includes(term)) ? "serious" : "light"; }
+function enrichFilters(filters) { return filters.map((filter) => ({ ...filter, values:(filter.values || []).map((value) => ({ ...value, ...(uiTone(filter, value) ? { ui_tone:uiTone(filter, value) } : {}) })) })); }
 
 function period() { return { start: $("#start-date").value, end: $("#end-date").value }; }
 function severity() { return [...document.querySelectorAll('input[name="severity"]:checked')].map((input) => Number(input.value)); }
 function selectedParticipants() { return state.participants.filter((participant) => participant.selected).map((participant) => participant.value); }
-function selectedRegion() { return $("#region-filter").value; }
 function setStatus(message) { $("#filter-status").textContent = message; }
 function monthValue(value) { return value.slice(0, 7); }
 function monthStartValue(value) { return `${value}-01`; }
@@ -58,19 +69,12 @@ function applyLanguage() {
   document.title = state.language === "ru" ? "Карта ДТП" : "Road accident map";
   document.querySelectorAll("[data-i18n]").forEach((node) => { node.textContent = t(node.dataset.i18n); });
   document.querySelectorAll("[data-i18n-aria]").forEach((node) => { node.setAttribute("aria-label", t(node.dataset.i18nAria)); });
-  $("#language").textContent = state.language === "ru" ? "EN" : "RU";
-  $("#advanced-search").placeholder = t("search");
-  renderRegions();
   renderParticipants();
   renderAdvancedControls();
+  renderAdvancedFilters();
   renderDateFields();
   renderMonthPicker();
   renderHeatControls();
-}
-
-function renderRegions() {
-  const current = $("#region-filter").value;
-  document.querySelectorAll("#region-filter, #advanced-region-filter").forEach((select) => { select.replaceChildren(new Option(t("regionSearch"), ""), ...state.regions.map((region) => new Option(region.name, region.slug))); select.value = state.regions.some((region) => region.slug === current) ? current : ""; });
 }
 
 function renderParticipants() {
@@ -91,7 +95,7 @@ function renderParticipants() {
 function renderAdvancedControls() {
   const participants = $("#advanced-participants"), severity = $("#advanced-severity");
   participants.replaceChildren(...state.participants.map((participant) => { const label = document.createElement("label"), input = document.createElement("input"); input.type = "checkbox"; input.checked = participant.selected; input.addEventListener("change", () => { participant.selected = input.checked; renderParticipants(); }); label.append(input, document.createTextNode(state.language === "en" ? (participantTranslations[participant.preview] || participant.preview) : participant.preview)); return label; }));
-  severity.replaceChildren(...[...document.querySelectorAll<HTMLInputElement>('input[name="severity"]')].map((source) => { const label = document.createElement("label"), input = document.createElement("input"); input.type = "checkbox"; input.checked = source.checked; input.disabled = source.disabled; input.addEventListener("change", () => { source.checked = input.checked; }); label.append(input, document.createTextNode(source.parentElement.textContent.trim())); return label; }));
+  severity.replaceChildren(...[...document.querySelectorAll<HTMLInputElement>('input[name="severity"]')].map((source) => { const value = Number(source.value), tone = state.filters.find((filter) => filter.name === "severity")?.values.find((item) => item.value === value)?.ui_tone || "light", label = document.createElement("label"), input = document.createElement("input"); label.className = `severity-tone ${tone}`; input.type = "checkbox"; input.checked = source.checked; input.disabled = source.disabled; input.addEventListener("change", () => { source.checked = input.checked; }); label.append(input, document.createTextNode(source.parentElement.textContent.trim())); return label; }));
 }
 
 function chartBuckets() {
@@ -121,11 +125,12 @@ function renderChart() {
   }));
 }
 
-const mapQuery = new URLSearchParams(location.search), initialCenter = (mapQuery.get("center") || "").split(":").map(Number), initialZoom = Number(mapQuery.get("zoom"));
+const mapQuery = new URLSearchParams(location.search), initialCenter = (mapQuery.get("center") || "").split(":").map(Number), zoomQuery = mapQuery.get("zoom"), initialZoom = zoomQuery === null ? NaN : Number(zoomQuery);
 const map = L.map("leaflet-map", { zoomControl: false, minZoom: 4 }).setView(initialCenter.length === 2 && initialCenter.every(Number.isFinite) ? initialCenter : [55.76, 37.64], Number.isFinite(initialZoom) ? initialZoom : 11);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap contributors" }).addTo(map);
 L.control.zoom({ position: "bottomright" }).addTo(map);
 const accidents = L.layerGroup().addTo(map);
+const markers = new Map<string, any>();
 const heatSettings = { radius: 6, blur: 9, minOpacity: .05 };
 const heat = L.heatLayer([], { ...heatSettings, maxZoom: 12, gradient: { 0:"rgba(126, 171, 85, 0.0)", .2:"rgba(126, 171, 85, 0.6)", .4:"rgba(255, 254, 85, 0.7)", .6:"rgba(245, 193, 66, 0.8)", .8:"rgba(223, 130, 68, 0.9)", 1:"rgba(176, 36, 24, 1)" } }).addTo(map);
 const yandexHeatSettings = { radius: 15, opacity: .5, intensityOfMidpoint: .5 };
@@ -141,24 +146,52 @@ function leafletView() { const bounds = map.getBounds(), center = map.getCenter(
 function yandexView() { const center = yandex.map.getCenter(), bounds = yandex.map.getBounds(); return { center: { latitude: center[1], longitude: center[0] }, zoom: yandex.map.getZoom(), bounds: { west: bounds[0][0], south: bounds[0][1], east: bounds[1][0], north: bounds[1][1] } }; }
 function mapboxView() { const center = mapbox.map.getCenter(), bounds = mapbox.map.getBounds(); return { center: { latitude: center.lat, longitude: center.lng }, zoom: mapbox.map.getZoom(), bounds: { west: bounds.getWest(), south: bounds.getSouth(), east: bounds.getEast(), north: bounds.getNorth() } }; }
 function currentView() { return state.mapClient === "yandex" && yandex.map ? yandexView() : state.mapClient === "mapbox" && mapbox.map ? mapboxView() : leafletView(); }
-function heatFeatures(items, maximum) { return items.map((item) => ({ type: "Feature", geometry: { type: "Point", coordinates: [item.longitude, item.latitude] }, properties: { weight: item.count / maximum } })); }
-function renderLeaflet(visible, heatItems, maximum, heatVisible) {
-  accidents.clearLayers(); heat.setLatLngs([]);
-  if (heatVisible) { heat.setOptions(heatSettings); heat.setLatLngs(heatItems.map((item) => [item.latitude, item.longitude, item.count])); }
-  else visible.forEach((item) => L.circleMarker([item.point.latitude, item.point.longitude], { radius: item.severity === 4 ? 7 : 5, color: "#fff", weight: 1, fillColor: markerColor(item), fillOpacity: .9 }).bindPopup(markerPopup(item)).addTo(accidents));
+function heatFeatures(points) { return points.map(([latitude, longitude]) => ({ type: "Feature", geometry: { type: "Point", coordinates: [longitude, latitude] }, properties: { weight: 1 } })); }
+const EMPTY_HEAT: number[][] = [];
+const EMPTY_COLLECTION = heatFeatures(EMPTY_HEAT);
+// Тепловая карта строится только по видимой области с запасом в пол-экрана:
+// тепловой слой Яндекса перерисовывается на каждое изменение границ карты,
+// и при полном наборе точек (вся Россия — 90k+) это замораживает карту
+function heatInView(filtered, view) {
+  const { west, south, east, north } = view.bounds, dx = (east - west) / 2, dy = (north - south) / 2, points = [];
+  for (const item of filtered) {
+    const { longitude, latitude } = item.point;
+    if (longitude >= west - dx && longitude <= east + dx && latitude >= south - dy && latitude <= north + dy) points.push([latitude, longitude, 1]);
+  }
+  return points;
 }
-function renderYandex(visible, heatItems, maximum, heatVisible) {
-  yandex.render = { visible, heatItems, maximum, heatVisible };
+function renderMarkers(visible) {
+  // Добавляем/убираем только изменившиеся маркеры вместо полной пересборки слоя
+  const alive = new Set(visible.map((item) => item.id));
+  for (const [id, marker] of markers) if (!alive.has(id)) { marker.remove(); markers.delete(id); }
+  for (const item of visible) if (!markers.has(item.id)) markers.set(item.id, L.circleMarker([item.point.latitude, item.point.longitude], { radius: item.severity === 4 ? 7 : 5, color: "#fff", weight: 1, fillColor: markerColor(item), fillOpacity: .9 }).bindPopup(markerPopup(item)).addTo(accidents));
+}
+function renderLeaflet(visible, heatPoints, heatVisible) {
+  renderMarkers(heatVisible ? [] : visible);
+  heat.setLatLngs(heatVisible ? heatPoints : []);
+}
+const yandexMarkers = new Map<string, any>();
+const yandexHeatCache = { points: null as any, collection: null as any, applied: undefined as any };
+function renderYandex(visible, heatPoints, heatVisible) {
+  yandex.render = { visible, heatPoints, heatVisible };
   if (!yandex.map) return;
-  yandex.points.removeAll();
-  yandex.heat?.options.set(yandexHeatSettings);
-  yandex.heat?.setData(heatVisible ? heatFeatures(heatItems, maximum) : []);
-  if (!heatVisible) visible.forEach((item) => yandex.points.add(new (window as any).ymaps.Placemark([item.point.longitude, item.point.latitude], { balloonContent: markerPopup(item) }, { preset: `islands#${item.severity === 4 ? "red" : item.severity === 3 ? "orange" : "yellow"}CircleDotIcon` })));
+  // Коллекцию строим один раз на набор точек и не дёргаем setData без изменений данных
+  if (yandexHeatCache.points !== heatPoints) { yandexHeatCache.points = heatPoints; yandexHeatCache.collection = heatFeatures(heatPoints); }
+  const target = heatVisible ? yandexHeatCache.collection : EMPTY_COLLECTION;
+  if (yandexHeatCache.applied !== target) { yandex.heat?.setData(target); yandexHeatCache.applied = target; }
+  // Placemark'и обновляем диффом, а не пересозданием всех на каждый сдвиг карты
+  const alive = new Set(heatVisible ? [] : visible.map((item) => item.id));
+  for (const [id, placemark] of yandexMarkers) if (!alive.has(id)) { yandex.points.remove(placemark); yandexMarkers.delete(id); }
+  if (!heatVisible) for (const item of visible) if (!yandexMarkers.has(item.id)) {
+    const placemark = new (window as any).ymaps.Placemark([item.point.longitude, item.point.latitude], { balloonContent: markerPopup(item) }, { preset: `islands#${item.severity === 4 ? "red" : item.severity === 3 ? "orange" : "yellow"}CircleDotIcon` });
+    yandexMarkers.set(item.id, placemark);
+    yandex.points.add(placemark);
+  }
 }
-function renderMapbox(visible, heatItems, maximum, heatVisible) {
-  mapbox.render = { visible, heatItems, maximum, heatVisible };
+function renderMapbox(visible, heatPoints, heatVisible) {
+  mapbox.render = { visible, heatPoints, heatVisible };
   if (!mapbox.map?.isStyleLoaded()) return;
-  mapbox.map.getSource("dtp-heat")?.setData({ type:"FeatureCollection", features: heatVisible ? heatFeatures(heatItems, maximum) : [] });
+  mapbox.map.getSource("dtp-heat")?.setData({ type:"FeatureCollection", features: heatVisible ? heatFeatures(heatPoints) : [] });
   mapbox.map.getSource("dtp-points")?.setData({ type:"FeatureCollection", features: heatVisible ? [] : visible.map((item) => ({ type:"Feature", geometry:{ type:"Point", coordinates:[item.point.longitude, item.point.latitude] }, properties:{ severity:item.severity, popup:markerPopup(item) } })) });
   const paint = mapboxHeatPaint();
   mapbox.map.setPaintProperty("dtp-heat", "heatmap-radius", paint.radius); mapbox.map.setPaintProperty("dtp-heat", "heatmap-intensity", paint.intensity); mapbox.map.setPaintProperty("dtp-heat", "heatmap-opacity", paint.opacity);
@@ -178,8 +211,8 @@ async function ensureYandex(view) {
   yandex.map = new ymaps.Map("yandex-map", { center: [view.center.longitude, view.center.latitude], zoom: view.zoom, controls: ["zoomControl"] }, { maxZoom: 20, minZoom: 1, avoidFractionalZoom: true, yandexMapDisablePoiInteractivity: true, suppressMapOpenBlock: true });
   yandex.points = new ymaps.GeoObjectCollection(); yandex.map.geoObjects.add(yandex.points);
   yandex.heat = new ymaps.Heatmap([], { ...yandexHeatSettings, dissipating: false, gradient: { 0: "rgba(126, 171, 85, 0.0)", .2: "rgba(126, 171, 85, 0.6)", .4: "rgba(255, 254, 85, 0.7)", .6: "rgba(245, 193, 66, 0.8)", .8: "rgba(223, 130, 68, 0.9)", 1: "rgba(176, 36, 24, 1)" } });
-  yandex.heat.setMap(yandex.map, {}); if (yandex.render) renderYandex(yandex.render.visible, yandex.render.heatItems, yandex.render.maximum, yandex.render.heatVisible);
-  yandex.map.events.add("boundschange", () => { if (state.mapClient !== "yandex") return; const current = yandexView(); map.setView([current.center.latitude, current.center.longitude], current.zoom, { animate: false }); scheduleMapLoad(); });
+  yandex.heat.setMap(yandex.map, {}); if (yandex.render) renderYandex(yandex.render.visible, yandex.render.heatPoints, yandex.render.heatVisible);
+  yandex.map.events.add("boundschange", () => { if (state.mapClient === "yandex") scheduleMapLoad(); });
 }
 function loadMapboxScript() {
   const key = (window as any).MAPBOX_ACCESS_TOKEN;
@@ -197,9 +230,9 @@ async function ensureMapbox(view) {
     mapbox.map.addLayer({ id:"dtp-heat", type:"heatmap", source:"dtp-heat", paint:{ "heatmap-weight":["get", "weight"], "heatmap-intensity":paint.intensity, "heatmap-radius":paint.radius, "heatmap-opacity":paint.opacity, "heatmap-color":["interpolate", ["linear"], ["heatmap-density"], 0,"rgba(126, 171, 85, 0)", .2,"rgba(126, 171, 85, .6)", .4,"rgba(255, 254, 85, .7)", .6,"rgba(245, 193, 66, .8)", .8,"rgba(223, 130, 68, .9)", 1,"rgba(176, 36, 24, 1)"] } });
     mapbox.map.addLayer({ id:"dtp-points", type:"circle", source:"dtp-points", paint:{ "circle-radius":["case", ["==", ["get", "severity"], 4], 7, 5], "circle-color":["match", ["get", "severity"], 4,"#e31a1c", 3,"#ff7f24", "#fecc5c"], "circle-stroke-color":"#fff", "circle-stroke-width":1, "circle-opacity":.9 } });
     mapbox.map.on("click", "dtp-points", (event) => new mapboxgl.Popup().setLngLat(event.features[0].geometry.coordinates).setHTML(event.features[0].properties.popup).addTo(mapbox.map));
-    if (mapbox.render) renderMapbox(mapbox.render.visible, mapbox.render.heatItems, mapbox.render.maximum, mapbox.render.heatVisible);
+    if (mapbox.render) renderMapbox(mapbox.render.visible, mapbox.render.heatPoints, mapbox.render.heatVisible);
   });
-  mapbox.map.on("moveend", () => { if (state.mapClient !== "mapbox") return; const current = mapboxView(); map.setView([current.center.latitude, current.center.longitude], current.zoom, { animate:false }); scheduleMapLoad(); });
+  mapbox.map.on("moveend", () => { if (state.mapClient === "mapbox") scheduleMapLoad(); });
 }
 function renderMapSwitcher() { document.querySelectorAll("[data-map-client], [data-quick-map]").forEach((button) => button.classList.toggle("active", (button.dataset.mapClient || button.dataset.quickMap) === state.mapClient)); }
 async function switchMapClient(client) {
@@ -208,14 +241,17 @@ async function switchMapClient(client) {
   $("#leaflet-map").hidden = client !== "leaflet"; $("#yandex-map").hidden = client !== "yandex"; $("#mapbox-map").hidden = client !== "mapbox";
   if (client === "leaflet") { map.setView([view.center.latitude, view.center.longitude], view.zoom, { animate: false }); map.invalidateSize(); return; }
   try {
-    if (client === "yandex") { await ensureYandex(view); if (yandex.render) renderYandex(yandex.render.visible, yandex.render.heatItems, yandex.render.maximum, yandex.render.heatVisible); }
-    else { await ensureMapbox(view); if (mapbox.render) renderMapbox(mapbox.render.visible, mapbox.render.heatItems, mapbox.render.maximum, mapbox.render.heatVisible); mapbox.map.resize(); }
+    if (client === "yandex") { await ensureYandex(view); if (yandex.render) renderYandex(yandex.render.visible, yandex.render.heatPoints, yandex.render.heatVisible); }
+    else { await ensureMapbox(view); if (mapbox.render) renderMapbox(mapbox.render.visible, mapbox.render.heatPoints, mapbox.render.heatVisible); mapbox.map.resize(); }
   } catch { state.mapClient = "leaflet"; localStorage.setItem("map-client", "leaflet"); $("#yandex-map").hidden = true; $("#mapbox-map").hidden = true; $("#leaflet-map").hidden = false; renderMapSwitcher(); renderHeatControls(); setStatus(t("unavailable")); }
 }
 
-function boundsPolygon() {
-  const bounds = currentView().bounds;
-  return [[bounds.west, bounds.south], [bounds.east, bounds.south], [bounds.east, bounds.north], [bounds.west, bounds.north], [bounds.west, bounds.south]].map((point) => point.map((value) => value.toFixed(6)).join(" ")).join(",");
+function contains(bounds, point) { return point.longitude >= bounds.west && point.longitude <= bounds.east && point.latitude >= bounds.south && point.latitude <= bounds.north; }
+function pointItems(data) {
+  return (data.features || []).map((feature) => {
+    const item = feature.properties || {}, [longitude, latitude] = feature.geometry?.coordinates || [];
+    return { id:String(item.em_number), datetime:item.date_time, participants:Number(item.pers_amount || 0), injured:Number(item.suffer_amount || 0), dead:Number(item.lost_amount || 0), point:{ latitude, longitude }, severity:item.lost_amount ? 4 : item.suffer_amount ? 3 : 1, category:item.em_type_id, category_name:`ДТП ${item.em_type_id || ""}`.trim(), address:item.address, street:item.address, participant_categories:[1] };
+  }).filter((item) => Number.isFinite(item.point.latitude) && Number.isFinite(item.point.longitude));
 }
 function markerColor(item) { return item.severity === 4 ? "#e31a1c" : item.severity === 3 ? "#ff7f24" : "#fecc5c"; }
 function markerPopup(item) {
@@ -224,58 +260,90 @@ function markerPopup(item) {
   const details = state.language === "en" ? "Accident details" : "Подробности ДТП";
   return `<div class="marker-popup"><strong>${escape(item.category_name)}</strong><span>${escape(item.datetime.slice(0, 16).replace("T", ", "))}</span><span>${escape(place)}</span><small>${number().format(item.injured)} ${t("people")} · ${number().format(item.dead)} ${t("deaths")}</small><a href="details/?id=${encodeURIComponent(item.id)}&lang=${state.language}">${details}</a></div>`;
 }
-function filterDefinition(key) { return state.filters.find((filter) => (filter.key || filter.name) === key); }
-function renderAdvancedOptions() {
-  const filter = filterDefinition(state.activeFilter);
-  const query = $("#advanced-search").value.trim().toLowerCase();
-  const selected = state.selectedFilters[state.activeFilter] || [];
-  const root = $("#advanced-options");
-  root.replaceChildren(...(filter?.values || []).filter((item) => item.preview.toLowerCase().includes(query)).map((item) => {
-    const label = document.createElement("label");
-    const input = document.createElement("input"); input.type = "checkbox"; input.value = item.value; input.checked = selected.includes(item.value);
-    input.addEventListener("change", () => { const values = new Set(state.selectedFilters[state.activeFilter] || []); input.checked ? values.add(item.value) : values.delete(item.value); state.selectedFilters[state.activeFilter] = [...values]; });
-    label.append(input, document.createTextNode(item.preview)); return label;
+function dynamicValues(filter) { return filter.key === "street" && !filter.values.length ? [...new Set(state.rawItems.map((item) => item.street).filter(Boolean))].sort().map((value) => ({ value, preview:value })) : filter.values || []; }
+function renderAdvancedFilters() {
+  const root = $("#advanced-dynamic");
+  root.replaceChildren(...state.filters.filter((filter) => filter.param).map((filter) => {
+    const section = document.createElement("details"), title = document.createElement("summary"), name = document.createElement("span"), search = document.createElement("input"), options = document.createElement("div"), key = filter.param || filter.key || filter.name;
+    section.className = "advanced-collapse has-search";
+    name.textContent = filter.label; search.type = "search"; search.placeholder = t("search"); search.className = "advanced-search"; options.className = "advanced-options";
+    const draw = () => { const query = search.value.trim().toLowerCase(), selected = state.selectedFilters[key] || []; options.replaceChildren(...dynamicValues(filter).filter((item) => item.preview.toLowerCase().includes(query)).map((item) => { const label = document.createElement("label"), input = document.createElement("input"); if (item.ui_tone) label.className = `filter-tone ${item.ui_tone}`; input.type = "checkbox"; input.checked = selected.includes(item.value); input.addEventListener("change", () => { const values = new Set(state.selectedFilters[key] || []); input.checked ? values.add(item.value) : values.delete(item.value); state.selectedFilters[key] = [...values]; }); label.append(input, document.createTextNode(item.preview)); return label; })); };
+    search.addEventListener("click", (event) => event.stopPropagation()); search.addEventListener("keydown", (event) => event.stopPropagation()); search.addEventListener("input", draw); title.append(name, search); section.append(title, options); draw(); return section;
   }));
 }
-function openAdvanced(key) {
-  const filter = filterDefinition(key); if (!filter) return;
-  state.activeFilter = key; $("#advanced-search").value = ""; renderAdvancedControls(); renderAdvancedOptions(); $("#filters").hidden = true; $("#statistics").hidden = true; $("#advanced-filter").hidden = false;
+function openAdvanced() { renderAdvancedControls(); renderAdvancedFilters(); $("#filters").hidden = true; $("#statistics").hidden = true; $("#advanced-filter").hidden = false; }
+function passesFilters(item, participants, levels, categories) {
+  return (!participants.length || item.participant_categories?.some((value) => participants.includes(value))) && (!levels.length || levels.includes(item.severity)) && categories.every(([key, values]) => Array.isArray(item[key]) ? item[key].some((value) => values.includes(value)) : values.includes(item[key]));
 }
-function passesAdvancedFilters(item) {
-  return Object.entries(state.selectedFilters).every(([key, values]) => !values.length || (Array.isArray(item[key]) ? item[key].some((value) => values.includes(value)) : values.includes(item[key])));
+const regionShapes = fetch("assets/regions.geojson").then((response) => response.ok ? response.json() : Promise.reject(new Error("Region boundaries unavailable")));
+const inBounds = (point, bounds) => point[0] >= bounds.west && point[0] <= bounds.east && point[1] >= bounds.south && point[1] <= bounds.north;
+function inRing(point, ring) { let inside = false; for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index++) { const [x, y] = ring[index], [px, py] = ring[previous]; if ((y > point[1]) !== (py > point[1]) && point[0] < (px - x) * (point[1] - y) / (py - y) + x) inside = !inside; } return inside; }
+function crosses(a, b, c, d) { const turn = (first, second, third) => (second[0] - first[0]) * (third[1] - first[1]) - (second[1] - first[1]) * (third[0] - first[0]); const ab = turn(a, b, c), ac = turn(a, b, d), cd = turn(c, d, a), ce = turn(c, d, b); return ab * ac <= 0 && cd * ce <= 0; }
+function intersectsRing(ring, bounds) { const frame = [[bounds.west, bounds.south], [bounds.east, bounds.south], [bounds.east, bounds.north], [bounds.west, bounds.north]]; return ring.some((point) => inBounds(point, bounds)) || frame.some((point) => inRing(point, ring)) || ring.some((point, index) => frame.some((corner, edge) => crosses(point, ring[index + 1] || ring[0], corner, frame[edge + 1] || frame[0]))); }
+async function visibleRegionIds(bounds: Bounds) { const data = await regionShapes; return [...new Set((data.features || []).filter((feature) => { const geometry = feature.geometry, polygons = geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates; return polygons.some((polygon) => polygon.some((ring) => intersectsRing(ring, bounds))); }).map((feature) => Number(feature.properties.id)).filter(Number.isFinite))]; }
+// Фильтрация пересчитывается только при смене данных/фильтров,
+// при панорамировании берётся готовый результат
+const filterCache = { key: "", filtered: [] as any[] };
+function filteredPoints() {
+  const participants = selectedParticipants(), levels = severity(), key = `${state.rawItemsKey}|${participants.join(",")}|${levels.join(",")}`;
+  if (filterCache.key !== key) {
+    filterCache.filtered = state.rawItems.filter((item) => item.point && passesFilters(item, participants, levels, []));
+    filterCache.key = key;
+  }
+  return filterCache.filtered;
+}
+
+function renderMapData(view) {
+  const filtered = filteredPoints(), visible = [];
+  for (const item of filtered) if (contains(view.bounds, item.point)) visible.push(item);
+  state.items = visible;
+  $("#count").textContent = number().format(visible.length);
+  $("#injured").textContent = number().format(visible.reduce((sum, item) => sum + Number(item.injured || 0), 0));
+  $("#dead").textContent = number().format(visible.reduce((sum, item) => sum + Number(item.dead || 0), 0));
+  if (!$("#chart").hidden) renderChart();
+  const heatVisible = view.zoom < 12 || visible.length >= 1000;
+  const heatPoints = heatVisible ? heatInView(filtered, view) : EMPTY_HEAT;
+  renderLeaflet(visible, heatPoints, heatVisible);
+  renderYandex(visible, heatPoints, heatVisible);
+  renderMapbox(visible, heatPoints, heatVisible);
+  setStatus(`${number().format(visible.length)} ${t("accidentsInArea").toLowerCase()}`);
 }
 
 async function loadMapData() {
   const { start, end } = period();
   if (!start || !end || end < start) return;
   state.abort?.abort();
-  state.abort = new AbortController();
+  const controller = state.abort = new AbortController(), loadId = ++state.dataLoadId, view = currentView();
   setStatus(t("loadingMap"));
-  const view = currentView();
-  const statQuery = new URLSearchParams({ center_point: `${view.center.longitude} ${view.center.latitude}`, scale: String(view.zoom), start_date: start, end_date: end, severity: severity().join(","), participant_categories: selectedParticipants().join(",") });
-  const heatRadius = state.mapClient === "yandex" ? yandexHeatSettings.radius : state.mapClient === "mapbox" ? mapboxHeatSettings.radius : heatSettings.radius, dtpQuery = new URLSearchParams({ start_date: start, end_date: end, geo_frame: boundsPolygon(), scale: String(view.zoom), severity: severity().join(","), participant_categories: selectedParticipants().join(","), aggregate: "0", heat_radius: String(heatRadius), format: "6", heat_version: "8" }), region = selectedRegion();
-  if (region) { statQuery.set("region_slug", region); dtpQuery.set("region_slug", region); }
   try {
-    const statResponse = await fetch(`${api}/stat/?${statQuery}`, { signal: state.abort.signal });
-    if (!statResponse.ok) throw new Error("API unavailable");
-    const stat = await statResponse.json();
-    const dtpResponse = await fetch(`${api}/dtp/?${dtpQuery}`, { signal: state.abort.signal });
-    if (!dtpResponse.ok) throw new Error("API unavailable");
-    const data = await dtpResponse.json();
-    $("#region-name").textContent = stat.region_name || "—";
-    $("#count").textContent = number().format(stat.count || 0);
-    $("#injured").textContent = number().format(stat.injured || 0);
-    $("#dead").textContent = number().format(stat.dead || 0);
-    $("#chart-period").textContent = `${start} — ${end}`;
-    const visible = (data.mode === "points" ? data.items : []).filter((item) => passesAdvancedFilters(item));
-    state.items = visible;
-    renderChart();
-    const heatItems = data.mode === "points" ? visible.map((item) => ({ latitude:item.point.latitude, longitude:item.point.longitude, count:1 })) : data.items;
-    const heatMaximum = Math.max(...heatItems.map((item) => item.count), 1), heatVisible = view.zoom <= 12 || data.count >= 1000;
-    renderLeaflet(visible, heatItems, heatMaximum, heatVisible);
-    renderYandex(visible, heatItems, heatMaximum, heatVisible);
-    renderMapbox(visible, heatItems, heatMaximum, heatVisible);
-    setStatus(`${number().format(data.mode === "points" ? visible.length : data.count)} ${t("accidentsInArea").toLowerCase()}`);
+    const regionIds = await visibleRegionIds(view.bounds);
+    if (state.dataLoadId !== loadId) return;
+    if (!regionIds.length) throw new Error("No regions in view");
+    const selected = Object.entries(state.selectedFilters).filter(([, values]) => values.length), bucketKey = `${start}|${end}|${JSON.stringify(selected)}`;
+    const bucket = regionCache.get(bucketKey) ?? new Map();
+    regionCache.set(bucketKey, bucket);
+    // Докачиваем только регионы, которых ещё нет в кэше (пустой результат тоже кэшируется)
+    const missing = regionIds.filter((id) => !bucket.has(id));
+    if (missing.length) {
+      $("#chart-period").textContent = `${start} — ${end}`;
+      await Promise.all(missing.map(async (id) => {
+        const query = new URLSearchParams({ DATE_TIME_FROM:`${start}T00:00:00`, DATE_TIME_TO:`${end}T23:59:59`, REGION:String(id) });
+        selected.forEach(([name, values]) => query.set(name, values.join(",")));
+        const response = await fetch(`${api}/dtp/points?${query}`, { signal: controller.signal });
+        if (!response.ok) throw new Error("API unavailable");
+        bucket.set(id, pointItems(await response.json()));
+      }));
+      if (state.dataLoadId !== loadId) return;
+    }
+    // Пересобираем rawItems только когда набор регионов реально изменился
+    const mergedKey = `${bucketKey}|${regionIds.join(",")}`;
+    if (state.rawItemsKey !== mergedKey) {
+      state.rawItemsKey = mergedKey;
+      state.rawItems = regionIds.flatMap((id) => bucket.get(id) ?? []);
+    }
+    $("#region-name").textContent = t("allRegions");
+    if (missing.length) renderAdvancedFilters();
+    renderMapData(view);
   } catch (error) {
     if (error.name !== "AbortError") setStatus(t("unavailable"));
   }
@@ -283,14 +351,14 @@ async function loadMapData() {
 
 async function loadFilters() {
   try {
-    const [response, regionsResponse] = await Promise.all([fetch(`${api}/filters/`), fetch(`${api}/regions`)]);
-    if (!response.ok || !regionsResponse.ok) throw new Error("API unavailable");
-    const [filters, regions] = await Promise.all([response.json(), regionsResponse.json()]);
-    const date = filters.find((filter) => filter.name === "date")?.default_value;
-    if (date) { const end = new Date(`${date.end_date}T00:00:00`); end.setDate(1); end.setMonth(end.getMonth() - 11); $("#start-date").value = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-01`; $("#end-date").value = date.end_date; state.maxDate = date.end_date; }
-    state.filters = filters;
-    state.regions = regions;
-    state.participants = (filters.find((filter) => filter.name === "participant_categories")?.values || []).map((participant) => ({ ...participant, selected: participant.default }));
+    const fieldsResponse = await fetch(`${api}/dtp/filter_fields`);
+    if (!fieldsResponse.ok) throw new Error("API unavailable");
+    const fields = await fieldsResponse.json(), advancedFields = fields.filter((field) => ["EM_TYPE", "MAIN_PDD_DERANGEMENT", "ATTENDANT_PDD_DERANGEMENT"].includes(field.name));
+    const dictionaries = await Promise.all(advancedFields.map(async (field) => { const response = await fetch(`${api}/dict/${field.dict}`); return [field, response.ok ? await response.json() : []]; }));
+    const end = new Date(dataRange.max), start = new Date(end); start.setDate(1); start.setMonth(start.getMonth() - 11);
+    $("#start-date").value = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-01`; $("#end-date").value = dataRange.max; state.minDate = dataRange.min; state.maxDate = dataRange.max;
+    state.filters = enrichFilters([{ name:"participant_categories", values:[{ preview:"Все участники", value:1, default:true }] }, { name:"severity", values:[{ preview:"Лёгкий", value:1, ui_tone:"light" }, { preview:"Тяжёлый", value:3, ui_tone:"serious" }, { preview:"С погибшими", value:4, ui_tone:"fatal" }] }, ...dictionaries.map(([field, values]) => ({ name:field.name, key:field.name === "EM_TYPE" ? "category" : "violations", param:`${field.name}_IDS`, label:field.caption, values:values.map((value) => ({ value:value.id, preview:value.name })) }))]);
+    state.participants = (state.filters.find((filter) => filter.name === "participant_categories")?.values || []).map((participant) => ({ ...participant, selected: participant.default }));
     applyLanguage();
     loadMapData();
   } catch { setStatus(t("unavailable")); }
@@ -301,18 +369,15 @@ $("#start-date").addEventListener("change", reload);
 $("#end-date").addEventListener("change", reload);
 $("#date-range-button").addEventListener("click", openMonthPicker);
 $("#advanced-date-range-button").addEventListener("click", openMonthPicker);
-$("#region-filter").addEventListener("change", () => { renderRegions(); reload(); });
-$("#advanced-region-filter").addEventListener("change", () => { $("#region-filter").value = $("#advanced-region-filter").value; renderRegions(); reload(); });
 document.querySelectorAll('input[name="severity"]').forEach((input) => input.addEventListener("change", reload));
-$("#advanced-search").addEventListener("input", renderAdvancedOptions);
 $("#close-advanced").addEventListener("click", () => { $("#advanced-filter").hidden = true; $("#filters").hidden = false; $("#statistics").hidden = false; });
 $("#apply-advanced").addEventListener("click", () => { $("#advanced-filter").hidden = true; $("#filters").hidden = false; $("#statistics").hidden = false; loadMapData(); });
 function setFiltersCollapsed(collapsed) { $("#filters").classList.toggle("collapsed", collapsed); $("#hide-filters").textContent = collapsed ? t("filters") : "⌃"; $("#hide-filters").setAttribute("aria-expanded", String(!collapsed)); if (collapsed) { $("#advanced-filter").hidden = true; $("#filters").hidden = false; $("#statistics").hidden = false; } }
 $("#hide-filters").addEventListener("click", () => setFiltersCollapsed(!$("#filters").classList.contains("collapsed")));
 if (matchMedia("(max-width: 800px)").matches) setFiltersCollapsed(true);
-$("#professional-toggle").addEventListener("click", () => openAdvanced(state.activeFilter || "category"));
+$("#professional-toggle").addEventListener("click", openAdvanced);
 document.querySelectorAll("[data-quick-map]").forEach((button) => button.addEventListener("click", () => switchMapClient(button.dataset.quickMap as "leaflet" | "yandex" | "mapbox")));
-$("#chart-button").addEventListener("click", () => { $("#chart").hidden = false; });
+$("#chart-button").addEventListener("click", () => { $("#chart").hidden = false; renderChart(); });
 $("#close-chart").addEventListener("click", () => { $("#chart").hidden = true; });
 $("#chart-tabs").addEventListener("click", (event) => {
   const button = event.target.closest("button[data-mode]");
@@ -321,12 +386,8 @@ $("#chart-tabs").addEventListener("click", (event) => {
   document.querySelectorAll("#chart-tabs button").forEach((item) => item.classList.toggle("active", item === button));
   renderChart();
 });
-$("#language").addEventListener("click", () => { state.language = state.language === "ru" ? "en" : "ru"; localStorage.setItem("language", state.language); applyLanguage(); loadMapData(); });
-$("#mobile-menu-button").addEventListener("click", () => $("#mobile-menu").showModal());
-$("#close-mobile-menu").addEventListener("click", () => $("#mobile-menu").close());
 $("#map-switcher-button").addEventListener("click", () => { const menu = $("#map-switcher-menu"), open = menu.hidden; menu.hidden = !open; $("#map-switcher-button").setAttribute("aria-expanded", String(open)); });
 $("#map-switcher-menu").addEventListener("click", (event) => { const button = event.target.closest("[data-map-client]"); if (!button) return; $("#map-switcher-menu").hidden = true; $("#map-switcher-button").setAttribute("aria-expanded", "false"); switchMapClient(button.dataset.mapClient); });
-let heatControlTimer;
 function renderHeatControls() {
   const remoteActive = state.mapClient === "yandex" || state.mapClient === "mapbox", remoteRadius = state.mapClient === "mapbox" ? mapboxHeatSettings.radius : yandexHeatSettings.radius, remoteIntensity = state.mapClient === "mapbox" ? mapboxHeatSettings.intensity : yandexHeatSettings.intensityOfMidpoint, remoteOpacity = state.mapClient === "mapbox" ? mapboxHeatSettings.opacity : yandexHeatSettings.opacity;
   $("#heat-blur-label").textContent = t(remoteActive ? "heatIntensity" : "heatBlur"); $("#heat-opacity-label").textContent = t(remoteActive ? "heatMapOpacity" : "heatOpacity");
@@ -334,14 +395,14 @@ function renderHeatControls() {
   $("#heat-radius").max = "30"; $("#heat-radius").value = String(heatSettings.radius); $("#heat-blur").min = "0"; $("#heat-blur").max = "30"; $("#heat-blur").value = String(heatSettings.blur); $("#heat-opacity").max = "50"; $("#heat-opacity").value = String(heatSettings.minOpacity * 100); $("#heat-radius-value").textContent = `${heatSettings.radius} px`; $("#heat-blur-value").textContent = `${heatSettings.blur} px`; $("#heat-opacity-value").textContent = `${Math.round(heatSettings.minOpacity * 100)}%`;
 }
 function updateHeatControls() {
-  if (state.mapClient === "yandex") { yandexHeatSettings.radius = Number($("#heat-radius").value); yandexHeatSettings.intensityOfMidpoint = Number($("#heat-blur").value) / 100; yandexHeatSettings.opacity = Number($("#heat-opacity").value) / 100; yandex.heat?.options.set(yandexHeatSettings); if (yandex.render) renderYandex(yandex.render.visible, yandex.render.heatItems, yandex.render.maximum, yandex.render.heatVisible); }
-  else if (state.mapClient === "mapbox") { mapboxHeatSettings.radius = Number($("#heat-radius").value); mapboxHeatSettings.intensity = Number($("#heat-blur").value) / 100; mapboxHeatSettings.opacity = Number($("#heat-opacity").value) / 100; if (mapbox.render) renderMapbox(mapbox.render.visible, mapbox.render.heatItems, mapbox.render.maximum, mapbox.render.heatVisible); }
+  if (state.mapClient === "yandex") { yandexHeatSettings.radius = Number($("#heat-radius").value); yandexHeatSettings.intensityOfMidpoint = Number($("#heat-blur").value) / 100; yandexHeatSettings.opacity = Number($("#heat-opacity").value) / 100; yandex.heat?.options.set(yandexHeatSettings); if (yandex.render) renderYandex(yandex.render.visible, yandex.render.heatPoints, yandex.render.heatVisible); }
+  else if (state.mapClient === "mapbox") { mapboxHeatSettings.radius = Number($("#heat-radius").value); mapboxHeatSettings.intensity = Number($("#heat-blur").value) / 100; mapboxHeatSettings.opacity = Number($("#heat-opacity").value) / 100; if (mapbox.render) renderMapbox(mapbox.render.visible, mapbox.render.heatPoints, mapbox.render.heatVisible); }
   else { heatSettings.radius = Number($("#heat-radius").value); heatSettings.blur = Number($("#heat-blur").value); heatSettings.minOpacity = Number($("#heat-opacity").value) / 100; heat.setOptions(heatSettings); }
-  renderHeatControls(); clearTimeout(heatControlTimer); heatControlTimer = setTimeout(loadMapData, 180);
+  renderHeatControls();
 }
 document.querySelectorAll("#heat-controls input").forEach((input) => input.addEventListener("input", updateHeatControls));
 let moveTimer;
-function scheduleMapLoad() { clearTimeout(moveTimer); moveTimer = setTimeout(loadMapData, 350); }
+function scheduleMapLoad() { clearTimeout(moveTimer); state.abort?.abort(); state.dataLoadId++; moveTimer = setTimeout(loadMapData, 350); }
 map.on("moveend", () => { if (state.mapClient === "leaflet") scheduleMapLoad(); });
 applyLanguage();
 const savedMapClient = state.mapClient; state.mapClient = "leaflet"; renderMapSwitcher(); if (savedMapClient !== "leaflet") switchMapClient(savedMapClient);

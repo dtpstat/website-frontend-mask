@@ -8,19 +8,6 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <header class="topbar">
-      <a class="brand" href="../" aria-label="Карта ДТП — главная" data-i18n-aria="homeAria"><span class="brand-mark">●</span><span>Карта ДТП</span></a>
-      <nav aria-label="Основная навигация" data-i18n-aria="navigationAria">
-        <a href="../blog/" data-i18n="blog">Блог и исследования</a>
-        <a href="../#statistics" data-i18n="statistics">Статистика</a>
-        <a class="current" href="./" data-i18n="downloads">Скачать данные</a>
-        <a href="../about/" data-i18n="about">О проекте</a>
-      </nav>
-      <button id="language" class="language" type="button" aria-label="Switch language">EN</button>
-      <button class="support" type="button" data-i18n="support">Поддержать проект</button>
-      <button id="menu" class="menu" type="button" aria-label="Открыть меню" data-i18n-aria="menuAria"><i></i><i></i><i></i></button>
-    </header>
-
     <main class="content">
       <section class="intro" aria-labelledby="page-title">
         <div class="intro-heading">
@@ -29,7 +16,7 @@
         </div>
         <p data-i18n="intro">Здесь вы можете скачать данные по ДТП, чтобы использовать их в исследованиях и анализировать с помощью своих инструментов. Первоисточник данных — официальный сайт ГИБДД, но эти данные приведены с изменениями (например, корректировки координат).</p>
         <div id="api-panel" class="api-panel" hidden>
-          <code>GET /api/dtp_load/?year=2024&amp;region_slug=moskva&amp;format=json</code>
+          <code>GET /api/dtp/geojson?REGION_IDS=36&amp;DATE_TIME_FROM=2024-01-01T00:00:00&amp;DATE_TIME_TO=2024-12-31T23:59:59</code>
           <span data-i18n="apiNote">Загрузка выполняется в браузере запросом к API.</span>
         </div>
       </section>
@@ -53,14 +40,6 @@
       </section>
     </main>
 
-    <footer class="footer">
-      <div class="footer-inner">
-        <section class="project"><a class="brand" href="../"><span class="brand-mark">●</span><span>Карта ДТП</span></a><p data-i18n="footerAbout">Проект посвящен проблеме дорожно-транспортных происшествий в России. Цель проекта — повышение безопасности дорожного движения и снижение смертности в ДТП.</p></section>
-        <section><h2 data-i18n="contact">Связаться:</h2><p>@shehovsov_md</p><p>dtp.stat@gmail.com</p></section>
-        <section class="footer-nav"><h2 data-i18n="siteMap">Карта сайта:</h2><a href="../blog/" data-i18n="blog">Блог и исследования</a><a href="../#statistics" data-i18n="statistics">Статистика</a><a href="./" data-i18n="downloads">Скачать данные</a><a href="../about/" data-i18n="about">О проекте</a></section>
-      </div>
-      <div class="footer-bottom"><span data-i18n="license">Использование материалов возможно с указанием активной ссылки на сайт.</span><span aria-label="Creative Commons Attribution">CC BY</span></div>
-    </footer>
     <script type="module" src="app.js"></script>
   </body>
 </html>

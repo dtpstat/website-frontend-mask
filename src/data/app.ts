@@ -1,4 +1,4 @@
-const api = "https://dtpstat-api.dexoon.workers.dev/api";
+const api = "https://dtpstat-api.dexoon.workers.dev/api/upstream";
 const $ = (selector) => document.querySelector(selector);
 const state = { language: new URLSearchParams(location.search).get("lang") || localStorage.getItem("language") || "ru" };
 const copy = {
@@ -48,7 +48,11 @@ async function download(buttonNode, item, kind) {
   buttonNode.disabled = true; const original = buttonNode.textContent; buttonNode.textContent = t("downloading");
   const year = kind === "region" ? "2026" : (item.requestYear || item.year); const region = kind === "region" ? item.slug : "russia";
   try {
-    const response = await fetch(`${api}/dtp_load/?${new URLSearchParams({ year, region_slug:region, format:"json" })}`);
+    const regionsResponse = await fetch(`${api}/dict/regions?${new URLSearchParams({ name:item.ru })}`);
+    if (!regionsResponse.ok) throw new Error("Regions unavailable");
+    const regionRecord = (await regionsResponse.json()).find((value) => value.name === item.ru);
+    if (!regionRecord) throw new Error("Region not found");
+    const response = await fetch(`${api}/dtp/geojson?${new URLSearchParams({ REGION_IDS:String(regionRecord.id), DATE_TIME_FROM:`${year}-01-01T00:00:00`, DATE_TIME_TO:`${year}-12-31T23:59:59` })}`);
     if (!response.ok) throw new Error("API response");
     const body = await response.json(); const output = kind === "region" ? asGeoJson(body) : body;
     const blob = new Blob([JSON.stringify(output)], { type: kind === "region" ? "application/geo+json" : "application/json" });
@@ -62,12 +66,9 @@ function applyLanguage() {
   document.querySelectorAll("[data-i18n]").forEach((node) => { node.textContent = t(node.dataset.i18n); });
   document.querySelectorAll("[data-i18n-placeholder]").forEach((node) => { node.placeholder = t(node.dataset.i18nPlaceholder); });
   document.querySelectorAll("[data-i18n-aria]").forEach((node) => { node.setAttribute("aria-label", t(node.dataset.i18nAria)); });
-  $("#language").textContent = state.language === "ru" ? "EN" : "RU";
   render(regions, "regional", $("#region-search").value); render(years, "year", $("#year-search").value);
 }
-$("#language").addEventListener("click", () => { state.language = state.language === "ru" ? "en" : "ru"; localStorage.setItem("language", state.language); applyLanguage(); });
 $("#region-search").addEventListener("input", (event) => render(regions, "regional", event.target.value));
 $("#year-search").addEventListener("input", (event) => render(years, "year", event.target.value));
 $("#api-help").addEventListener("click", () => { const panel = $("#api-panel"); panel.hidden = !panel.hidden; $("#api-help").setAttribute("aria-expanded", String(!panel.hidden)); });
-$("#menu").addEventListener("click", () => document.querySelector("nav").classList.toggle("open"));
 applyLanguage();
