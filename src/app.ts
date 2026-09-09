@@ -2,25 +2,36 @@ const api = "https://dtpstat-api.dexoon.workers.dev/api/upstream";
 const $ = (selector) => document.querySelector(selector);
 const dataRange = { min:"2015-01-01", max:"2026-08-31" };
 type MonthPickerState = { open: boolean; target: "start" | "end"; year: number | null; start: string; end: string };
-type MapState = { language: string; mapClient: "leaflet" | "yandex" | "mapbox"; participants: any[]; filters: any[]; selectedFilters: Record<string, any[]>; abort: AbortController | null; items: any[]; rawItems: any[]; rawItemsKey: string; dataLoadId: number; chartMode: string; minDate: string; maxDate: string; picker: MonthPickerState };
+type MapState = { language: string; mapClient: "leaflet" | "yandex" | "mapbox"; participants: any[]; filters: any[]; selectedFilters: Record<string, any[]>; territory: { id: number; name: string } | null; abort: AbortController | null; items: any[]; rawItems: any[]; rawItemsKey: string; dataLoadId: number; chartMode: string; minDate: string; maxDate: string; picker: MonthPickerState };
 type Bounds = { west: number; south: number; east: number; north: number };
 const persistedMapClient = localStorage.getItem("map-client");
-const state: MapState = { language: new URLSearchParams(location.search).get("lang") || localStorage.getItem("language") || "ru", mapClient: persistedMapClient === "yandex" || persistedMapClient === "mapbox" ? persistedMapClient : "leaflet", participants: [], filters: [], selectedFilters: {}, abort: null, items: [], rawItems: [], rawItemsKey: "", dataLoadId: 0, chartMode: "days", minDate: "2015-01-01", maxDate: "2024-12-31", picker: { open: false, target: "start", year: null, start: "2024-01-01", end: "2024-12-31" } };
+const state: MapState = { language: new URLSearchParams(location.search).get("lang") || localStorage.getItem("language") || "ru", mapClient: persistedMapClient === "yandex" || persistedMapClient === "mapbox" ? persistedMapClient : "leaflet", participants: [], filters: [], selectedFilters: {}, territory: null, abort: null, items: [], rawItems: [], rawItemsKey: "", dataLoadId: 0, chartMode: "days", minDate: "2015-01-01", maxDate: "2024-12-31", picker: { open: false, target: "start", year: null, start: "2024-01-01", end: "2024-12-31" } };
 // Кэш загруженных точек: ключ запроса (период + фильтры) → id региона → точки.
 // Регионы докачиваются по одному, уже скачанные не запрашиваются повторно.
 const regionCache = new Map<string, Map<number, any[]>>();
 const copy = {
-  ru: { brandAria:"Карта ДТП — главная", mapAria:"Интерактивная карта ДТП", mapSource:"Выбрать карту", map:"Карта", blog:"Блог и исследования", data:"Скачать данные", about:"О проекте", team:"Команда", support:"Поддержать проект", statistics:"Статистика", filters:"Фильтры", analytics:"Аналитика", apply:"Применить", cancel:"Отмена", allTime:"За всё время", basicFilter:"Базовый фильтр", professionalFilter:"Профессиональный фильтр", startPeriod:"Начало периода", endPeriod:"Конец периода", chooseYear:"Выберите год", chooseMonth:"Выберите месяц", search:"Поиск", dataPeriod:"Период данных", accidentsInRussia:"ДТП в России", region:"Регион", allRegions:"Все регионы", from:"С", to:"По", participants:"Участники ДТП", injurySeverity:"Вред здоровью", light:"Лёгкий", serious:"Тяжёлый", fatal:"С погибшими", accidentTypes:"Типы ДТП", violations:"Нарушения ПДД", weather:"Погода", streets:"Улицы", heatRadius:"Радиус", heatBlur:"Размытие", heatOpacity:"Мин. непрозрачность", loading:"Загружаем данные…", loadingMap:"Обновляем карту…", unavailable:"Не удалось получить данные. Попробуйте позднее.", officialData:"Официальные данные", accidents:"ДТП", injured:"Пострадали", dead:"Погибли", distribution:"Распределение по дням", selectedPeriod:"За выбранный период", byDays:"По дням", byHours:"По часам", byTypes:"По типам ДТП", chartNote:"Диаграмма построена по ДТП в видимой области.", accidentsInArea:"ДТП в видимой области", people:"чел.", deaths:"погибших" },
-  en: { brandAria:"Road accident map — home", mapAria:"Interactive road accident map", mapSource:"Choose map", map:"Map", blog:"Blog & research", data:"Download data", about:"About the project", team:"Team", support:"Support the project", statistics:"Statistics", filters:"Filters", analytics:"Analytics", apply:"Apply", cancel:"Cancel", allTime:"All time", basicFilter:"Basic filter", professionalFilter:"Professional filter", startPeriod:"Start of period", endPeriod:"End of period", chooseYear:"Select year", chooseMonth:"Select month", search:"Search", dataPeriod:"Data period", accidentsInRussia:"Road accidents in Russia", region:"Region", allRegions:"All regions", from:"From", to:"To", participants:"Road users", injurySeverity:"Injury severity", light:"Minor", serious:"Serious", fatal:"Fatal", accidentTypes:"Accident types", violations:"Traffic violations", weather:"Weather", streets:"Streets", heatRadius:"Radius", heatBlur:"Blur", heatOpacity:"Min. opacity", loading:"Loading data…", loadingMap:"Updating map…", unavailable:"Could not load data. Please try again later.", officialData:"Official data", accidents:"Accidents", injured:"Injured", dead:"Deaths", distribution:"Distribution by day", selectedPeriod:"Selected period", byDays:"By day", byHours:"By hour", byTypes:"By type", chartNote:"The chart is based on accidents in the visible area.", accidentsInArea:"Accidents in area", people:"people", deaths:"deaths" },
+  ru: { brandAria:"Карта ДТП — главная", mapAria:"Интерактивная карта ДТП", map:"Карта", blog:"Блог и исследования", data:"Скачать данные", about:"О проекте", team:"Команда", support:"Поддержать проект", statistics:"Статистика", filters:"Фильтры", analytics:"Аналитика", apply:"Применить", cancel:"Отмена", allTime:"За всё время", basicFilter:"Базовый фильтр", professionalFilter:"Профессиональные фильтры", startPeriod:"Начало периода", endPeriod:"Конец периода", chooseYear:"Выберите год", chooseMonth:"Выберите месяц", search:"Поиск", dataPeriod:"Период данных", accidentsInRussia:"ДТП в России", region:"Регион", allRegions:"Все регионы", from:"С", to:"По", participants:"Участники ДТП", injurySeverity:"Вред здоровью", light:"Лёгкий", serious:"Тяжёлый", fatal:"С погибшими", accidentTypes:"Типы ДТП", violations:"Нарушения ПДД", weather:"Погода", streets:"Улицы", heatRadius:"Радиус", heatBlur:"Размытие", heatOpacity:"Мин. непрозрачность", loading:"Загружаем данные…", loadingMap:"Обновляем карту…", unavailable:"Не удалось получить данные. Попробуйте позднее.", officialData:"Официальные данные", accidents:"ДТП", injured:"Пострадали", dead:"Погибли", distribution:"Распределение по дням", selectedPeriod:"За выбранный период", byDays:"По дням", byHours:"По часам", byTypes:"По типам ДТП", chartNote:"Диаграмма построена по ДТП в видимой области.", accidentsInArea:"ДТП в видимой области", people:"чел.", deaths:"погибших" },
+  en: { brandAria:"Road accident map — home", mapAria:"Interactive road accident map", map:"Map", blog:"Blog & research", data:"Download data", about:"About the project", team:"Team", support:"Support the project", statistics:"Statistics", filters:"Filters", analytics:"Analytics", apply:"Apply", cancel:"Cancel", allTime:"All time", basicFilter:"Basic filter", professionalFilter:"Professional filters", startPeriod:"Start of period", endPeriod:"End of period", chooseYear:"Select year", chooseMonth:"Select month", search:"Search", dataPeriod:"Data period", accidentsInRussia:"Road accidents in Russia", region:"Region", allRegions:"All regions", from:"From", to:"To", participants:"Road users", injurySeverity:"Injury severity", light:"Minor", serious:"Serious", fatal:"Fatal", accidentTypes:"Accident types", violations:"Traffic violations", weather:"Weather", streets:"Streets", heatRadius:"Radius", heatBlur:"Blur", heatOpacity:"Min. opacity", loading:"Loading data…", loadingMap:"Updating map…", unavailable:"Could not load data. Please try again later.", officialData:"Official data", accidents:"Accidents", injured:"Injured", dead:"Deaths", distribution:"Distribution by day", selectedPeriod:"Selected period", byDays:"By day", byHours:"By hour", byTypes:"By type", chartNote:"The chart is based on accidents in the visible area.", accidentsInArea:"Accidents in area", people:"people", deaths:"deaths" },
 };
-Object.assign(copy.ru, { regionSearch:"Введите адрес или регион", noInjured:"Без пострадавших (нет данных)", accidentKind:"Вид ДТП", show:"Показать" });
-Object.assign(copy.en, { regionSearch:"Enter address or region", noInjured:"No injuries (no data)", accidentKind:"Accident type", show:"Show" });
+Object.assign(copy.ru, { regionSearch:"Введите адрес или регион", noInjured:"Без пострадавших (нет данных)", accidentKind:"Вид ДТП", show:"Показать", lockPin:"Данные закреплены по территории", unlock:"Открепить данные", participantUnavailable:"По этому типу участников пока нет данных в открытом API", noMatches:"Ничего не найдено" });
+Object.assign(copy.en, { regionSearch:"Enter address or region", noInjured:"No injuries (no data)", accidentKind:"Accident type", show:"Show", lockPin:"Data is pinned to the territory", unlock:"Unpin data", participantUnavailable:"No open API data for this road-user type yet", noMatches:"Nothing found" });
 Object.assign(copy.ru, { heatIntensity:"Интенсивность", heatMapOpacity:"Непрозрачность" });
 Object.assign(copy.en, { heatIntensity:"Intensity", heatMapOpacity:"Opacity" });
 const participantTranslations = { "Все участники":"All users", "Пешеходы":"Pedestrians", "Велосипедисты":"Cyclists", "Мотоциклисты":"Motorcyclists", "Общ. транспорт":"Public transport", "Дети":"Children", "Без участника":"No road user" };
-const participantIcons = ["all", "pedestrian", "cyclist", "motorcycle", "public_transport", "kids", "driver"];
+// Иконка и приближение по виду ДТП для каждой кнопки участников (значения как на dtp-stat.ru).
+// Мотоциклисты/общ. транспорт/дети в открытых точках не различаются — emTypes нет, фильтр недоступен.
+const participantConfig: Record<number, { icon: string; emTypes?: number[] }> = {
+  1: { icon:"all" },
+  2: { icon:"pedestrian", emTypes:[1] },
+  3: { icon:"cyclist", emTypes:[8] },
+  4: { icon:"motorcycle" },
+  5: { icon:"public_transport" },
+  6: { icon:"kids" },
+};
+// Названия видов ДТП из /dict/em_types — заполняется в loadFilters
+const emTypeNames = new Map<number, string>();
 const filterMetadata = {
-  severity: { 1:{ ui_tone:"light" }, 3:{ ui_tone:"serious" }, 4:{ ui_tone:"fatal" } },
+  severity: { 0:{ ui_tone:"none" }, 1:{ ui_tone:"light" }, 3:{ ui_tone:"serious" }, 4:{ ui_tone:"fatal" } },
   category: { fatal:["пешеход", "велосипед", "сим", "гужевой", "животное", "лицо", "падение пассажира", "опрокидывание", "съезд с дороги", "столкновение"], serious:["возгорание", "препятствие", "стоящее тс", "падение груза"] },
   violations: { fatal:["алкогол", "наркот", "встречн", "переезд", "скорост", "обгон", "пешеходн", "светофор", "опасн", "сон за рул", "переутом", "нетрудоспособност"], serious:["ремн", "мотошлем", "дет", "дистанц", "интервал", "перестроен", "преимущ", "очередност", "разворот", "задним ход", "сигнал", "разметк", "знак", "велосипед", "сим", "мопед", "мобильн"] }
 };
@@ -69,6 +80,7 @@ function applyLanguage() {
   document.title = state.language === "ru" ? "Карта ДТП" : "Road accident map";
   document.querySelectorAll("[data-i18n]").forEach((node) => { node.textContent = t(node.dataset.i18n); });
   document.querySelectorAll("[data-i18n-aria]").forEach((node) => { node.setAttribute("aria-label", t(node.dataset.i18nAria)); });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((node) => { (node as HTMLInputElement).placeholder = t(node.dataset.i18nPlaceholder); });
   renderParticipants();
   renderAdvancedControls();
   renderAdvancedFilters();
@@ -77,24 +89,30 @@ function applyLanguage() {
   renderHeatControls();
 }
 
+function participantLabel(participant) { return state.language === "en" ? (participantTranslations[participant.preview] || participant.preview) : participant.preview; }
 function renderParticipants() {
   const root = $("#participants");
   root.replaceChildren(...state.participants.slice(0, 6).map((participant) => {
     const button = document.createElement("button");
     button.type = "button";
-    const icon = document.createElement("img"); icon.src = `assets/icons/${participantIcons[state.participants.indexOf(participant)] || "driver"}.svg`; icon.alt = "";
-    const label = document.createElement("span"); label.textContent = state.language === "en" ? (participantTranslations[participant.preview] || participant.preview) : participant.preview;
+    const icon = document.createElement("img"); icon.src = `assets/icons/${participantConfig[participant.value]?.icon || "all"}.svg`; icon.alt = "";
+    const label = document.createElement("span"); label.textContent = participantLabel(participant);
     button.append(icon, label);
     button.classList.toggle("active", participant.selected);
     button.setAttribute("aria-pressed", String(participant.selected));
-    button.addEventListener("click", () => { state.participants.forEach((item) => { item.selected = item.value === participant.value; }); renderParticipants(); loadMapData(); });
+    button.addEventListener("click", () => {
+      // Приближение есть только для пешеходов и велосипедистов — остальное честно отключаем
+      if (!participantConfig[participant.value]?.emTypes) { setStatus(t("participantUnavailable")); return; }
+      state.participants.forEach((item) => { item.selected = item.value === participant.value; });
+      renderParticipants(); loadMapData();
+    });
     return button;
   }));
-  $("#collapsed-summary").textContent = state.participants.filter((participant) => participant.selected).map((participant) => state.language === "en" ? (participantTranslations[participant.preview] || participant.preview) : participant.preview).join(", ");
+  $("#collapsed-summary").textContent = state.participants.filter((participant) => participant.selected).map(participantLabel).join(", ");
 }
 function renderAdvancedControls() {
   const participants = $("#advanced-participants"), severity = $("#advanced-severity");
-  participants.replaceChildren(...state.participants.map((participant) => { const label = document.createElement("label"), input = document.createElement("input"); input.type = "checkbox"; input.checked = participant.selected; input.addEventListener("change", () => { participant.selected = input.checked; renderParticipants(); }); label.append(input, document.createTextNode(state.language === "en" ? (participantTranslations[participant.preview] || participant.preview) : participant.preview)); return label; }));
+  participants.replaceChildren(...state.participants.map((participant) => { const label = document.createElement("label"), input = document.createElement("input"); input.type = "checkbox"; input.checked = participant.selected; input.disabled = !participantConfig[participant.value]?.emTypes && participant.value !== 1; input.addEventListener("change", () => { if (!participantConfig[participant.value]?.emTypes && participant.value !== 1) { input.checked = false; setStatus(t("participantUnavailable")); return; } participant.selected = input.checked; renderParticipants(); loadMapData(); }); label.append(input, document.createTextNode(participantLabel(participant))); return label; }));
   severity.replaceChildren(...[...document.querySelectorAll<HTMLInputElement>('input[name="severity"]')].map((source) => { const value = Number(source.value), tone = state.filters.find((filter) => filter.name === "severity")?.values.find((item) => item.value === value)?.ui_tone || "light", label = document.createElement("label"), input = document.createElement("input"); label.className = `severity-tone ${tone}`; input.type = "checkbox"; input.checked = source.checked; input.disabled = source.disabled; input.addEventListener("change", () => { source.checked = input.checked; }); label.append(input, document.createTextNode(source.parentElement.textContent.trim())); return label; }));
 }
 
@@ -164,7 +182,8 @@ function renderMarkers(visible) {
   // Добавляем/убираем только изменившиеся маркеры вместо полной пересборки слоя
   const alive = new Set(visible.map((item) => item.id));
   for (const [id, marker] of markers) if (!alive.has(id)) { marker.remove(); markers.delete(id); }
-  for (const item of visible) if (!markers.has(item.id)) markers.set(item.id, L.circleMarker([item.point.latitude, item.point.longitude], { radius: item.severity === 4 ? 7 : 5, color: "#fff", weight: 1, fillColor: markerColor(item), fillOpacity: .9 }).bindPopup(markerPopup(item)).addTo(accidents));
+  // Плоские точки без обводки — как на dtp-stat.ru
+  for (const item of visible) if (!markers.has(item.id)) markers.set(item.id, L.circleMarker([item.point.latitude, item.point.longitude], { radius: item.severity === 4 ? 6.5 : 5.5, weight: 0, fillColor: markerColor(item), fillOpacity: 1 }).bindPopup(markerPopup(item)).addTo(accidents));
 }
 function renderLeaflet(visible, heatPoints, heatVisible) {
   renderMarkers(heatVisible ? [] : visible);
@@ -183,7 +202,8 @@ function renderYandex(visible, heatPoints, heatVisible) {
   const alive = new Set(heatVisible ? [] : visible.map((item) => item.id));
   for (const [id, placemark] of yandexMarkers) if (!alive.has(id)) { yandex.points.remove(placemark); yandexMarkers.delete(id); }
   if (!heatVisible) for (const item of visible) if (!yandexMarkers.has(item.id)) {
-    const placemark = new (window as any).ymaps.Placemark([item.point.longitude, item.point.latitude], { balloonContent: markerPopup(item) }, { preset: `islands#${item.severity === 4 ? "red" : item.severity === 3 ? "orange" : "yellow"}CircleDotIcon` });
+    // Маленькая плоская точка с цветом по тяжести вместо крупных пресетов CircleDot
+    const placemark = new (window as any).ymaps.Placemark([item.point.longitude, item.point.latitude], { balloonContent: markerPopup(item) }, { preset: "islands#circleIcon", iconColor: markerColor(item) });
     yandexMarkers.set(item.id, placemark);
     yandex.points.add(placemark);
   }
@@ -228,7 +248,7 @@ async function ensureMapbox(view) {
     mapbox.map.addSource("dtp-heat", { type:"geojson", data:{ type:"FeatureCollection", features:[] } }); mapbox.map.addSource("dtp-points", { type:"geojson", data:{ type:"FeatureCollection", features:[] } });
     const paint = mapboxHeatPaint();
     mapbox.map.addLayer({ id:"dtp-heat", type:"heatmap", source:"dtp-heat", paint:{ "heatmap-weight":["get", "weight"], "heatmap-intensity":paint.intensity, "heatmap-radius":paint.radius, "heatmap-opacity":paint.opacity, "heatmap-color":["interpolate", ["linear"], ["heatmap-density"], 0,"rgba(126, 171, 85, 0)", .2,"rgba(126, 171, 85, .6)", .4,"rgba(255, 254, 85, .7)", .6,"rgba(245, 193, 66, .8)", .8,"rgba(223, 130, 68, .9)", 1,"rgba(176, 36, 24, 1)"] } });
-    mapbox.map.addLayer({ id:"dtp-points", type:"circle", source:"dtp-points", paint:{ "circle-radius":["case", ["==", ["get", "severity"], 4], 7, 5], "circle-color":["match", ["get", "severity"], 4,"#e31a1c", 3,"#ff7f24", "#fecc5c"], "circle-stroke-color":"#fff", "circle-stroke-width":1, "circle-opacity":.9 } });
+    mapbox.map.addLayer({ id:"dtp-points", type:"circle", source:"dtp-points", paint:{ "circle-radius":["case", ["==", ["get", "severity"], 4], 6.5, 5.5], "circle-color":["match", ["get", "severity"], 4,"#FF001A", 3,"#FF7F24", 1,"#FFB81F", "rgba(24, 51, 74, 0.5)"], "circle-stroke-width":0, "circle-opacity":1 } });
     mapbox.map.on("click", "dtp-points", (event) => new mapboxgl.Popup().setLngLat(event.features[0].geometry.coordinates).setHTML(event.features[0].properties.popup).addTo(mapbox.map));
     if (mapbox.render) renderMapbox(mapbox.render.visible, mapbox.render.heatPoints, mapbox.render.heatVisible);
   });
@@ -250,21 +270,31 @@ function contains(bounds, point) { return point.longitude >= bounds.west && poin
 function pointItems(data) {
   return (data.features || []).map((feature) => {
     const item = feature.properties || {}, [longitude, latitude] = feature.geometry?.coordinates || [];
-    return { id:String(item.em_number), datetime:item.date_time, participants:Number(item.pers_amount || 0), injured:Number(item.suffer_amount || 0), dead:Number(item.lost_amount || 0), point:{ latitude, longitude }, severity:item.lost_amount ? 4 : item.suffer_amount ? 3 : 1, category:item.em_type_id, category_name:`ДТП ${item.em_type_id || ""}`.trim(), address:item.address, street:item.address, participant_categories:[1] };
+    // hv_category: 1 — никто не пострадал (в точках API не встречается), 2 — лёгкий, 3 — тяжёлый, 4 — с погибшими
+    const severity = item.hv_category === 1 ? 0 : item.hv_category === 2 ? 1 : item.hv_category === 3 ? 3 : item.lost_amount ? 4 : item.suffer_amount ? 3 : 0;
+    return { id:String(item.em_number), datetime:item.date_time, participants:Number(item.pers_amount || 0), injured:Number(item.suffer_amount || 0), dead:Number(item.lost_amount || 0), point:{ latitude, longitude }, severity, category:Number(item.em_type_id), category_name:emTypeNames.get(Number(item.em_type_id)) || (state.language === "ru" ? "ДТП" : "Road accident"), address:item.address, street:item.address, participant_categories:[1] };
   }).filter((item) => Number.isFinite(item.point.latitude) && Number.isFinite(item.point.longitude));
 }
-function markerColor(item) { return item.severity === 4 ? "#e31a1c" : item.severity === 3 ? "#ff7f24" : "#fecc5c"; }
+// Палитра точек dtp-stat.ru: без пострадавших / лёгкий / тяжёлый / с погибшими
+function markerColor(item) { return item.severity === 4 ? "#FF001A" : item.severity === 3 ? "#FF7F24" : item.severity === 1 ? "#FFB81F" : "rgba(24, 51, 74, 0.5)"; }
+function pluralPeople(count) {
+  const last = count % 10, two = count % 100;
+  return last >= 2 && last <= 4 && (two < 10 || two > 20) ? (state.language === "ru" ? "человека" : "people") : (state.language === "ru" ? "человек" : "people");
+}
 function markerPopup(item) {
   const place = item.address || item.street || t("accidentsInArea");
   const escape = (value) => String(value || "").replace(/[&<>\"]/g, (character) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '\"':"&quot;" })[character]);
   const details = state.language === "en" ? "Accident details" : "Подробности ДТП";
-  return `<div class="marker-popup"><strong>${escape(item.category_name)}</strong><span>${escape(item.datetime.slice(0, 16).replace("T", ", "))}</span><span>${escape(place)}</span><small>${number().format(item.injured)} ${t("people")} · ${number().format(item.dead)} ${t("deaths")}</small><a href="details/?id=${encodeURIComponent(item.id)}&lang=${state.language}">${details}</a></div>`;
+  const day = new Intl.DateTimeFormat(state.language === "ru" ? "ru-RU" : "en-GB", { day:"2-digit", month:"2-digit", year:"numeric" }).format(new Date(item.datetime));
+  const injured = item.injured > 0 ? `<p class="popup-injured">${number().format(item.injured)} ${pluralPeople(item.injured)} ${state.language === "ru" ? (item.injured === 1 && item.injured % 100 !== 11 ? "пострадал" : "пострадали") : item.injured === 1 ? "was injured" : "were injured"}</p>` : "";
+  const dead = item.dead > 0 ? `<p class="popup-dead">${number().format(item.dead)} ${pluralPeople(item.dead)} ${state.language === "ru" ? (item.dead % 10 === 1 && item.dead % 100 !== 11 ? "погиб" : "погибло") : item.dead === 1 ? "died" : "died"}</p>` : "";
+  return `<div class="marker-popup"><strong>${escape(item.category_name)}</strong><span>${escape(day)}, ${escape(item.datetime.slice(11, 16))}</span><span>${escape(place)}</span>${injured}${dead}<a href="details/?id=${encodeURIComponent(item.id)}&lang=${state.language}">${details}</a></div>`;
 }
 function dynamicValues(filter) { return filter.key === "street" && !filter.values.length ? [...new Set(state.rawItems.map((item) => item.street).filter(Boolean))].sort().map((value) => ({ value, preview:value })) : filter.values || []; }
 function renderAdvancedFilters() {
   const root = $("#advanced-dynamic");
   root.replaceChildren(...state.filters.filter((filter) => filter.param).map((filter) => {
-    const section = document.createElement("details"), title = document.createElement("summary"), name = document.createElement("span"), search = document.createElement("input"), options = document.createElement("div"), key = filter.param || filter.key || filter.name;
+    const section = document.createElement("details"), title = document.createElement("summary"), name = document.createElement("span"), search = document.createElement("input"), options = document.createElement("div"), key = filter.key || filter.name;
     section.className = "advanced-collapse has-search";
     name.textContent = filter.label; search.type = "search"; search.placeholder = t("search"); search.className = "advanced-search"; options.className = "advanced-options";
     const draw = () => { const query = search.value.trim().toLowerCase(), selected = state.selectedFilters[key] || []; options.replaceChildren(...dynamicValues(filter).filter((item) => item.preview.toLowerCase().includes(query)).map((item) => { const label = document.createElement("label"), input = document.createElement("input"); if (item.ui_tone) label.className = `filter-tone ${item.ui_tone}`; input.type = "checkbox"; input.checked = selected.includes(item.value); input.addEventListener("change", () => { const values = new Set(state.selectedFilters[key] || []); input.checked ? values.add(item.value) : values.delete(item.value); state.selectedFilters[key] = [...values]; }); label.append(input, document.createTextNode(item.preview)); return label; })); };
@@ -272,8 +302,16 @@ function renderAdvancedFilters() {
   }));
 }
 function openAdvanced() { renderAdvancedControls(); renderAdvancedFilters(); $("#filters").hidden = true; $("#statistics").hidden = true; $("#advanced-filter").hidden = false; }
-function passesFilters(item, participants, levels, categories) {
-  return (!participants.length || item.participant_categories?.some((value) => participants.includes(value))) && (!levels.length || levels.includes(item.severity)) && categories.every(([key, values]) => Array.isArray(item[key]) ? item[key].some((value) => values.includes(value)) : values.includes(item[key]));
+function passesFilters(item, emTypes, levels, categories) {
+  return (!emTypes || emTypes.includes(item.category)) && (!levels.length || levels.includes(item.severity)) && categories.every(([key, values]) => Array.isArray(item[key]) ? item[key].some((value) => values.includes(value)) : values.includes(item[key]));
+}
+// Выбранные участники → набор видов ДТП (приближение по em_type_id); null — без фильтра
+function participantEmTypes() {
+  const selected = selectedParticipants();
+  if (!selected.length || selected.includes(1)) return null;
+  const set = new Set();
+  for (const value of selected) for (const em of participantConfig[value]?.emTypes || []) set.add(em);
+  return set.size ? [...set] : [-1];
 }
 const regionShapes = fetch("assets/regions.geojson").then((response) => response.ok ? response.json() : Promise.reject(new Error("Region boundaries unavailable")));
 const inBounds = (point, bounds) => point[0] >= bounds.west && point[0] <= bounds.east && point[1] >= bounds.south && point[1] <= bounds.north;
@@ -285,28 +323,81 @@ async function visibleRegionIds(bounds: Bounds) { const data = await regionShape
 // при панорамировании берётся готовый результат
 const filterCache = { key: "", filtered: [] as any[] };
 function filteredPoints() {
-  const participants = selectedParticipants(), levels = severity(), key = `${state.rawItemsKey}|${participants.join(",")}|${levels.join(",")}`;
+  // Фильтры применяются на клиенте: серверная фильтрация точек по параметрам недоступна (504)
+  const emTypes = participantEmTypes(), levels = severity();
+  const selected = Object.entries(state.selectedFilters).filter(([, values]) => values.length);
+  const key = `${state.rawItemsKey}|${emTypes?.join(",")}|${levels.join(",")}|${JSON.stringify(selected)}`;
   if (filterCache.key !== key) {
-    filterCache.filtered = state.rawItems.filter((item) => item.point && passesFilters(item, participants, levels, []));
+    filterCache.filtered = state.rawItems.filter((item) => item.point && passesFilters(item, emTypes, levels, selected));
     filterCache.key = key;
   }
   return filterCache.filtered;
 }
 
+// Индекс регионов для поиска по названию (id совпадают с regions.geojson и REGION API)
+const regionIndex: { id: number; name: string; lower: string }[] = [];
+function featureBounds(feature) {
+  const geometry = feature.geometry, polygons = geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
+  let west = 180, south = 90, east = -180, north = -90;
+  for (const polygon of polygons) for (const ring of polygon) for (const [x, y] of ring) { if (x < west) west = x; if (x > east) east = x; if (y < south) south = y; if (y > north) north = y; }
+  return { west, south, east, north };
+}
+function updateTerritoryCard() {
+  $("#region-name").textContent = state.territory ? state.territory.name : t("allRegions");
+  const locked = Boolean(state.territory);
+  $("#lock-button").classList.toggle("locked", locked);
+  $("#lock-button").setAttribute("aria-pressed", String(locked));
+  $("#lock-button").title = locked ? t("unlock") : t("lockPin");
+}
+async function selectRegion(region) {
+  const data = await regionShapes;
+  const feature = (data.features || []).find((item) => Number(item.properties.id) === region.id);
+  if (!feature) return;
+  state.territory = { id: region.id, name: region.name };
+  updateTerritoryCard();
+  $("#region-suggest").hidden = true;
+  $("#region-search").value = "";
+  // Карта открывается по центру выбранной области (города региона)
+  const { west, south, east, north } = featureBounds(feature);
+  if (state.mapClient === "yandex" && yandex.map) yandex.map.setBounds([[west, south], [east, north]], { checkZoomRange: true });
+  else if (state.mapClient === "mapbox" && mapbox.map) mapbox.map.fitBounds([[west, south], [east, north]], { duration: 0 });
+  else map.fitBounds([[south, west], [north, east]], { animate: false });
+  loadMapData();
+}
+function drawRegionSuggest() {
+  const input = $("#region-search") as HTMLInputElement, suggest = $("#region-suggest");
+  const query = input.value.trim().toLowerCase();
+  if (!query) { suggest.hidden = true; suggest.replaceChildren(); return; }
+  const matches = regionIndex.filter((region) => region.lower.includes(query)).slice(0, 8);
+  suggest.hidden = false;
+  suggest.replaceChildren(...(matches.length ? matches : []).map((region) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = region.name;
+    button.addEventListener("mousedown", (event) => { event.preventDefault(); selectRegion(region); });
+    return button;
+  }));
+  if (!matches.length) { const empty = document.createElement("p"); empty.className = "region-suggest-empty"; empty.textContent = t("noMatches"); suggest.append(empty); }
+}
 function renderMapData(view) {
   const filtered = filteredPoints(), visible = [];
   for (const item of filtered) if (contains(view.bounds, item.point)) visible.push(item);
-  state.items = visible;
-  $("#count").textContent = number().format(visible.length);
-  $("#injured").textContent = number().format(visible.reduce((sum, item) => sum + Number(item.injured || 0), 0));
-  $("#dead").textContent = number().format(visible.reduce((sum, item) => sum + Number(item.dead || 0), 0));
+  // При закреплённой территории счётчики считаются по всей территории, а не по видимой области
+  const counted = state.territory ? filtered : visible;
+  state.items = counted;
+  $("#count").textContent = number().format(counted.length);
+  $("#injured").textContent = number().format(counted.reduce((sum, item) => sum + Number(item.injured || 0), 0));
+  $("#dead").textContent = number().format(counted.reduce((sum, item) => sum + Number(item.dead || 0), 0));
   if (!$("#chart").hidden) renderChart();
   const heatVisible = view.zoom < 12 || visible.length >= 1000;
   const heatPoints = heatVisible ? heatInView(filtered, view) : EMPTY_HEAT;
   renderLeaflet(visible, heatPoints, heatVisible);
   renderYandex(visible, heatPoints, heatVisible);
   renderMapbox(visible, heatPoints, heatVisible);
-  setStatus(`${number().format(visible.length)} ${t("accidentsInArea").toLowerCase()}`);
+  // Прямая ссылка на конкретное ДТП открывает его попап (?popup=<em_number>)
+  const linkedMarker = mapQuery.get("popup") && markers.get(mapQuery.get("popup"));
+  if (linkedMarker) linkedMarker.openPopup();
+  setStatus(`${number().format(counted.length)} ${(state.territory ? t("accidents") : t("accidentsInArea")).toLowerCase()}`);
 }
 
 async function loadMapData() {
@@ -316,10 +407,11 @@ async function loadMapData() {
   const controller = state.abort = new AbortController(), loadId = ++state.dataLoadId, view = currentView();
   setStatus(t("loadingMap"));
   try {
-    const regionIds = await visibleRegionIds(view.bounds);
+    // Закреплённая территория загружается целиком, иначе — регионы в видимой области
+    const regionIds = state.territory ? [state.territory.id] : await visibleRegionIds(view.bounds);
     if (state.dataLoadId !== loadId) return;
     if (!regionIds.length) throw new Error("No regions in view");
-    const selected = Object.entries(state.selectedFilters).filter(([, values]) => values.length), bucketKey = `${start}|${end}|${JSON.stringify(selected)}`;
+    const bucketKey = `${start}|${end}`;
     const bucket = regionCache.get(bucketKey) ?? new Map();
     regionCache.set(bucketKey, bucket);
     // Докачиваем только регионы, которых ещё нет в кэше (пустой результат тоже кэшируется)
@@ -328,7 +420,6 @@ async function loadMapData() {
       $("#chart-period").textContent = `${start} — ${end}`;
       await Promise.all(missing.map(async (id) => {
         const query = new URLSearchParams({ DATE_TIME_FROM:`${start}T00:00:00`, DATE_TIME_TO:`${end}T23:59:59`, REGION:String(id) });
-        selected.forEach(([name, values]) => query.set(name, values.join(",")));
         const response = await fetch(`${api}/dtp/points?${query}`, { signal: controller.signal });
         if (!response.ok) throw new Error("API unavailable");
         bucket.set(id, pointItems(await response.json()));
@@ -341,7 +432,6 @@ async function loadMapData() {
       state.rawItemsKey = mergedKey;
       state.rawItems = regionIds.flatMap((id) => bucket.get(id) ?? []);
     }
-    $("#region-name").textContent = t("allRegions");
     if (missing.length) renderAdvancedFilters();
     renderMapData(view);
   } catch (error) {
@@ -353,13 +443,33 @@ async function loadFilters() {
   try {
     const fieldsResponse = await fetch(`${api}/dtp/filter_fields`);
     if (!fieldsResponse.ok) throw new Error("API unavailable");
-    const fields = await fieldsResponse.json(), advancedFields = fields.filter((field) => ["EM_TYPE", "MAIN_PDD_DERANGEMENT", "ATTENDANT_PDD_DERANGEMENT"].includes(field.name));
+    // Секции проф-фильтра — только «Вид ДТП»: в точках API нет данных по нарушениям участников
+    const fields = await fieldsResponse.json(), advancedFields = fields.filter((field) => field.name === "EM_TYPE");
     const dictionaries = await Promise.all(advancedFields.map(async (field) => { const response = await fetch(`${api}/dict/${field.dict}`); return [field, response.ok ? await response.json() : []]; }));
+    for (const [, values] of dictionaries) for (const value of values) emTypeNames.set(Number(value.id), value.name);
     const end = new Date(dataRange.max), start = new Date(end); start.setDate(1); start.setMonth(start.getMonth() - 11);
     $("#start-date").value = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-01`; $("#end-date").value = dataRange.max; state.minDate = dataRange.min; state.maxDate = dataRange.max;
-    state.filters = enrichFilters([{ name:"participant_categories", values:[{ preview:"Все участники", value:1, default:true }] }, { name:"severity", values:[{ preview:"Лёгкий", value:1, ui_tone:"light" }, { preview:"Тяжёлый", value:3, ui_tone:"serious" }, { preview:"С погибшими", value:4, ui_tone:"fatal" }] }, ...dictionaries.map(([field, values]) => ({ name:field.name, key:field.name === "EM_TYPE" ? "category" : "violations", param:`${field.name}_IDS`, label:field.caption, values:values.map((value) => ({ value:value.id, preview:value.name })) }))]);
-    state.participants = (state.filters.find((filter) => filter.name === "participant_categories")?.values || []).map((participant) => ({ ...participant, selected: participant.default }));
+    state.filters = enrichFilters([
+      { name:"participant_categories", values:[
+        { preview:"Все участники", value:1, default:true },
+        { preview:"Пешеходы", value:2 },
+        { preview:"Велосипедисты", value:3 },
+        { preview:"Мотоциклисты", value:4 },
+        { preview:"Общ. транспорт", value:5 },
+        { preview:"Дети", value:6 },
+      ] },
+      { name:"severity", values:[{ preview:"Без пострадавших", value:0, ui_tone:"none" }, { preview:"Лёгкий", value:1, ui_tone:"light" }, { preview:"Тяжёлый", value:3, ui_tone:"serious" }, { preview:"С погибшими", value:4, ui_tone:"fatal" }] },
+      ...dictionaries.map(([field, values]) => ({ name:field.name, key:"category", param:`${field.name}_IDS`, label:field.caption, values:values.map((value) => ({ value:value.id, preview:value.name })) })),
+    ]);
+    state.participants = (state.filters.find((filter) => filter.name === "participant_categories")?.values || []).map((participant) => ({ ...participant, selected: Boolean(participant.default) }));
+    fetch(`${api}/dict/regions`).then((response) => response.ok ? response.json() : []).then((rows) => {
+      for (const row of rows || []) if (row?.name && row.id !== 1) regionIndex.push({ id:Number(row.id), name:String(row.name), lower:String(row.name).toLowerCase() });
+      // Прямая ссылка на территорию (?region=<id>) — закрепляем её и центрируем карту
+      const regionId = Number(mapQuery.get("region"));
+      if (Number.isFinite(regionId) && regionId > 0) selectRegion(regionIndex.find((region) => region.id === regionId) || { id:regionId, name:String(regionId) });
+    }).catch(() => {});
     applyLanguage();
+    updateTerritoryCard();
     loadMapData();
   } catch { setStatus(t("unavailable")); }
 }
@@ -376,6 +486,10 @@ function setFiltersCollapsed(collapsed) { $("#filters").classList.toggle("collap
 $("#hide-filters").addEventListener("click", () => setFiltersCollapsed(!$("#filters").classList.contains("collapsed")));
 if (matchMedia("(max-width: 800px)").matches) setFiltersCollapsed(true);
 $("#professional-toggle").addEventListener("click", openAdvanced);
+$("#region-search").addEventListener("input", drawRegionSuggest);
+$("#region-search").addEventListener("focus", drawRegionSuggest);
+$("#lock-button").addEventListener("click", () => { if (!state.territory) return; state.territory = null; updateTerritoryCard(); loadMapData(); });
+document.addEventListener("click", (event) => { if (!(event.target as Element).closest(".region-search")) $("#region-suggest").hidden = true; });
 document.querySelectorAll("[data-quick-map]").forEach((button) => button.addEventListener("click", () => switchMapClient(button.dataset.quickMap as "leaflet" | "yandex" | "mapbox")));
 $("#chart-button").addEventListener("click", () => { $("#chart").hidden = false; renderChart(); });
 $("#close-chart").addEventListener("click", () => { $("#chart").hidden = true; });
@@ -386,8 +500,6 @@ $("#chart-tabs").addEventListener("click", (event) => {
   document.querySelectorAll("#chart-tabs button").forEach((item) => item.classList.toggle("active", item === button));
   renderChart();
 });
-$("#map-switcher-button").addEventListener("click", () => { const menu = $("#map-switcher-menu"), open = menu.hidden; menu.hidden = !open; $("#map-switcher-button").setAttribute("aria-expanded", String(open)); });
-$("#map-switcher-menu").addEventListener("click", (event) => { const button = event.target.closest("[data-map-client]"); if (!button) return; $("#map-switcher-menu").hidden = true; $("#map-switcher-button").setAttribute("aria-expanded", "false"); switchMapClient(button.dataset.mapClient); });
 function renderHeatControls() {
   const remoteActive = state.mapClient === "yandex" || state.mapClient === "mapbox", remoteRadius = state.mapClient === "mapbox" ? mapboxHeatSettings.radius : yandexHeatSettings.radius, remoteIntensity = state.mapClient === "mapbox" ? mapboxHeatSettings.intensity : yandexHeatSettings.intensityOfMidpoint, remoteOpacity = state.mapClient === "mapbox" ? mapboxHeatSettings.opacity : yandexHeatSettings.opacity;
   $("#heat-blur-label").textContent = t(remoteActive ? "heatIntensity" : "heatBlur"); $("#heat-opacity-label").textContent = t(remoteActive ? "heatMapOpacity" : "heatOpacity");
