@@ -162,9 +162,10 @@ L.control.zoom({ position: "bottomright" }).addTo(map);
 const accidents = L.layerGroup().addTo(map);
 const markers = new Map<string, any>();
 const heatSettings = { radius: 6, blur: 9, minOpacity: .05 };
-const heat = L.heatLayer([], { ...heatSettings, maxZoom: 12, gradient: { 0:"rgba(126, 171, 85, 0.0)", .2:"rgba(126, 171, 85, 0.6)", .4:"rgba(255, 254, 85, 0.7)", .6:"rgba(245, 193, 66, 0.8)", .8:"rgba(223, 130, 68, 0.9)", 1:"rgba(176, 36, 24, 1)" } }).addTo(map);
+const heatGradient = { 0: "rgba(126, 171, 85, 0)", .2: "rgba(126, 171, 85, 0.6)", .4: "rgba(255, 254, 85, 0.7)", .6: "rgba(245, 193, 66, 0.8)", .8: "rgba(223, 130, 68, 0.9)", 1: "rgba(176, 36, 24, 1)" };
+const heat = L.heatLayer([], { ...heatSettings, maxZoom: 12, gradient: heatGradient }).addTo(map);
 const yandexHeatSettings = { radius: 15, opacity: .5, intensityOfMidpoint: .5 };
-const yandex = { map: null as any, points: null as any, heat: null as any, loading: null as Promise<void> };
+const yandex = { map: null as any, points: null as any, heatCanvas: null as HTMLCanvasElement | null, heatCtx: null as CanvasRenderingContext2D | null, loading: null as Promise<void> };
 const mapboxHeatSettings = { radius: 15, opacity: .5, intensity: .5 };
 const mapbox = { map: null as any, loading: null as Promise<void> };
 function mapboxHeatPaint() {
@@ -178,7 +179,6 @@ function mapboxView() { const center = mapbox.map.getCenter(), bounds = mapbox.m
 function currentView() { return state.mapClient === "yandex" && yandex.map ? yandexView() : state.mapClient === "mapbox" && mapbox.map ? mapboxView() : leafletView(); }
 function heatFeatures(points) { return points.map(([latitude, longitude, weight]) => ({ type: "Feature", geometry: { type: "Point", coordinates: [longitude, latitude] }, properties: { weight: weight || 1 } })); }
 const EMPTY_HEAT: number[][] = [];
-const EMPTY_COLLECTION = heatFeatures(EMPTY_HEAT);
 // Последний посчитанный срез — к нему переприсовываются слои при смене клиента карты
 const lastRender = { visible: [] as any[], heatPoints: EMPTY_HEAT, heatVisible: false };
 // Тепловая карта строится только по видимой области с запасом в пол-экрана:
@@ -204,10 +204,9 @@ function renderLeaflet(visible, heatPoints, heatVisible) {
   heat.setLatLngs(heatVisible ? heatPoints : []);
 }
 const yandexMarkers = new Map<string, any>();
-const yandexHeatCache = { points: null as any, collection: null as any, applied: undefined as any };
-// Слой тепла Яндекса перерисовывается на каждое движение карты, стоимость линейна
-// от числа точек: полный набор (100k+) замораживает интерфейс на секунды.
-// Прореживаем точки с компенсацией веса (weight = шаг) — картинка та же.
+// Слой тепла рисуем своим canvas: ymaps.Heatmap синхронно перерисовывает все тайлы
+// на каждую смену опций/зума (150–400ms) — ползунки и зум «зависали».
+// Набор прореживается до лимита, вес прореженной точки = шагу выборки.
 const yandexHeatLimit = 12000;
 function decimateHeat(points: number[][]) {
   if (points.length <= yandexHeatLimit) return points;
@@ -215,12 +214,88 @@ function decimateHeat(points: number[][]) {
   for (let index = 0; index < points.length; index += stride) sampled.push([points[index][0], points[index][1], stride]);
   return sampled;
 }
+const yandexHeatBrush = { canvas: null as HTMLCanvasElement | null, radius: 0 };
+function heatBrush(radius: number) {
+  radius = Math.max(2, Math.round(radius));
+  if (yandexHeatBrush.canvas && yandexHeatBrush.radius === radius) return yandexHeatBrush.canvas;
+  const brush = document.createElement("canvas");
+  brush.width = brush.height = radius * 2;
+  const context = brush.getContext("2d")!, gradient = context.createRadialGradient(radius, radius, 0, radius, radius, radius);
+  gradient.addColorStop(0, "rgba(0,0,0,1)"); gradient.addColorStop(1, "rgba(0,0,0,0)");
+  context.fillStyle = gradient; context.fillRect(0, 0, radius * 2, radius * 2);
+  yandexHeatBrush.canvas = brush; yandexHeatBrush.radius = radius;
+  return brush;
+}
+const yandexHeatLut = { data: null as Uint8ClampedArray | null };
+function heatGradientLut() {
+  if (yandexHeatLut.data) return yandexHeatLut.data;
+  const canvas = document.createElement("canvas"); canvas.width = 1; canvas.height = 256;
+  const context = canvas.getContext("2d")!, gradient = context.createLinearGradient(0, 0, 0, 256);
+  for (const [stop, color] of Object.entries(heatGradient)) gradient.addColorStop(Number(stop), color);
+  context.fillStyle = gradient; context.fillRect(0, 0, 1, 256);
+  yandexHeatLut.data = context.getImageData(0, 0, 1, 256).data;
+  return yandexHeatLut.data;
+}
+const yandexHeatBuffer = { canvas: null as HTMLCanvasElement | null };
+function drawYandexHeat(heatPoints, heatVisible) {
+  const canvas = yandex.heatCanvas, map = yandex.map;
+  if (!canvas || !map) return;
+  if (!heatVisible || !heatPoints.length) { canvas.style.display = "none"; return; }
+  canvas.style.display = "block";
+  canvas.style.opacity = String(yandexHeatSettings.opacity);
+  const container = $("#yandex-map") as HTMLElement, dpr = window.devicePixelRatio || 1;
+  const width = container.clientWidth, height = container.clientHeight;
+  if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) { canvas.width = Math.round(width * dpr); canvas.height = Math.round(height * dpr); }
+  const ctx = yandex.heatCtx!;
+  const projection = map.options.get("projection"), zoom = map.getZoom();
+  const [centerX, centerY] = projection.toGlobalPixels(map.getCenter(), zoom);
+  const offsetX = width / 2 - centerX, offsetY = height / 2 - centerY;
+  // Копим плотность в буфере вдвое мельче экрана: пиксельных операций вчетверо
+  // меньше, а билинейный апскейл сам размывает — широкие кисти не нужны
+  const unit = 2 * dpr;
+  const bw = Math.max(1, Math.ceil(canvas.width / unit)), bh = Math.max(1, Math.ceil(canvas.height / unit));
+  let buffer = yandexHeatBuffer.canvas;
+  if (!buffer) { buffer = document.createElement("canvas"); yandexHeatBuffer.canvas = buffer; }
+  if (buffer.width !== bw || buffer.height !== bh) { buffer.width = bw; buffer.height = bh; }
+  const bctx = buffer.getContext("2d", { willReadFrequently: true })!;
+  const brush = heatBrush(yandexHeatSettings.radius / 2), r = yandexHeatBrush.radius;
+  // Соседние точки сливаются в ячейку: на плотных участках drawImage в разы
+  // меньше, вес ячейки = сумме весов точек
+  const cell = Math.max(2, Math.round(r / 2)), cols = Math.ceil(bw / cell) + 1, merged = new Map<number, number>();
+  for (const [latitude, longitude, weight] of decimateHeat(heatPoints)) {
+    const [globalX, globalY] = projection.toGlobalPixels([longitude, latitude], zoom);
+    const x = (globalX + offsetX) * dpr / unit, y = (globalY + offsetY) * dpr / unit;
+    if (x < -r || y < -r || x > bw + r || y > bh + r) continue;
+    const key = Math.floor(y / cell) * cols + Math.floor(x / cell);
+    merged.set(key, (merged.get(key) || 0) + weight);
+  }
+  bctx.clearRect(0, 0, bw, bh);
+  for (const [key, weight] of merged) {
+    const x = (key % cols) * cell + cell / 2, y = Math.floor(key / cols) * cell + cell / 2;
+    bctx.globalAlpha = Math.min(1, Math.sqrt(weight));
+    bctx.drawImage(brush, x - r, y - r);
+  }
+  // Альфа-канал перекладываем в цвет по градиенту (LUT 1×256), как у simpleheat
+  bctx.globalAlpha = 1;
+  const image = bctx.getImageData(0, 0, bw, bh), data = image.data, lut = heatGradientLut();
+  const intensity = .5 + yandexHeatSettings.intensityOfMidpoint;
+  for (let index = 3; index < data.length; index += 4) {
+    const alpha = data[index];
+    if (!alpha) continue;
+    const color = Math.min(255, Math.round(alpha * intensity)) << 2;
+    data[index - 3] = lut[color]; data[index - 2] = lut[color + 1]; data[index - 1] = lut[color + 2]; data[index] = lut[color + 3];
+  }
+  bctx.putImageData(image, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(buffer, 0, 0, canvas.width, canvas.height);
+}
+let yandexHeatFrame = 0;
+function scheduleYandexHeat() {
+  if (yandexHeatFrame) return;
+  yandexHeatFrame = requestAnimationFrame(() => { yandexHeatFrame = 0; drawYandexHeat(lastRender.heatPoints, lastRender.heatVisible); });
+}
 function renderYandex(visible, heatPoints, heatVisible) {
   if (!yandex.map) return;
-  // Коллекцию строим один раз на набор точек и не дёргаем setData без изменений данных
-  if (yandexHeatCache.points !== heatPoints) { yandexHeatCache.points = heatPoints; yandexHeatCache.collection = heatFeatures(decimateHeat(heatPoints)); }
-  const target = heatVisible ? yandexHeatCache.collection : EMPTY_COLLECTION;
-  if (yandexHeatCache.applied !== target) { yandex.heat?.setData(target); yandexHeatCache.applied = target; }
   // Placemark'и обновляем диффом, а не пересозданием всех на каждый сдвиг карты
   const alive = new Set(heatVisible ? [] : visible.map((item) => item.id));
   for (const [id, placemark] of yandexMarkers) if (!alive.has(id)) { yandex.points.remove(placemark); yandexMarkers.delete(id); }
@@ -232,6 +307,7 @@ function renderYandex(visible, heatPoints, heatVisible) {
     yandexMarkers.set(item.id, placemark);
     yandex.points.add(placemark);
   }
+  drawYandexHeat(heatPoints, heatVisible);
 }
 function renderMapbox(visible, heatPoints, heatVisible) {
   if (!mapbox.map?.isStyleLoaded()) return;
@@ -244,19 +320,23 @@ function loadScript(src) { return new Promise<void>((resolve, reject) => { const
 function loadYandexScript() {
   const key = (window as any).YANDEX_MAPS_KEY;
   if (!key) return Promise.reject(new Error("Yandex Maps key is missing"));
-  if (!yandex.loading) yandex.loading = ((window as any).ymaps ? Promise.resolve() : loadScript(`https://api-maps.yandex.ru/2.1/?apikey=${encodeURIComponent(key)}&lang=${state.language === "ru" ? "ru_RU" : "en_US"}&coordorder=longlat`)).then(() => loadScript("https://yastatic.net/s3/mapsapi-jslibs/heatmap/0.0.1/heatmap.min.js"));
+  if (!yandex.loading) yandex.loading = (window as any).ymaps ? Promise.resolve() : loadScript(`https://api-maps.yandex.ru/2.1/?apikey=${encodeURIComponent(key)}&lang=${state.language === "ru" ? "ru_RU" : "en_US"}&coordorder=longlat`);
   return yandex.loading;
 }
 async function ensureYandex(view) {
   if (yandex.map) { yandex.map.setCenter([view.center.longitude, view.center.latitude], view.zoom); return; }
   await loadYandexScript();
   const ymaps = (window as any).ymaps;
-  await ymaps.ready(["Heatmap"]);
+  await ymaps.ready();
   yandex.map = new ymaps.Map("yandex-map", { center: [view.center.longitude, view.center.latitude], zoom: view.zoom, controls: ["zoomControl"] }, { maxZoom: 20, minZoom: 1, avoidFractionalZoom: true, yandexMapDisablePoiInteractivity: true, suppressMapOpenBlock: true });
   yandex.points = new ymaps.GeoObjectCollection(); yandex.map.geoObjects.add(yandex.points);
-  yandex.heat = new ymaps.Heatmap([], { ...yandexHeatSettings, dissipating: false, gradient: { 0: "rgba(126, 171, 85, 0.0)", .2: "rgba(126, 171, 85, 0.6)", .4: "rgba(255, 254, 85, 0.7)", .6: "rgba(245, 193, 66, 0.8)", .8: "rgba(223, 130, 68, 0.9)", 1: "rgba(176, 36, 24, 1)" } });
-  yandex.heat.setMap(yandex.map, {}); renderYandex(lastRender.visible, lastRender.heatPoints, lastRender.heatVisible);
-  yandex.map.events.add("boundschange", () => { if (state.mapClient === "yandex") scheduleMapLoad(); });
+  const canvas = document.createElement("canvas");
+  canvas.className = "yandex-heat";
+  $("#yandex-map").append(canvas);
+  yandex.heatCanvas = canvas;
+  yandex.heatCtx = canvas.getContext("2d", { willReadFrequently: true });
+  renderYandex(lastRender.visible, lastRender.heatPoints, lastRender.heatVisible);
+  yandex.map.events.add("boundschange", () => { if (state.mapClient === "yandex") { scheduleMapLoad(); scheduleYandexHeat(); } });
 }
 function loadMapboxScript() {
   const key = (window as any).MAPBOX_ACCESS_TOKEN;
@@ -539,7 +619,7 @@ function renderHeatControls() {
   $("#heat-radius").max = "30"; $("#heat-radius").value = String(heatSettings.radius); $("#heat-blur").min = "0"; $("#heat-blur").max = "30"; $("#heat-blur").value = String(heatSettings.blur); $("#heat-opacity").max = "50"; $("#heat-opacity").value = String(heatSettings.minOpacity * 100); $("#heat-radius-value").textContent = `${heatSettings.radius} px`; $("#heat-blur-value").textContent = `${heatSettings.blur} px`; $("#heat-opacity-value").textContent = `${Math.round(heatSettings.minOpacity * 100)}%`;
 }
 function updateHeatControls() {
-  if (state.mapClient === "yandex") { yandexHeatSettings.radius = Number($("#heat-radius").value); yandexHeatSettings.intensityOfMidpoint = Number($("#heat-blur").value) / 100; yandexHeatSettings.opacity = Number($("#heat-opacity").value) / 100; yandex.heat?.options.set(yandexHeatSettings); renderYandex(lastRender.visible, lastRender.heatPoints, lastRender.heatVisible); }
+  if (state.mapClient === "yandex") { yandexHeatSettings.radius = Number($("#heat-radius").value); yandexHeatSettings.intensityOfMidpoint = Number($("#heat-blur").value) / 100; yandexHeatSettings.opacity = Number($("#heat-opacity").value) / 100; drawYandexHeat(lastRender.heatPoints, lastRender.heatVisible); }
   else if (state.mapClient === "mapbox") { mapboxHeatSettings.radius = Number($("#heat-radius").value); mapboxHeatSettings.intensity = Number($("#heat-blur").value) / 100; mapboxHeatSettings.opacity = Number($("#heat-opacity").value) / 100; renderMapbox(lastRender.visible, lastRender.heatPoints, lastRender.heatVisible); }
   else { heatSettings.radius = Number($("#heat-radius").value); heatSettings.blur = Number($("#heat-blur").value); heatSettings.minOpacity = Number($("#heat-opacity").value) / 100; heat.setOptions(heatSettings); }
   renderHeatControls();
