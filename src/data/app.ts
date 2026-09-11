@@ -1,4 +1,5 @@
-const api = "https://dtpstat-api.dexoon.workers.dev/api/upstream";
+// Локально (npm run serve) API доступен по тому же origin: serve.mjs проксирует /api на vpn.kulikow.ru:3000
+const api = ["localhost", "127.0.0.1"].includes(location.hostname) ? "/api" : "https://vpn.kulikow.ru:3000/api";
 const $ = (selector) => document.querySelector(selector);
 const state = { language: new URLSearchParams(location.search).get("lang") || localStorage.getItem("language") || "ru" };
 const copy = {
@@ -52,7 +53,8 @@ async function download(buttonNode, item, kind) {
     if (!regionsResponse.ok) throw new Error("Regions unavailable");
     const regionRecord = (await regionsResponse.json()).find((value) => value.name === item.ru);
     if (!regionRecord) throw new Error("Region not found");
-    const response = await fetch(`${api}/dtp/geojson?${new URLSearchParams({ REGION_IDS:String(regionRecord.id), DATE_TIME_FROM:`${year}-01-01T00:00:00`, DATE_TIME_TO:`${year}-12-31T23:59:59` })}`);
+    // REGION_IDS бэкенд отвергает (валидатор требует REGION), регион один — передаём как скаляр
+    const response = await fetch(`${api}/dtp/geojson?${new URLSearchParams({ REGION:String(regionRecord.id), DATE_TIME_FROM:`${year}-01-01T00:00:00`, DATE_TIME_TO:`${year}-12-31T23:59:59` })}`);
     if (!response.ok) throw new Error("API response");
     const body = await response.json(); const output = kind === "region" ? asGeoJson(body) : body;
     const blob = new Blob([JSON.stringify(output)], { type: kind === "region" ? "application/geo+json" : "application/json" });

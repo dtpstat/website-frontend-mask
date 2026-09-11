@@ -1,4 +1,5 @@
-const api = "https://dtpstat-api.dexoon.workers.dev/api/upstream";
+// Локально (npm run serve) API доступен по тому же origin: serve.mjs проксирует /api на vpn.kulikow.ru:3000
+const api = ["localhost", "127.0.0.1"].includes(location.hostname) ? "/api" : "https://vpn.kulikow.ru:3000/api";
 const root = document.querySelector("#detail") as HTMLElement;
 const query = new URLSearchParams(location.search), id = query.get("id") || "", language = query.get("lang") === "en" ? "en" : localStorage.getItem("language") === "en" ? "en" : "ru";
 const text = language === "en" ? { title:"Accident details", missing:"Accident was not found.", nearby:"Show accident nearby", map:"Map", panorama:"Panorama", transport:"Vehicles", users:"Road users", injured:"Injured", dead:"Deaths", official:"Official traffic police data", address:"Address unknown", scheme:"Crash scheme", noViolations:"No violations", violations:"Traffic violations" } : { title:"Подробности ДТП", missing:"ДТП не найдено.", nearby:"Показать ДТП рядом", map:"Карта", panorama:"Панорама", transport:"Транспорт", users:"Участники", injured:"Пострадали", dead:"Погибли", official:"Официальные данные ГИБДД", address:"Адрес неизвестен", scheme:"Схема ДТП", noViolations:"Нет нарушений", violations:"Нарушения ПДД" };

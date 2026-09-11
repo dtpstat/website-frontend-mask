@@ -1,17 +1,19 @@
-const api = "https://dtpstat-api.dexoon.workers.dev/api/upstream";
+// Локально (npm run serve) API доступен по тому же origin: serve.mjs проксирует /api на vpn.kulikow.ru:3000;
+// иначе — напрямую на бэкенд (нужен валидный сертификат, иначе браузер заблокирует запрос)
+const api = ["localhost", "127.0.0.1"].includes(location.hostname) ? "/api" : "https://vpn.kulikow.ru:3000/api";
 const $ = (selector) => document.querySelector(selector);
 const dataRange = { min:"2015-01-01", max:"2026-08-31" };
 type MonthPickerState = { open: boolean; target: "start" | "end"; year: number | null; start: string; end: string };
-type MapState = { language: string; mapClient: "leaflet" | "yandex" | "mapbox"; participants: any[]; filters: any[]; selectedFilters: Record<string, any[]>; territory: { id: number; name: string } | null; abort: AbortController | null; items: any[]; rawItems: any[]; rawItemsKey: string; dataLoadId: number; chartMode: string; minDate: string; maxDate: string; picker: MonthPickerState };
+type MapState = { language: string; mapClient: "leaflet" | "yandex" | "mapbox"; participants: any[]; filters: any[]; selectedFilters: Record<string, any[]>; selectedIntervals: Record<string, { from: string; to: string }>; territory: { id: number; name: string } | null; abort: AbortController | null; items: any[]; rawItems: any[]; rawItemsKey: string; dataLoadId: number; chartMode: string; minDate: string; maxDate: string; picker: MonthPickerState; bboxSupported: boolean };
 type Bounds = { west: number; south: number; east: number; north: number };
 const persistedMapClient = localStorage.getItem("map-client");
-const state: MapState = { language: new URLSearchParams(location.search).get("lang") || localStorage.getItem("language") || "ru", mapClient: persistedMapClient === "yandex" || persistedMapClient === "mapbox" ? persistedMapClient : "leaflet", participants: [], filters: [], selectedFilters: {}, territory: null, abort: null, items: [], rawItems: [], rawItemsKey: "", dataLoadId: 0, chartMode: "days", minDate: "2015-01-01", maxDate: "2024-12-31", picker: { open: false, target: "start", year: null, start: "2024-01-01", end: "2024-12-31" } };
-// Кэш загруженных точек: ключ запроса (период + фильтры) → id региона → точки.
-// Регионы докачиваются по одному, уже скачанные не запрашиваются повторно.
-const regionCache = new Map<string, Map<number, any[]>>();
+const state: MapState = { language: new URLSearchParams(location.search).get("lang") || localStorage.getItem("language") || "ru", mapClient: persistedMapClient === "yandex" || persistedMapClient === "mapbox" ? persistedMapClient : "leaflet", participants: [], filters: [], selectedFilters: {}, selectedIntervals: {}, territory: null, abort: null, items: [], rawItems: [], rawItemsKey: "", dataLoadId: 0, chartMode: "days", minDate: "2015-01-01", maxDate: "2024-12-31", picker: { open: false, target: "start", year: null, start: "2024-01-01", end: "2024-12-31" }, bboxSupported: false };
+// Кэш загруженных точек: ключ запроса (период + фильтры) → ключ набора (регион или рамка) → точки.
+// Новые наборы докачиваются по одному, уже скачанные не запрашиваются повторно.
+const regionCache = new Map<string, Map<string, any[]>>();
 const copy = {
-  ru: { brandAria:"Карта ДТП — главная", mapAria:"Интерактивная карта ДТП", map:"Карта", blog:"Блог и исследования", data:"Скачать данные", about:"О проекте", team:"Команда", support:"Поддержать проект", statistics:"Статистика", filters:"Фильтры", analytics:"Аналитика", apply:"Применить", cancel:"Отмена", allTime:"За всё время", basicFilter:"Базовый фильтр", professionalFilter:"Профессиональные фильтры", startPeriod:"Начало периода", endPeriod:"Конец периода", chooseYear:"Выберите год", chooseMonth:"Выберите месяц", search:"Поиск", dataPeriod:"Период данных", accidentsInRussia:"ДТП в России", region:"Регион", allRegions:"Все регионы", from:"С", to:"По", participants:"Участники ДТП", injurySeverity:"Вред здоровью", light:"Лёгкий", serious:"Тяжёлый", fatal:"С погибшими", accidentTypes:"Типы ДТП", violations:"Нарушения ПДД", weather:"Погода", streets:"Улицы", heatRadius:"Радиус", heatBlur:"Размытие", heatOpacity:"Мин. непрозрачность", loading:"Загружаем данные…", loadingMap:"Обновляем карту…", unavailable:"Не удалось получить данные. Попробуйте позднее.", officialData:"Официальные данные", accidents:"ДТП", injured:"Пострадали", dead:"Погибли", distribution:"Распределение по дням", selectedPeriod:"За выбранный период", byDays:"По дням", byHours:"По часам", byTypes:"По типам ДТП", chartNote:"Диаграмма построена по ДТП в видимой области.", accidentsInArea:"ДТП в видимой области", people:"чел.", deaths:"погибших" },
-  en: { brandAria:"Road accident map — home", mapAria:"Interactive road accident map", map:"Map", blog:"Blog & research", data:"Download data", about:"About the project", team:"Team", support:"Support the project", statistics:"Statistics", filters:"Filters", analytics:"Analytics", apply:"Apply", cancel:"Cancel", allTime:"All time", basicFilter:"Basic filter", professionalFilter:"Professional filters", startPeriod:"Start of period", endPeriod:"End of period", chooseYear:"Select year", chooseMonth:"Select month", search:"Search", dataPeriod:"Data period", accidentsInRussia:"Road accidents in Russia", region:"Region", allRegions:"All regions", from:"From", to:"To", participants:"Road users", injurySeverity:"Injury severity", light:"Minor", serious:"Serious", fatal:"Fatal", accidentTypes:"Accident types", violations:"Traffic violations", weather:"Weather", streets:"Streets", heatRadius:"Radius", heatBlur:"Blur", heatOpacity:"Min. opacity", loading:"Loading data…", loadingMap:"Updating map…", unavailable:"Could not load data. Please try again later.", officialData:"Official data", accidents:"Accidents", injured:"Injured", dead:"Deaths", distribution:"Distribution by day", selectedPeriod:"Selected period", byDays:"By day", byHours:"By hour", byTypes:"By type", chartNote:"The chart is based on accidents in the visible area.", accidentsInArea:"Accidents in area", people:"people", deaths:"deaths" },
+  ru: { brandAria:"Карта ДТП — главная", mapAria:"Интерактивная карта ДТП", map:"Карта", blog:"Блог и исследования", data:"Скачать данные", about:"О проекте", team:"Команда", support:"Поддержать проект", statistics:"Статистика", filters:"Фильтры", analytics:"Аналитика", apply:"Применить", cancel:"Отмена", allTime:"За всё время", basicFilter:"Базовый фильтр", professionalFilter:"Профессиональные фильтры", startPeriod:"Начало периода", endPeriod:"Конец периода", chooseYear:"Выберите год", chooseMonth:"Выберите месяц", search:"Поиск", dataPeriod:"Период данных", accidentsInRussia:"ДТП в России", region:"Регион", allRegions:"Все регионы", from:"С", to:"По", participants:"Участники ДТП", injurySeverity:"Вред здоровью", light:"Лёгкий", serious:"Тяжёлый", fatal:"С погибшими", accidentTypes:"Типы ДТП", violations:"Нарушения ПДД", weather:"Погода", streets:"Улицы", heatRadius:"Радиус", heatBlur:"Размытие", heatOpacity:"Мин. непрозрачность", loading:"Загружаем данные…", loadingMap:"Обновляем карту…", unavailable:"Не удалось получить данные. Попробуйте позднее.", officialData:"Официальные данные", accidents:"ДТП", injured:"Пострадали", dead:"Погибли", distribution:"Распределение по дням", selectedPeriod:"За выбранный период", byDays:"По дням", byHours:"По часам", byTypes:"По типам ДТП", chartNote:"Диаграмма построена по ДТП в видимой области.", accidentsInArea:"ДТП в видимой области", people:"чел.", deaths:"погибших", roadConditions:"УДС на месте ДТП", roadConditionsNear:"УДС поблизости", roadFactors:"Факторы, влияющие на движение", roadDefects:"Повреждения УДС", signs:"Признаки ДТП", quantity:"Количество" },
+  en: { brandAria:"Road accident map — home", mapAria:"Interactive road accident map", map:"Map", blog:"Blog & research", data:"Download data", about:"About the project", team:"Team", support:"Support the project", statistics:"Statistics", filters:"Filters", analytics:"Analytics", apply:"Apply", cancel:"Cancel", allTime:"All time", basicFilter:"Basic filter", professionalFilter:"Professional filters", startPeriod:"Start of period", endPeriod:"End of period", chooseYear:"Select year", chooseMonth:"Select month", search:"Search", dataPeriod:"Data period", accidentsInRussia:"Road accidents in Russia", region:"Region", allRegions:"All regions", from:"From", to:"To", participants:"Road users", injurySeverity:"Injury severity", light:"Minor", serious:"Serious", fatal:"Fatal", accidentTypes:"Accident types", violations:"Traffic violations", weather:"Weather", streets:"Streets", heatRadius:"Radius", heatBlur:"Blur", heatOpacity:"Min. opacity", loading:"Loading data…", loadingMap:"Updating map…", unavailable:"Could not load data. Please try again later.", officialData:"Official data", accidents:"Accidents", injured:"Injured", dead:"Deaths", distribution:"Distribution by day", selectedPeriod:"Selected period", byDays:"By day", byHours:"By hour", byTypes:"By type", chartNote:"The chart is based on accidents in the visible area.", accidentsInArea:"Accidents in area", people:"people", deaths:"deaths", roadConditions:"Road conditions on site", roadConditionsNear:"Road conditions nearby", roadFactors:"Factors affecting traffic", roadDefects:"Road defects", signs:"Accident features", quantity:"Counts" },
 };
 Object.assign(copy.ru, { regionSearch:"Введите адрес или регион", noInjured:"Без пострадавших (нет данных)", accidentKind:"Вид ДТП", show:"Показать", lockPin:"Данные закреплены по территории", unlock:"Открепить данные", participantUnavailable:"По этому типу участников пока нет данных в открытом API", noMatches:"Ничего не найдено" });
 Object.assign(copy.en, { regionSearch:"Enter address or region", noInjured:"No injuries (no data)", accidentKind:"Accident type", show:"Show", lockPin:"Data is pinned to the territory", unlock:"Unpin data", participantUnavailable:"No open API data for this road-user type yet", noMatches:"Nothing found" });
@@ -28,6 +30,29 @@ const participantConfig: Record<number, { icon: string; emTypes?: number[] }> = 
   5: { icon:"public_transport" },
   6: { icon:"kids" },
 };
+// Секции проф-фильтра, которые уходят параметрами на сервер в /dtp/points.
+// Live-проверено (2026-09-10): параметры kind 'arrays' (условие &&), 'mask' и 'interval' выполняются быстро;
+// kind 'array' (= ANY(...)) виснет на стороне БД даже на малом регионе, поэтому секции с ними
+// (тяжесть, участники, освещение, нарушения ПДД, марки ТС…) на сервер не передаются.
+const serverSections = ["CLOUD", "DEFECT", "MOTION_INFLUENCE", "RD_CONSTR_HERE", "RD_CONSTR_THERE", "masks"];
+const serverSectionLabels: Record<string, string> = { EM_TYPE:"accidentTypes", CLOUD:"weather", DEFECT:"roadDefects", MOTION_INFLUENCE:"roadFactors", RD_CONSTR_HERE:"roadConditions", RD_CONSTR_THERE:"roadConditionsNear" };
+// Значение параметра-маски — сама битовая маска столбца: ADDITIONAL_ATTR (SIM=4, камеры=8, наркотики=1, отказ=2), CHILDREN_ATTR (3/7/71/135)
+const maskFeatures = [
+  { value:4, param:"SIM", preview:"ДТП с СИМ" },
+  { value:8, param:"IN_AREA_OF_CAMERAS", preview:"В зоне камер" },
+  { value:1, param:"DRUGS", preview:"Наркотическое опьянение" },
+  { value:2, param:"REFUSAL_EXAMINED", preview:"Отказ от освидетельствования" },
+  { value:3, param:"UNDER_16", preview:"С детьми до 16 лет" },
+  { value:7, param:"UNDER_16_PASSENGER", preview:"Дети до 16, пассажиры" },
+  { value:71, param:"UNDER_16_PASSENGER_ORG_MOVED", preview:"Дети до 16, организованная перевозка" },
+  { value:135, param:"UNDER_16_PASSENGER_VIOLATION_RULES", preview:"Дети до 16, нарушение правил перевозки" },
+];
+const intervalFields = [
+  { param:"VEH_AMOUNT", preview:"Транспорт", min:0, max:99 },
+  { param:"PERS_AMOUNT", preview:"Участники", min:0, max:299 },
+  { param:"LOST_AMOUNT", preview:"Погибшие", min:0, max:299 },
+  { param:"SUFFER_AMOUNT", preview:"Раненые", min:0, max:299 },
+];
 // Названия видов ДТП из /dict/em_types — заполняется в loadFilters
 const emTypeNames = new Map<number, string>();
 const filterMetadata = {
@@ -59,6 +84,20 @@ function setStatus(message) { $("#filter-status").textContent = message; }
 function monthValue(value) { return value.slice(0, 7); }
 function monthStartValue(value) { return `${value}-01`; }
 function monthEndValue(value) { const [year, month] = value.split("-").map(Number); return `${year}-${String(month).padStart(2, "0")}-${new Date(year, month, 0).getDate()}`; }
+// [from..to] (YYYY-MM-DD) → отрезки, не выходящие за пределы одного календарного месяца:
+// слабому бэкенду легче отвечать на много мелких запросов, чем на один за весь период
+function monthChunks(from: string, to: string) {
+  const chunks: { from: string; to: string }[] = [];
+  let cursor = from;
+  while (cursor <= to) {
+    const [year, month] = cursor.split("-").map(Number);
+    const monthEnd = monthEndValue(`${year}-${String(month).padStart(2, "0")}-01`), last = monthEnd < to ? monthEnd : to;
+    chunks.push({ from: cursor, to: last });
+    const next = new Date(year, month, 1);
+    cursor = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}-01`;
+  }
+  return chunks;
+}
 function displayMonth(value) { return intlFormatter("month-year", { month: "long", year: "numeric" }).format(new Date(`${value}-01T00:00:00`)); }
 
 function renderDateFields() {
@@ -404,9 +443,25 @@ function dynamicValues(filter) { return filter.key === "street" && !filter.value
 function renderAdvancedFilters() {
   const root = $("#advanced-dynamic");
   root.replaceChildren(...state.filters.filter((filter) => filter.param).map((filter) => {
-    const section = document.createElement("details"), title = document.createElement("summary"), name = document.createElement("span"), search = document.createElement("input"), options = document.createElement("div"), key = filter.key || filter.name;
-    section.className = "advanced-collapse has-search";
-    name.textContent = filter.label; search.type = "search"; search.placeholder = t("search"); search.className = "advanced-search"; options.className = "advanced-options";
+    const section = document.createElement("details"), title = document.createElement("summary"), name = document.createElement("span"), options = document.createElement("div"), key = filter.key || filter.name;
+    name.textContent = filter.label;
+    // Интервалы «от–до» — числовые поля вместо списка значений
+    if (filter.key === "intervals") {
+      section.className = "advanced-collapse"; options.className = "advanced-options advanced-intervals";
+      for (const field of filter.values) {
+        const range = state.selectedIntervals[field.param] || { from:"", to:"" }, row = document.createElement("div"), caption = document.createElement("span"), from = document.createElement("input"), to = document.createElement("input");
+        row.className = "advanced-interval"; caption.textContent = field.preview;
+        from.type = to.type = "number"; from.min = to.min = String(field.min); from.max = to.max = String(field.max); from.placeholder = t("from"); to.placeholder = t("to");
+        from.value = range.from; to.value = range.to;
+        const sync = () => { if (from.value || to.value) state.selectedIntervals[field.param] = { from:from.value, to:to.value }; else delete state.selectedIntervals[field.param]; };
+        from.addEventListener("input", sync); to.addEventListener("input", sync);
+        row.append(caption, from, to); options.append(row);
+      }
+      title.append(name); section.append(title, options); return section;
+    }
+    const search = document.createElement("input");
+    section.className = "advanced-collapse" + (filter.key === "street" || filter.values.length > 8 ? " has-search" : "");
+    search.type = "search"; search.placeholder = t("search"); search.className = "advanced-search"; options.className = "advanced-options";
     const draw = () => { const query = search.value.trim().toLowerCase(), selected = state.selectedFilters[key] || []; options.replaceChildren(...dynamicValues(filter).filter((item) => item.preview.toLowerCase().includes(query)).map((item) => { const label = document.createElement("label"), input = document.createElement("input"); if (item.ui_tone) label.className = `filter-tone ${item.ui_tone}`; input.type = "checkbox"; input.checked = selected.includes(item.value); input.addEventListener("change", () => { const values = new Set(state.selectedFilters[key] || []); input.checked ? values.add(item.value) : values.delete(item.value); state.selectedFilters[key] = [...values]; }); label.append(input, document.createTextNode(item.preview)); return label; })); };
     search.addEventListener("click", (event) => event.stopPropagation()); search.addEventListener("keydown", (event) => event.stopPropagation()); search.addEventListener("input", draw); title.append(name, search); section.append(title, options); draw(); return section;
   }));
@@ -414,6 +469,20 @@ function renderAdvancedFilters() {
 function openAdvanced() { renderAdvancedControls(); renderAdvancedFilters(); $("#filters").hidden = true; $("#statistics").hidden = true; $("#advanced-filter").hidden = false; }
 function passesFilters(item, emTypes, levels, categories) {
   return (!emTypes || emTypes.includes(item.category)) && (!levels.length || levels.includes(item.severity)) && categories.every(([key, values]) => Array.isArray(item[key]) ? item[key].some((value) => values.includes(value)) : values.includes(item[key]));
+}
+// Параметры серверной фильтрации /dtp/points: выбранные секции-словари, признаки-маски и интервалы
+function serverQuery() {
+  const params = new URLSearchParams();
+  for (const [name, values] of Object.entries(state.selectedFilters)) {
+    if (!values.length) continue;
+    if (name === "masks") for (const value of values) { const feature = maskFeatures.find((item) => item.value === value); if (feature) params.append(feature.param, String(feature.value)); }
+    else if (serverSections.includes(name)) params.append(`${name}_IDS`, values.join(","));
+  }
+  for (const [param, range] of Object.entries(state.selectedIntervals)) {
+    if (range.from) params.append(`${param}_FROM`, range.from);
+    if (range.to) params.append(`${param}_TO`, range.to);
+  }
+  return params;
 }
 // Выбранные участники → набор видов ДТП (приближение по em_type_id); null — без фильтра
 function participantEmTypes() {
@@ -424,18 +493,40 @@ function participantEmTypes() {
   return set.size ? [...set] : [-1];
 }
 const regionShapes = fetch("assets/regions.geojson").then((response) => response.ok ? response.json() : Promise.reject(new Error("Region boundaries unavailable")));
-const inBounds = (point, bounds) => point[0] >= bounds.west && point[0] <= bounds.east && point[1] >= bounds.south && point[1] <= bounds.north;
 function inRing(point, ring) { let inside = false; for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index++) { const [x, y] = ring[index], [px, py] = ring[previous]; if ((y > point[1]) !== (py > point[1]) && point[0] < (px - x) * (point[1] - y) / (py - y) + x) inside = !inside; } return inside; }
-function crosses(a, b, c, d) { const turn = (first, second, third) => (second[0] - first[0]) * (third[1] - first[1]) - (second[1] - first[1]) * (third[0] - first[0]); const ab = turn(a, b, c), ac = turn(a, b, d), cd = turn(c, d, a), ce = turn(c, d, b); return ab * ac <= 0 && cd * ce <= 0; }
-function intersectsRing(ring, bounds) { const frame = [[bounds.west, bounds.south], [bounds.east, bounds.south], [bounds.east, bounds.north], [bounds.west, bounds.north]]; return ring.some((point) => inBounds(point, bounds)) || frame.some((point) => inRing(point, ring)) || ring.some((point, index) => frame.some((corner, edge) => crosses(point, ring[index + 1] || ring[0], corner, frame[edge + 1] || frame[0]))); }
-async function visibleRegionIds(bounds: Bounds) { const data = await regionShapes; return [...new Set((data.features || []).filter((feature) => { const geometry = feature.geometry, polygons = geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates; return polygons.some((polygon) => polygon.some((ring) => intersectsRing(ring, bounds))); }).map((feature) => Number(feature.properties.id)).filter(Number.isFinite))]; }
+// Рамка для запроса точек: в полтора раза шире видимой области, чтобы панорамирование
+// в её пределах обходилось без новых запросов. Ключ рамки округляется до 0.001° (~100 м),
+// чтобы микродвижения карты не порождали новые наборы в кэше.
+type MapFrame = Bounds & { key: string; covers: (view: Bounds) => boolean };
+let loadedFrame: MapFrame | null = null;
+function viewFrame(bounds: Bounds): MapFrame {
+  const dx = (bounds.east - bounds.west) / 2, dy = (bounds.north - bounds.south) / 2, round = (value: number) => Math.round(value * 1000) / 1000;
+  const frame = { west: round(bounds.west - dx), east: round(bounds.east + dx), south: round(bounds.south - dy), north: round(bounds.north + dy) };
+  return { ...frame, key: `${frame.south},${frame.west},${frame.north},${frame.east}`, covers: (view: Bounds) => view.west >= frame.west && view.east <= frame.east && view.south >= frame.south && view.north <= frame.north };
+}
+// Фолбэк для бэкенда без LATITUDE/LONGITUDE: регион под центром видимой области.
+// Внутренние кольца (дырки) учитываем, из содержащих регионов выбираем наименьший —
+// иначе Москва попадёт во внешнее кольцо Московской области
+async function regionAtCenter(bounds: Bounds) {
+  const data = await regionShapes, x = (bounds.west + bounds.east) / 2, y = (bounds.south + bounds.north) / 2, point = [x, y];
+  const contains = (rings) => rings.length && inRing(point, rings[0]) && !rings.slice(1).some((ring) => inRing(point, ring));
+  let best: number | null = null, bestArea = Infinity;
+  for (const feature of data.features || []) {
+    const geometry = feature.geometry, polygons = geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
+    if (!polygons.some(contains)) continue;
+    const box = featureBounds(feature), area = (box.east - box.west) * (box.north - box.south);
+    if (area < bestArea) { bestArea = area; best = Number(feature.properties.id); }
+  }
+  return best !== null && Number.isFinite(best) ? best : null;
+}
 // Фильтрация пересчитывается только при смене данных/фильтров,
 // при панорамировании берётся готовый результат
 const filterCache = { key: "", filtered: [] as any[] };
 function filteredPoints() {
-  // Фильтры применяются на клиенте: серверная фильтрация точек по параметрам недоступна (504)
+  // Клиентски фильтруются только секции, чьи поля есть в точках (тип ДТП, тяжесть, участники);
+  // серверные секции (serverSections) уже отфильтрованы при загрузке /dtp/points
   const emTypes = participantEmTypes(), levels = severity();
-  const selected = Object.entries(state.selectedFilters).filter(([, values]) => values.length);
+  const selected = Object.entries(state.selectedFilters).filter(([key, values]) => values.length && !serverSections.includes(key));
   const key = `${state.rawItemsKey}|${emTypes?.join(",")}|${levels.join(",")}|${JSON.stringify(selected)}`;
   if (filterCache.key !== key) {
     filterCache.filtered = state.rawItems.filter((item) => item.point && passesFilters(item, emTypes, levels, selected));
@@ -519,32 +610,50 @@ async function loadMapData() {
   const controller = state.abort = new AbortController(), loadId = ++state.dataLoadId, view = currentView();
   setStatus(t("loadingMap"));
   try {
-    // Закреплённая территория загружается целиком, иначе — регионы в видимой области
-    const regionIds = state.territory ? [state.territory.id] : await visibleRegionIds(view.bounds);
-    if (state.dataLoadId !== loadId) return;
-    if (!regionIds.length) throw new Error("No regions in view");
-    const bucketKey = `${start}|${end}`;
-    const bucket = regionCache.get(bucketKey) ?? new Map();
+    const server = serverQuery(), chunks = monthChunks(start, end);
+    const bucketKey = `${start}|${end}|${server.toString()}`;
+    // Держим один активный бакет: смена периода/серверных фильтров даёт новый ключ
+    if (!regionCache.has(bucketKey)) { regionCache.clear(); loadedFrame = null; }
+    const bucket = regionCache.get(bucketKey) ?? new Map<string, any[]>();
     regionCache.set(bucketKey, bucket);
-    // Докачиваем только регионы, которых ещё нет в кэше (пустой результат тоже кэшируется)
-    const missing = regionIds.filter((id) => !bucket.has(id));
-    if (missing.length) {
+    // Два режима загрузки точек:
+    // 1) без закреплённой территории — рамка карты (точка + масштаб), параметрами LATITUDE/LONGITUDE;
+    // 2) закреплён регион и/или место — только эти точки, параметром REGION.
+    const frame = !state.territory && loadedFrame?.covers(view.bounds) ? loadedFrame : viewFrame(view.bounds);
+    const cacheKey = state.territory ? String(state.territory.id) : frame.key;
+    if (!bucket.has(cacheKey)) {
       $("#chart-period").textContent = `${start} — ${end}`;
-      await Promise.all(missing.map(async (id) => {
-        const query = new URLSearchParams({ DATE_TIME_FROM:`${start}T00:00:00`, DATE_TIME_TO:`${end}T23:59:59`, REGION:String(id) });
+      // Бэкенд ещё не умеет рамку (в /dtp/filter_fields нет LATITUDE) — режим карты
+      // деградирует в регион под центром видимой области
+      const fallback = !state.territory && !state.bboxSupported ? await regionAtCenter(view.bounds) : null;
+      if (state.dataLoadId !== loadId) return;
+      const items: any[] = [];
+      // Каждый запрос — не больше месяца; месяцы запрашиваем последовательно (сервер слабый)
+      for (const chunk of chunks) {
+        if (state.dataLoadId !== loadId) return;
+        const query = new URLSearchParams({ DATE_TIME_FROM:`${chunk.from}T00:00:00`, DATE_TIME_TO:`${chunk.to}T23:59:59` });
+        const regionId = state.territory ? state.territory.id : fallback;
+        if (regionId !== null) query.set("REGION", String(regionId));
+        else if (state.bboxSupported) {
+          query.set("LATITUDE_FROM", String(frame.south)); query.set("LATITUDE_TO", String(frame.north));
+          query.set("LONGITUDE_FROM", String(frame.west)); query.set("LONGITUDE_TO", String(frame.east));
+        } else { bucket.set(cacheKey, []); break; } // видимая область вне регионов РФ
+        server.forEach((value, key) => query.append(key, value));
         const response = await fetch(`${api}/dtp/points?${query}`, { signal: controller.signal });
         if (!response.ok) throw new Error("API unavailable");
-        bucket.set(id, pointItems(await response.json()));
-      }));
+        items.push(...pointItems(await response.json()));
+      }
+      bucket.set(cacheKey, items);
       if (state.dataLoadId !== loadId) return;
+      if (!state.territory) loadedFrame = frame;
+      renderAdvancedFilters();
     }
-    // Пересобираем rawItems только когда набор регионов реально изменился
-    const mergedKey = `${bucketKey}|${regionIds.join(",")}`;
+    // Пересобираем rawItems только когда набор реально изменился
+    const mergedKey = `${bucketKey}|${cacheKey}`;
     if (state.rawItemsKey !== mergedKey) {
       state.rawItemsKey = mergedKey;
-      state.rawItems = regionIds.flatMap((id) => bucket.get(id) ?? []);
+      state.rawItems = bucket.get(cacheKey) ?? [];
     }
-    if (missing.length) renderAdvancedFilters();
     renderMapData(view);
   } catch (error) {
     if (error.name !== "AbortError") setStatus(t("unavailable"));
@@ -555,10 +664,14 @@ async function loadFilters() {
   try {
     const fieldsResponse = await fetch(`${api}/dtp/filter_fields`);
     if (!fieldsResponse.ok) throw new Error("API unavailable");
-    // Секции проф-фильтра — только «Вид ДТП»: в точках API нет данных по нарушениям участников
-    const fields = await fieldsResponse.json(), advancedFields = fields.filter((field) => field.name === "EM_TYPE");
+    // Секции проф-фильтра: EM_TYPE фильтруется на клиенте (поле em_type_id есть в точках),
+    // серверные секции (serverSections) уходят параметрами в /dtp/points
+    const fields = await fieldsResponse.json(), advancedFields = fields.filter((field) => field.name === "EM_TYPE" || serverSections.includes(field.name));
+    // Рамка видимой области доступна, только если бэкенд знает LATITUDE/LONGITUDE
+    state.bboxSupported = fields.some((field) => field.name === "LATITUDE");
     const dictionaries = await Promise.all(advancedFields.map(async (field) => { const response = await fetch(`${api}/dict/${field.dict}`); return [field, response.ok ? await response.json() : []]; }));
-    for (const [, values] of dictionaries) for (const value of values) emTypeNames.set(Number(value.id), value.name);
+    // В emTypeNames идут только виды ДТП: id других словарей пересекаются и сломают попапы
+    for (const [field, values] of dictionaries) if (field.name === "EM_TYPE") for (const value of values) emTypeNames.set(Number(value.id), value.name);
     const end = new Date(dataRange.max), start = new Date(end); start.setDate(1); start.setMonth(start.getMonth() - 11);
     $("#start-date").value = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-01`; $("#end-date").value = dataRange.max; state.minDate = dataRange.min; state.maxDate = dataRange.max;
     state.filters = enrichFilters([
@@ -571,7 +684,9 @@ async function loadFilters() {
         { preview:"Дети", value:6 },
       ] },
       { name:"severity", values:[{ preview:"Без пострадавших", value:0, ui_tone:"none" }, { preview:"Лёгкий", value:1, ui_tone:"light" }, { preview:"Тяжёлый", value:3, ui_tone:"serious" }, { preview:"С погибшими", value:4, ui_tone:"fatal" }] },
-      ...dictionaries.map(([field, values]) => ({ name:field.name, key:"category", param:`${field.name}_IDS`, label:field.caption, values:values.map((value) => ({ value:value.id, preview:value.name })) })),
+      ...dictionaries.map(([field, values]) => ({ name:field.name, key:field.name === "EM_TYPE" ? "category" : field.name, param:`${field.name}_IDS`, label:t(serverSectionLabels[field.name]) || field.caption, values:values.map((value) => ({ value:value.id, preview:value.name })) })),
+      { name:"masks", key:"masks", param:"masks", label:t("signs"), values:maskFeatures.map(({ value, preview }) => ({ value, preview })) },
+      { name:"intervals", key:"intervals", param:"intervals", label:t("quantity"), values:intervalFields },
     ]);
     state.participants = (state.filters.find((filter) => filter.name === "participant_categories")?.values || []).map((participant) => ({ ...participant, selected: Boolean(participant.default) }));
     fetch(`${api}/dict/regions`).then((response) => response.ok ? response.json() : []).then((rows) => {
@@ -582,7 +697,9 @@ async function loadFilters() {
     }).catch(() => {});
     applyLanguage();
     updateTerritoryCard();
-    loadMapData();
+    // Прямая ссылка на территорию (?region=<id>) закрепляет её и сама грузит точки —
+    // стартовая загрузка по рамке тут не нужна, selectRegion вызовет loadMapData
+    if (!mapQuery.get("region")) loadMapData();
   } catch { setStatus(t("unavailable")); }
 }
 
