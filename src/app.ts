@@ -12,8 +12,8 @@ const state: MapState = { language: new URLSearchParams(location.search).get("la
 // Новые наборы докачиваются по одному, уже скачанные не запрашиваются повторно.
 const regionCache = new Map<string, Map<string, any[]>>();
 const copy = {
-  ru: { brandAria:"Карта ДТП — главная", mapAria:"Интерактивная карта ДТП", map:"Карта", blog:"Блог и исследования", data:"Скачать данные", about:"О проекте", team:"Команда", support:"Поддержать проект", statistics:"Статистика", filters:"Фильтры", analytics:"Аналитика", apply:"Применить", cancel:"Отмена", backToBasic:"Назад к стандартным фильтрам", allTime:"За всё время", basicFilter:"Базовый фильтр", professionalFilter:"Профессиональные фильтры", startPeriod:"Начало периода", endPeriod:"Конец периода", chooseYear:"Выберите год", chooseMonth:"Выберите месяц", search:"Поиск", dataPeriod:"Период данных", accidentsInRussia:"ДТП в России", region:"Регион", allRegions:"Все регионы", from:"С", to:"По", participants:"Участники ДТП", injurySeverity:"Вред здоровью", light:"Лёгкий", serious:"Тяжёлый", fatal:"С погибшими", accidentTypes:"Типы ДТП", violations:"Нарушения ПДД", weather:"Погода", streets:"Улицы", heatRadius:"Радиус", heatBlur:"Размытие", heatOpacity:"Мин. непрозрачность", loading:"Загружаем данные…", loadingMap:"Обновляем карту…", unavailable:"Не удалось получить данные. Попробуйте позднее.", officialData:"Официальные данные", accidents:"ДТП", injured:"Пострадали", dead:"Погибли", distribution:"Распределение по дням", selectedPeriod:"За выбранный период", byDays:"По дням", byHours:"По часам", byTypes:"По типам ДТП", chartNote:"Диаграмма построена по ДТП в видимой области.", accidentsInArea:"ДТП в видимой области", people:"чел.", deaths:"погибших", roadConditions:"УДС на месте ДТП", roadConditionsNear:"УДС поблизости", roadFactors:"Факторы, влияющие на движение", roadDefects:"Повреждения УДС", signs:"Признаки ДТП", quantity:"Количество" },
-  en: { brandAria:"Road accident map — home", mapAria:"Interactive road accident map", map:"Map", blog:"Blog & research", data:"Download data", about:"About the project", team:"Team", support:"Support the project", statistics:"Statistics", filters:"Filters", analytics:"Analytics", apply:"Apply", cancel:"Cancel", backToBasic:"Back to standard filters", allTime:"All time", basicFilter:"Basic filter", professionalFilter:"Professional filters", startPeriod:"Start of period", endPeriod:"End of period", chooseYear:"Select year", chooseMonth:"Select month", search:"Search", dataPeriod:"Data period", accidentsInRussia:"Road accidents in Russia", region:"Region", allRegions:"All regions", from:"From", to:"To", participants:"Road users", injurySeverity:"Injury severity", light:"Minor", serious:"Serious", fatal:"Fatal", accidentTypes:"Accident types", violations:"Traffic violations", weather:"Weather", streets:"Streets", heatRadius:"Radius", heatBlur:"Blur", heatOpacity:"Min. opacity", loading:"Loading data…", loadingMap:"Updating map…", unavailable:"Could not load data. Please try again later.", officialData:"Official data", accidents:"Accidents", injured:"Injured", dead:"Deaths", distribution:"Distribution by day", selectedPeriod:"Selected period", byDays:"By day", byHours:"By hour", byTypes:"By type", chartNote:"The chart is based on accidents in the visible area.", accidentsInArea:"Accidents in area", people:"people", deaths:"deaths", roadConditions:"Road conditions on site", roadConditionsNear:"Road conditions nearby", roadFactors:"Factors affecting traffic", roadDefects:"Road defects", signs:"Accident features", quantity:"Counts" },
+  ru: { brandAria:"Карта ДТП — главная", mapAria:"Интерактивная карта ДТП", map:"Карта", blog:"Блог и исследования", data:"Скачать данные", about:"О проекте", team:"Команда", support:"Поддержать проект", statistics:"Статистика", filters:"Фильтры", analytics:"Аналитика", cancel:"Отмена", backToBasic:"Назад к стандартным фильтрам", allTime:"За всё время", basicFilter:"Базовый фильтр", professionalFilter:"Профессиональные фильтры", startPeriod:"Начало периода", endPeriod:"Конец периода", chooseYear:"Выберите год", chooseMonth:"Выберите месяц", search:"Поиск", dataPeriod:"Период данных", accidentsInRussia:"ДТП в России", region:"Регион", allRegions:"Все регионы", from:"С", to:"По", participants:"Участники ДТП", injurySeverity:"Вред здоровью", light:"Лёгкий", serious:"Тяжёлый", fatal:"С погибшими", accidentTypes:"Типы ДТП", violations:"Нарушения ПДД", weather:"Погода", streets:"Улицы", heatRadius:"Радиус", heatBlur:"Размытие", heatOpacity:"Мин. непрозрачность", loading:"Загружаем данные…", loadingMap:"Обновляем карту…", unavailable:"Не удалось получить данные. Попробуйте позднее.", officialData:"Официальные данные", accidents:"ДТП", injured:"Пострадали", dead:"Погибли", distribution:"Распределение по дням", selectedPeriod:"За выбранный период", byDays:"По дням", byHours:"По часам", byTypes:"По типам ДТП", chartNote:"Диаграмма построена по ДТП в видимой области.", accidentsInArea:"ДТП в видимой области", people:"чел.", deaths:"погибших", roadConditions:"УДС на месте ДТП", roadConditionsNear:"УДС поблизости", roadFactors:"Факторы, влияющие на движение", roadDefects:"Повреждения УДС", signs:"Признаки ДТП", quantity:"Количество" },
+  en: { brandAria:"Road accident map — home", mapAria:"Interactive road accident map", map:"Map", blog:"Blog & research", data:"Download data", about:"About the project", team:"Team", support:"Support the project", statistics:"Statistics", filters:"Filters", analytics:"Analytics", cancel:"Cancel", backToBasic:"Back to standard filters", allTime:"All time", basicFilter:"Basic filter", professionalFilter:"Professional filters", startPeriod:"Start of period", endPeriod:"End of period", chooseYear:"Select year", chooseMonth:"Select month", search:"Search", dataPeriod:"Data period", accidentsInRussia:"Road accidents in Russia", region:"Region", allRegions:"All regions", from:"From", to:"To", participants:"Road users", injurySeverity:"Injury severity", light:"Minor", serious:"Serious", fatal:"Fatal", accidentTypes:"Accident types", violations:"Traffic violations", weather:"Weather", streets:"Streets", heatRadius:"Radius", heatBlur:"Blur", heatOpacity:"Min. opacity", loading:"Loading data…", loadingMap:"Updating map…", unavailable:"Could not load data. Please try again later.", officialData:"Official data", accidents:"Accidents", injured:"Injured", dead:"Deaths", distribution:"Distribution by day", selectedPeriod:"Selected period", byDays:"By day", byHours:"By hour", byTypes:"By type", chartNote:"The chart is based on accidents in the visible area.", accidentsInArea:"Accidents in area", people:"people", deaths:"deaths", roadConditions:"Road conditions on site", roadConditionsNear:"Road conditions nearby", roadFactors:"Factors affecting traffic", roadDefects:"Road defects", signs:"Accident features", quantity:"Counts" },
 };
 Object.assign(copy.ru, { regionSearch:"Введите адрес или регион", noInjured:"Без пострадавших (нет данных)", accidentKind:"Вид ДТП", show:"Показать", lockPin:"Данные закреплены по территории", unlock:"Открепить данные", participantUnavailable:"По этому типу участников пока нет данных в открытом API", noMatches:"Ничего не найдено" });
 Object.assign(copy.en, { regionSearch:"Enter address or region", noInjured:"No injuries (no data)", accidentKind:"Accident type", show:"Show", lockPin:"Data is pinned to the territory", unlock:"Unpin data", participantUnavailable:"No open API data for this road-user type yet", noMatches:"Nothing found" });
@@ -164,7 +164,7 @@ function renderParticipants() {
 function renderAdvancedControls() {
   const participants = $("#advanced-participants"), severity = $("#advanced-severity");
   participants.replaceChildren(...state.participants.map((participant) => { const label = document.createElement("label"), input = document.createElement("input"); input.type = "checkbox"; input.checked = participant.selected; input.disabled = !participantConfig[participant.value]?.emTypes && participant.value !== 1; input.addEventListener("change", () => { if (!participantConfig[participant.value]?.emTypes && participant.value !== 1) { input.checked = false; setStatus(t("participantUnavailable")); return; } participant.selected = input.checked; renderParticipants(); loadMapData(); }); label.append(input, document.createTextNode(participantLabel(participant))); return label; }));
-  severity.replaceChildren(...[...document.querySelectorAll<HTMLInputElement>('input[name="severity"]')].map((source) => { const value = Number(source.value), tone = state.filters.find((filter) => filter.name === "severity")?.values.find((item) => item.value === value)?.ui_tone || "light", label = document.createElement("label"), input = document.createElement("input"); label.className = `severity-tone ${tone}`; input.type = "checkbox"; input.checked = source.checked; input.disabled = source.disabled; input.addEventListener("change", () => { source.checked = input.checked; }); label.append(input, document.createTextNode(source.parentElement.textContent.trim())); return label; }));
+  severity.replaceChildren(...[...document.querySelectorAll<HTMLInputElement>('input[name="severity"]')].map((source) => { const value = Number(source.value), tone = state.filters.find((filter) => filter.name === "severity")?.values.find((item) => item.value === value)?.ui_tone || "light", label = document.createElement("label"), input = document.createElement("input"); label.className = `severity-tone ${tone}`; input.type = "checkbox"; input.checked = source.checked; input.disabled = source.disabled; input.addEventListener("change", () => { source.checked = input.checked; loadMapData(); }); label.append(input, document.createTextNode(source.parentElement.textContent.trim())); return label; }));
 }
 
 function chartBuckets() {
@@ -440,21 +440,38 @@ function markerPopup(item) {
   return html;
 }
 function dynamicValues(filter) { return filter.key === "street" && !filter.values.length ? [...new Set(state.rawItems.map((item) => item.street).filter(Boolean))].sort().map((value) => ({ value, preview:value })) : filter.values || []; }
+let filterReloadTimer: any;
+// Живая перезагрузка данных при смене параметров про-фильтров (без кнопки «Применить»);
+// для ввода с клавиатуры — с задержкой, для чекбоксов — сразу через loadMapData
+function scheduleFilterReload() { clearTimeout(filterReloadTimer); filterReloadTimer = setTimeout(loadMapData, 500); }
 function renderAdvancedFilters() {
   const root = $("#advanced-dynamic");
-  root.replaceChildren(...state.filters.filter((filter) => filter.param).map((filter) => {
-    const section = document.createElement("details"), title = document.createElement("summary"), name = document.createElement("span"), options = document.createElement("div"), key = filter.key || filter.name;
+  // Живая перезагрузка данных пересобирает панель — сохраняем раскрытые секции, поисковые запросы и фокус ввода
+  const previous = new Map();
+  for (const section of root.querySelectorAll(".advanced-collapse")) previous.set(section.dataset.label, { open: section.open, query: section.querySelector(".advanced-search")?.value ?? "" });
+  const active = document.activeElement;
+  let restore: { label: string; row?: string; input?: number; search?: boolean } | null = null;
+  if (active instanceof HTMLInputElement) {
+    const section = active.closest(".advanced-collapse"), row = active.closest(".advanced-interval");
+    if (section) restore = row
+      ? { label: (section as HTMLElement).dataset.label ?? "", row: row.querySelector("span")?.textContent ?? "", input: [...row.querySelectorAll("input")].indexOf(active) }
+      : { label: (section as HTMLElement).dataset.label ?? "", search: active.classList.contains("advanced-search") };
+  }
+  const sections = state.filters.filter((filter) => filter.param).map((filter) => {
+    const section = document.createElement("details"), title = document.createElement("summary"), name = document.createElement("span"), options = document.createElement("div"), key = filter.key || filter.name, saved = previous.get(filter.label);
+    section.dataset.label = filter.label;
     name.textContent = filter.label;
     // Интервалы «от–до» — числовые поля вместо списка значений
     if (filter.key === "intervals") {
       section.className = "advanced-collapse"; options.className = "advanced-options advanced-intervals";
+      if (saved?.open) section.open = true;
       const ru = state.language === "ru";
       for (const field of filter.values) {
         const range = state.selectedIntervals[field.param] || { from:"", to:"" }, row = document.createElement("div"), caption = document.createElement("span"), from = document.createElement("input"), to = document.createElement("input");
         row.className = "advanced-interval"; caption.textContent = field.preview;
         from.type = to.type = "number"; from.min = to.min = String(field.min); from.max = to.max = String(field.max); from.placeholder = to.placeholder = "…";
         from.value = range.from; to.value = range.to;
-        const sync = () => { if (from.value || to.value) state.selectedIntervals[field.param] = { from:from.value, to:to.value }; else delete state.selectedIntervals[field.param]; };
+        const sync = () => { if (from.value || to.value) state.selectedIntervals[field.param] = { from:from.value, to:to.value }; else delete state.selectedIntervals[field.param]; scheduleFilterReload(); };
         from.addEventListener("input", sync); to.addEventListener("input", sync);
         const mark = (text: string) => { const span = document.createElement("span"); span.textContent = text; return span; };
         const fromBox = document.createElement("label"); fromBox.className = "advanced-interval-field from"; fromBox.append(mark(ru ? "от" : "from"), from);
@@ -465,10 +482,21 @@ function renderAdvancedFilters() {
     }
     const search = document.createElement("input");
     section.className = "advanced-collapse" + (filter.key === "street" || filter.values.length > 8 ? " has-search" : "");
+    if (saved?.open) section.open = true;
     search.type = "search"; search.placeholder = t("search"); search.className = "advanced-search"; options.className = "advanced-options";
-    const draw = () => { const query = search.value.trim().toLowerCase(), selected = state.selectedFilters[key] || []; options.replaceChildren(...dynamicValues(filter).filter((item) => item.preview.toLowerCase().includes(query)).map((item) => { const label = document.createElement("label"), input = document.createElement("input"); if (item.ui_tone) label.className = `filter-tone ${item.ui_tone}`; input.type = "checkbox"; input.checked = selected.includes(item.value); input.addEventListener("change", () => { const values = new Set(state.selectedFilters[key] || []); input.checked ? values.add(item.value) : values.delete(item.value); state.selectedFilters[key] = [...values]; }); label.append(input, document.createTextNode(item.preview)); return label; })); };
+    if (saved?.query) search.value = saved.query;
+    const draw = () => { const query = search.value.trim().toLowerCase(), selected = state.selectedFilters[key] || []; options.replaceChildren(...dynamicValues(filter).filter((item) => item.preview.toLowerCase().includes(query)).map((item) => { const label = document.createElement("label"), input = document.createElement("input"); if (item.ui_tone) label.className = `filter-tone ${item.ui_tone}`; input.type = "checkbox"; input.checked = selected.includes(item.value); input.addEventListener("change", () => { const values = new Set(state.selectedFilters[key] || []); input.checked ? values.add(item.value) : values.delete(item.value); state.selectedFilters[key] = [...values]; loadMapData(); }); label.append(input, document.createTextNode(item.preview)); return label; })); };
     search.addEventListener("click", (event) => event.stopPropagation()); search.addEventListener("keydown", (event) => event.stopPropagation()); search.addEventListener("input", draw); title.append(name, search); section.append(title, options); draw(); return section;
-  }));
+  });
+  root.replaceChildren(...sections);
+  if (restore) {
+    const section = sections.find((item) => item.dataset.label === restore.label);
+    if (section) {
+      section.open = true;
+      if (restore.search) section.querySelector<HTMLInputElement>(".advanced-search")?.focus();
+      else if (restore.row !== undefined) { const row = [...section.querySelectorAll(".advanced-interval")].find((item) => item.querySelector("span")?.textContent === restore.row); const inputs = row ? [...row.querySelectorAll<HTMLInputElement>("input")] : []; inputs[restore.input ?? 0]?.focus(); }
+    }
+  }
 }
 function openAdvanced() { renderAdvancedControls(); renderAdvancedFilters(); syncAdvancedRegion(); document.body.classList.add("advanced-open"); setAdvancedCollapsed(false); $("#advanced-filter").hidden = false; }
 function syncAdvancedRegion() {
@@ -733,7 +761,6 @@ $("#advanced-region").addEventListener("change", async (event) => {
 document.querySelectorAll('input[name="severity"]').forEach((input) => input.addEventListener("change", reload));
 $("#close-advanced").addEventListener("click", () => setAdvancedCollapsed(!document.body.classList.contains("advanced-collapsed")));
 $("#back-to-basic").addEventListener("click", closeAdvanced);
-$("#apply-advanced").addEventListener("click", () => { closeAdvanced(); loadMapData(); });
 function setFiltersCollapsed(collapsed) { $("#filters").classList.toggle("collapsed", collapsed); document.body.classList.toggle("filters-collapsed", collapsed); $("#hide-filters").textContent = collapsed ? activeFiltersLabel() : "‹"; $("#hide-filters").setAttribute("aria-expanded", String(!collapsed)); if (collapsed) { $("#advanced-filter").hidden = true; $("#filters").hidden = false; } }
 let defaultPeriod: { start: string; end: string } | null = null;
 let defaultParticipants = "";
