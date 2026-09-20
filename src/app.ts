@@ -470,7 +470,7 @@ function renderAdvancedFilters() {
     search.addEventListener("click", (event) => event.stopPropagation()); search.addEventListener("keydown", (event) => event.stopPropagation()); search.addEventListener("input", draw); title.append(name, search); section.append(title, options); draw(); return section;
   }));
 }
-function openAdvanced() { renderAdvancedControls(); renderAdvancedFilters(); syncAdvancedRegion(); document.body.classList.add("advanced-open"); $("#advanced-filter").hidden = false; }
+function openAdvanced() { renderAdvancedControls(); renderAdvancedFilters(); syncAdvancedRegion(); document.body.classList.add("advanced-open"); setAdvancedCollapsed(false); $("#advanced-filter").hidden = false; }
 function syncAdvancedRegion() {
   const select = $("#advanced-region") as HTMLSelectElement;
   const options = [Object.assign(document.createElement("option"), { value: "", textContent: t("allRegions") })];
@@ -478,7 +478,8 @@ function syncAdvancedRegion() {
   select.replaceChildren(...options);
   select.value = state.territory ? String(state.territory.id) : "";
 }
-function closeAdvanced() { document.body.classList.remove("advanced-open"); $("#advanced-filter").hidden = true; $("#filters").hidden = false; }
+function closeAdvanced() { document.body.classList.remove("advanced-open"); setAdvancedCollapsed(false); $("#advanced-filter").hidden = true; $("#filters").hidden = false; }
+function setAdvancedCollapsed(collapsed) { document.body.classList.toggle("advanced-collapsed", collapsed); const button = $("#close-advanced"); button.textContent = collapsed ? activeFiltersLabel() : "‹"; button.setAttribute("aria-expanded", String(!collapsed)); }
 function passesFilters(item, emTypes, levels, categories) {
   return (!emTypes || emTypes.includes(item.category)) && (!levels.length || levels.includes(item.severity)) && categories.every(([key, values]) => Array.isArray(item[key]) ? item[key].some((value) => values.includes(value)) : values.includes(item[key]));
 }
@@ -730,7 +731,7 @@ $("#advanced-region").addEventListener("change", async (event) => {
   select.value = state.territory ? String(state.territory.id) : "";
 });
 document.querySelectorAll('input[name="severity"]').forEach((input) => input.addEventListener("change", reload));
-$("#close-advanced").addEventListener("click", closeAdvanced);
+$("#close-advanced").addEventListener("click", () => setAdvancedCollapsed(!document.body.classList.contains("advanced-collapsed")));
 $("#back-to-basic").addEventListener("click", closeAdvanced);
 $("#apply-advanced").addEventListener("click", () => { closeAdvanced(); loadMapData(); });
 function setFiltersCollapsed(collapsed) { $("#filters").classList.toggle("collapsed", collapsed); document.body.classList.toggle("filters-collapsed", collapsed); $("#hide-filters").textContent = collapsed ? activeFiltersLabel() : "‹"; $("#hide-filters").setAttribute("aria-expanded", String(!collapsed)); if (collapsed) { $("#advanced-filter").hidden = true; $("#filters").hidden = false; } }

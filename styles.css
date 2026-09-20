@@ -124,7 +124,7 @@ body .advanced-filter::-webkit-scrollbar { width:8px; }
 body .advanced-filter::-webkit-scrollbar-track { background:transparent; }
 body .advanced-filter::-webkit-scrollbar-thumb { border:2px solid #fff; border-radius:4px; background:#c3d2da; background-clip:padding-box; }
 body .advanced-filter .apply-advanced, body .advanced-filter .back-to-basic { width:auto; max-width:100%; }
-body .advanced-filter #close-advanced { display:flex; align-items:center; justify-content:center; position:fixed; left:540px; top:16px; right:auto; border-radius:50%; background:#fff; box-shadow:0 2px 8px #18334a30; font-size:20px; }
+body .advanced-filter #close-advanced { display:flex; align-items:center; justify-content:center; position:fixed; left:550px; top:16px; right:auto; border-radius:50%; background:#fff; box-shadow:0 2px 8px #18334a30; font-size:20px; }
 @media (max-width:800px) { body .advanced-filter #close-advanced { position:fixed; left:auto; right:16px; top:16px; } }
 /* Шевроны секций: симметричная стрелка (равные плечи) вместо «галочки» */
 .advanced-collapse summary::after { width:8px; height:8px; margin-left:12px; flex:none; border:solid var(--navy); border-width:1.5px 1.5px 0 0; content:""; transform:rotate(135deg); transition:transform .15s ease; }
@@ -138,3 +138,7 @@ body .advanced-filter #close-advanced { display:flex; align-items:center; justif
 .advanced-interval-field input::-webkit-outer-spin-button, .advanced-interval-field input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
 .advanced-interval-field input[type="number"] { -moz-appearance:textfield; appearance:textfield; }
 .advanced-interval-field:focus-within, .advanced-interval-field:has(input:not(:placeholder-shown)) { background:#e2f0f8; }
+/* Свёртка про-панели: #close-advanced не «назад», а скрывает сайдбар (статистика остаётся справа снизу, кнопка — пилюля слева сверху) */
+body.advanced-collapsed .advanced-filter { background:transparent; box-shadow:none; pointer-events:none; overflow:visible; }
+body.advanced-collapsed .advanced-filter .advanced-top-controls, body.advanced-collapsed .advanced-filter .advanced-collapse, body.advanced-collapsed .advanced-filter .advanced-dynamic, body.advanced-collapsed .advanced-filter .apply-advanced, body.advanced-collapsed .advanced-filter .back-to-basic { display:none; }
+body.advanced-collapsed .advanced-filter #close-advanced { align-items:center; justify-content:center; position:fixed; left:20px; right:auto; top:20px; bottom:auto; width:auto; height:40px; padding:0 20px; border-radius:20px; color:var(--navy); background:#fff; box-shadow:0 2px 10px #18334a2e; font-size:14px; white-space:nowrap; pointer-events:auto; }
