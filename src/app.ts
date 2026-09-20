@@ -3,17 +3,16 @@
 const api = ["localhost", "127.0.0.1"].includes(location.hostname) ? "/api" : "https://vpn.kulikow.ru:3000/api";
 const $ = (selector) => document.querySelector(selector);
 const dataRange = { min:"2015-01-01", max:"2026-08-31" };
-type MonthPickerState = { open: boolean; target: "start" | "end"; year: number | null; start: string; end: string };
-type MapState = { language: string; mapClient: "leaflet" | "yandex" | "mapbox"; participants: any[]; filters: any[]; selectedFilters: Record<string, any[]>; selectedIntervals: Record<string, { from: string; to: string }>; territory: { id: number; name: string } | null; abort: AbortController | null; items: any[]; rawItems: any[]; rawItemsKey: string; dataLoadId: number; chartMode: string; minDate: string; maxDate: string; picker: MonthPickerState; bboxSupported: boolean };
+type MapState = { language: string; mapClient: "leaflet" | "yandex" | "mapbox"; participants: any[]; filters: any[]; selectedFilters: Record<string, any[]>; selectedIntervals: Record<string, { from: string; to: string }>; territory: { id: number; name: string } | null; abort: AbortController | null; items: any[]; rawItems: any[]; rawItemsKey: string; dataLoadId: number; chartMode: string; minDate: string; maxDate: string; bboxSupported: boolean };
 type Bounds = { west: number; south: number; east: number; north: number };
 const persistedMapClient = localStorage.getItem("map-client");
-const state: MapState = { language: new URLSearchParams(location.search).get("lang") || localStorage.getItem("language") || "ru", mapClient: persistedMapClient === "yandex" || persistedMapClient === "mapbox" ? persistedMapClient : "leaflet", participants: [], filters: [], selectedFilters: {}, selectedIntervals: {}, territory: null, abort: null, items: [], rawItems: [], rawItemsKey: "", dataLoadId: 0, chartMode: "days", minDate: "2015-01-01", maxDate: "2024-12-31", picker: { open: false, target: "start", year: null, start: "2024-01-01", end: "2024-12-31" }, bboxSupported: false };
+const state: MapState = { language: new URLSearchParams(location.search).get("lang") || localStorage.getItem("language") || "ru", mapClient: persistedMapClient === "yandex" || persistedMapClient === "mapbox" ? persistedMapClient : "leaflet", participants: [], filters: [], selectedFilters: {}, selectedIntervals: {}, territory: null, abort: null, items: [], rawItems: [], rawItemsKey: "", dataLoadId: 0, chartMode: "days", minDate: "2015-01-01", maxDate: "2024-12-31", bboxSupported: false };
 // Кэш загруженных точек: ключ запроса (период + фильтры) → ключ набора (регион или рамка) → точки.
 // Новые наборы докачиваются по одному, уже скачанные не запрашиваются повторно.
 const regionCache = new Map<string, Map<string, any[]>>();
 const copy = {
-  ru: { brandAria:"Карта ДТП — главная", mapAria:"Интерактивная карта ДТП", map:"Карта", blog:"Блог и исследования", data:"Скачать данные", about:"О проекте", team:"Команда", support:"Поддержать проект", statistics:"Статистика", filters:"Фильтры", analytics:"Аналитика", cancel:"Отмена", backToBasic:"Назад к стандартным фильтрам", allTime:"За всё время", basicFilter:"Базовый фильтр", professionalFilter:"Профессиональные фильтры", startPeriod:"Начало периода", endPeriod:"Конец периода", chooseYear:"Выберите год", chooseMonth:"Выберите месяц", search:"Поиск", dataPeriod:"Период данных", accidentsInRussia:"ДТП в России", region:"Регион", allRegions:"Все регионы", from:"С", to:"По", participants:"Участники ДТП", injurySeverity:"Вред здоровью", light:"Лёгкий", serious:"Тяжёлый", fatal:"С погибшими", accidentTypes:"Типы ДТП", violations:"Нарушения ПДД", weather:"Погода", streets:"Улицы", heatRadius:"Радиус", heatBlur:"Размытие", heatOpacity:"Мин. непрозрачность", loading:"Загружаем данные…", loadingMap:"Обновляем карту…", unavailable:"Не удалось получить данные. Попробуйте позднее.", officialData:"Официальные данные", accidents:"ДТП", injured:"Пострадали", dead:"Погибли", distribution:"Распределение по дням", selectedPeriod:"За выбранный период", byDays:"По дням", byHours:"По часам", byTypes:"По типам ДТП", chartNote:"Диаграмма построена по ДТП в видимой области.", accidentsInArea:"ДТП в видимой области", people:"чел.", deaths:"погибших", roadConditions:"УДС на месте ДТП", roadConditionsNear:"УДС поблизости", roadFactors:"Факторы, влияющие на движение", roadDefects:"Повреждения УДС", signs:"Признаки ДТП", quantity:"Количество" },
-  en: { brandAria:"Road accident map — home", mapAria:"Interactive road accident map", map:"Map", blog:"Blog & research", data:"Download data", about:"About the project", team:"Team", support:"Support the project", statistics:"Statistics", filters:"Filters", analytics:"Analytics", cancel:"Cancel", backToBasic:"Back to standard filters", allTime:"All time", basicFilter:"Basic filter", professionalFilter:"Professional filters", startPeriod:"Start of period", endPeriod:"End of period", chooseYear:"Select year", chooseMonth:"Select month", search:"Search", dataPeriod:"Data period", accidentsInRussia:"Road accidents in Russia", region:"Region", allRegions:"All regions", from:"From", to:"To", participants:"Road users", injurySeverity:"Injury severity", light:"Minor", serious:"Serious", fatal:"Fatal", accidentTypes:"Accident types", violations:"Traffic violations", weather:"Weather", streets:"Streets", heatRadius:"Radius", heatBlur:"Blur", heatOpacity:"Min. opacity", loading:"Loading data…", loadingMap:"Updating map…", unavailable:"Could not load data. Please try again later.", officialData:"Official data", accidents:"Accidents", injured:"Injured", dead:"Deaths", distribution:"Distribution by day", selectedPeriod:"Selected period", byDays:"By day", byHours:"By hour", byTypes:"By type", chartNote:"The chart is based on accidents in the visible area.", accidentsInArea:"Accidents in area", people:"people", deaths:"deaths", roadConditions:"Road conditions on site", roadConditionsNear:"Road conditions nearby", roadFactors:"Factors affecting traffic", roadDefects:"Road defects", signs:"Accident features", quantity:"Counts" },
+  ru: { brandAria:"Карта ДТП — главная", mapAria:"Интерактивная карта ДТП", map:"Карта", blog:"Блог и исследования", data:"Скачать данные", about:"О проекте", team:"Команда", support:"Поддержать проект", statistics:"Статистика", filters:"Фильтры", analytics:"Аналитика", cancel:"Отмена", backToBasic:"Назад к стандартным фильтрам", allTime:"За всё время", basicFilter:"Базовый фильтр", professionalFilter:"Профессиональные фильтры", search:"Поиск", dataPeriod:"Период данных", accidentsInRussia:"ДТП в России", region:"Регион", allRegions:"Все регионы", from:"С", to:"По", participants:"Участники ДТП", injurySeverity:"Вред здоровью", light:"Лёгкий", serious:"Тяжёлый", fatal:"С погибшими", accidentTypes:"Типы ДТП", violations:"Нарушения ПДД", weather:"Погода", streets:"Улицы", heatRadius:"Радиус", heatBlur:"Размытие", heatOpacity:"Мин. непрозрачность", loading:"Загружаем данные…", loadingMap:"Обновляем карту…", unavailable:"Не удалось получить данные. Попробуйте позднее.", officialData:"Официальные данные", accidents:"ДТП", injured:"Пострадали", dead:"Погибли", distribution:"Распределение по дням", selectedPeriod:"За выбранный период", byDays:"По дням", byHours:"По часам", byTypes:"По типам ДТП", chartNote:"Диаграмма построена по ДТП в видимой области.", accidentsInArea:"ДТП в видимой области", people:"чел.", deaths:"погибших", roadConditions:"УДС на месте ДТП", roadConditionsNear:"УДС поблизости", roadFactors:"Факторы, влияющие на движение", roadDefects:"Повреждения УДС", signs:"Признаки ДТП", quantity:"Количество" },
+  en: { brandAria:"Road accident map — home", mapAria:"Interactive road accident map", map:"Map", blog:"Blog & research", data:"Download data", about:"About the project", team:"Team", support:"Support the project", statistics:"Statistics", filters:"Filters", analytics:"Analytics", cancel:"Cancel", backToBasic:"Back to standard filters", allTime:"All time", basicFilter:"Basic filter", professionalFilter:"Professional filters", search:"Search", dataPeriod:"Data period", accidentsInRussia:"Road accidents in Russia", region:"Region", allRegions:"All regions", from:"From", to:"To", participants:"Road users", injurySeverity:"Injury severity", light:"Minor", serious:"Serious", fatal:"Fatal", accidentTypes:"Accident types", violations:"Traffic violations", weather:"Weather", streets:"Streets", heatRadius:"Radius", heatBlur:"Blur", heatOpacity:"Min. opacity", loading:"Loading data…", loadingMap:"Updating map…", unavailable:"Could not load data. Please try again later.", officialData:"Official data", accidents:"Accidents", injured:"Injured", dead:"Deaths", distribution:"Distribution by day", selectedPeriod:"Selected period", byDays:"By day", byHours:"By hour", byTypes:"By type", chartNote:"The chart is based on accidents in the visible area.", accidentsInArea:"Accidents in area", people:"people", deaths:"deaths", roadConditions:"Road conditions on site", roadConditionsNear:"Road conditions nearby", roadFactors:"Factors affecting traffic", roadDefects:"Road defects", signs:"Accident features", quantity:"Counts" },
 };
 Object.assign(copy.ru, { regionSearch:"Введите адрес или регион", noInjured:"Без пострадавших (нет данных)", accidentKind:"Вид ДТП", show:"Показать", lockPin:"Данные закреплены по территории", unlock:"Открепить данные", participantUnavailable:"По этому типу участников пока нет данных в открытом API", noMatches:"Ничего не найдено" });
 Object.assign(copy.en, { regionSearch:"Enter address or region", noInjured:"No injuries (no data)", accidentKind:"Accident type", show:"Show", lockPin:"Data is pinned to the territory", unlock:"Unpin data", participantUnavailable:"No open API data for this road-user type yet", noMatches:"Nothing found" });
@@ -81,8 +80,6 @@ function period() { return { start: $("#start-date").value, end: $("#end-date").
 function severity() { return [...document.querySelectorAll('input[name="severity"]:checked')].map((input) => Number(input.value)); }
 function selectedParticipants() { return state.participants.filter((participant) => participant.selected).map((participant) => participant.value); }
 function setStatus(message) { $("#filter-status").textContent = message; }
-function monthValue(value) { return value.slice(0, 7); }
-function monthStartValue(value) { return `${value}-01`; }
 function monthEndValue(value) { const [year, month] = value.split("-").map(Number); return `${year}-${String(month).padStart(2, "0")}-${new Date(year, month, 0).getDate()}`; }
 // [from..to] (YYYY-MM-DD) → отрезки, не выходящие за пределы одного календарного месяца:
 // слабому бэкенду легче отвечать на много мелких запросов, чем на один за весь период
@@ -98,33 +95,56 @@ function monthChunks(from: string, to: string) {
   }
   return chunks;
 }
-function displayMonth(value) { return intlFormatter("month-year", { month: "long", year: "numeric" }).format(new Date(`${value}-01T00:00:00`)); }
+
+// Период данных: поле «ДД.ММ.ГГГГ - ДД.ММ.ГГГГ» + дропдаун пресетов (как на dtp-stat.ru):
+// последний месяц с данными, предыдущий, годы и «За всё время»
+function formatDate(value) { const [year, month, day] = value.split("-"); return `${day}.${month}.${year}`; }
 
 function renderDateFields() {
-  const value = `${displayMonth(monthValue($("#start-date").value))} — ${displayMonth(monthValue($("#end-date").value))}`;
+  const value = `${formatDate($("#start-date").value)} - ${formatDate($("#end-date").value)}`;
   document.querySelectorAll("#date-range-value, #advanced-date-range-value").forEach((node) => { node.textContent = value; });
-  document.querySelectorAll("#date-range-button, #advanced-date-range-button").forEach((node) => node.setAttribute("aria-expanded", String(state.picker.open)));
+  document.querySelectorAll("#date-range-button, #advanced-date-range-button").forEach((node) => node.setAttribute("aria-expanded", String(!$("#date-menu").hidden)));
 }
 
-function renderMonthPicker() {
-  const picker = $("#month-picker"), months = $("#month-picker-months"), years = $("#month-picker-years"), { target, year } = state.picker;
-  picker.hidden = !state.picker.open; if (!state.picker.open) return;
-  $("#month-picker-title").textContent = `${t(target === "start" ? "startPeriod" : "endPeriod")}: ${t(year === null ? "chooseYear" : "chooseMonth")}`;
-  const minimum = monthValue(state.minDate), maximum = monthValue(state.maxDate), firstYear = Number(minimum.slice(0, 4)), lastYear = Number(maximum.slice(0, 4)), selectedStart = monthValue(state.picker.start);
-  years.replaceChildren(...Array.from({ length: lastYear - firstYear + 1 }, (_, index) => lastYear - index).map((value) => { const button = document.createElement("button"); button.type = "button"; button.textContent = String(value); button.disabled = target === "end" && value < Number(selectedStart.slice(0, 4)); button.classList.toggle("active", value === year); button.addEventListener("click", () => { state.picker.year = value; renderMonthPicker(); }); return button; }));
-  months.hidden = year === null; if (year === null) { months.replaceChildren(); return; }
-  months.replaceChildren(...Array.from({ length: 12 }, (_, index) => { const value = `${year}-${String(index + 1).padStart(2, "0")}`, button = document.createElement("button"); button.type = "button"; button.textContent = intlFormatter("month", { month: "long" }).format(new Date(year, index, 1)); button.disabled = value < minimum || value > maximum || (target === "end" && value < selectedStart); button.classList.toggle("active", value === monthValue(target === "start" ? state.picker.start : state.picker.end)); button.addEventListener("click", () => selectPickerMonth(value)); return button; }));
+function dateMenuPresets() {
+  const today = new Date(), todayValue = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const maximum = dataRange.max < todayValue ? dataRange.max : todayValue;
+  const [maxYear, maxMonth] = maximum.split("-").map(Number);
+  const lastMonthStart = `${maxYear}-${String(maxMonth).padStart(2, "0")}-01`;
+  const previous = new Date(maxYear, maxMonth - 2, 1), previousStart = `${previous.getFullYear()}-${String(previous.getMonth() + 1).padStart(2, "0")}-01`;
+  const monthName = (start) => { const name = intlFormatter("month", { month: "long" }).format(new Date(`${start}T00:00:00`)); return name.charAt(0).toUpperCase() + name.slice(1); };
+  const firstYear = Math.max(Number(dataRange.min.slice(0, 4)), maxYear - 5);
+  const presets = [
+    { label: monthName(lastMonthStart), start: lastMonthStart, end: monthEndValue(lastMonthStart) },
+    { label: monthName(previousStart), start: previousStart, end: monthEndValue(previousStart) },
+  ];
+  for (let year = maxYear; year >= firstYear; year--) presets.push({ label: String(year), start: `${year}-01-01`, end: `${year}-12-31` });
+  presets.push({ label: t("allTime"), start: dataRange.min, end: todayValue });
+  return presets;
 }
 
-function selectPickerMonth(value) {
-  if (state.picker.target === "start") { state.picker.start = monthStartValue(value); state.picker.target = "end"; state.picker.year = null; renderMonthPicker(); return; }
-  state.picker.end = monthEndValue(value); $("#start-date").value = state.picker.start; $("#end-date").value = state.picker.end; state.picker.open = false; renderDateFields(); renderMonthPicker(); loadMapData();
+function renderDateMenu() {
+  const menu = $("#date-menu");
+  menu.replaceChildren(...dateMenuPresets().map((preset) => { const item = document.createElement("div"); item.className = "date-value"; item.textContent = preset.label; item.addEventListener("click", () => { $("#start-date").value = preset.start; $("#end-date").value = preset.end; closeDateMenu(); loadMapData(); }); return item; }));
 }
 
-function openMonthPicker() {
-  state.picker = { open: true, target: "start", year: null, start: $("#start-date").value, end: $("#end-date").value };
-  renderDateFields(); renderMonthPicker();
+function closeDateMenu() { dateMenuButton = null; $("#date-menu").hidden = true; renderDateFields(); }
+
+function openDateMenu(button) {
+  const menu = $("#date-menu");
+  if (dateMenuButton === button && !menu.hidden) { closeDateMenu(); return; }
+  renderDateMenu();
+  dateMenuButton = button;
+  menu.hidden = false;
+  const rect = button.getBoundingClientRect();
+  menu.style.top = `${Math.round(rect.bottom + 4)}px`;
+  const width = menu.offsetWidth || 200;
+  let left = rect.left;
+  if (left + width > window.innerWidth - 12) left = window.innerWidth - 12 - width;
+  menu.style.left = `${Math.round(Math.max(left, 12))}px`;
+  renderDateFields();
 }
+let dateMenuButton: Element | null = null;
 
 function applyLanguage() {
   document.documentElement.lang = state.language;
@@ -136,7 +156,7 @@ function applyLanguage() {
   renderAdvancedControls();
   renderAdvancedFilters();
   renderDateFields();
-  renderMonthPicker();
+  closeDateMenu();
   renderHeatControls();
 }
 
@@ -747,8 +767,8 @@ async function loadFilters() {
 const reload = () => loadMapData();
 $("#start-date").addEventListener("change", reload);
 $("#end-date").addEventListener("change", reload);
-$("#date-range-button").addEventListener("click", openMonthPicker);
-$("#advanced-date-range-button").addEventListener("click", openMonthPicker);
+$("#date-range-button").addEventListener("click", (event) => openDateMenu(event.currentTarget as Element));
+$("#advanced-date-range-button").addEventListener("click", (event) => openDateMenu(event.currentTarget as Element));
 $("#advanced-region").addEventListener("change", async (event) => {
   const select = event.target as HTMLSelectElement, id = Number(select.value);
   if (!id) { state.territory = null; updateTerritoryCard(); loadMapData(); }
@@ -788,7 +808,11 @@ $("#professional-toggle").addEventListener("click", openAdvanced);
 $("#region-search").addEventListener("input", drawRegionSuggest);
 $("#region-search").addEventListener("focus", drawRegionSuggest);
 $("#lock-button").addEventListener("click", () => { if (!state.territory) return; state.territory = null; updateTerritoryCard(); loadMapData(); });
-document.addEventListener("click", (event) => { if (!(event.target as Element).closest(".region-search")) $("#region-suggest").hidden = true; });
+document.addEventListener("click", (event) => {
+  const target = event.target as Element;
+  if (!target.closest(".region-search")) $("#region-suggest").hidden = true;
+  if (!target.closest("#date-menu") && !target.closest("#date-range-button") && !target.closest("#advanced-date-range-button") && !$("#date-menu").hidden) closeDateMenu();
+});
 document.querySelectorAll("[data-quick-map]").forEach((button) => button.addEventListener("click", () => switchMapClient(button.dataset.quickMap as "leaflet" | "yandex" | "mapbox")));
 $("#chart-button").addEventListener("click", () => { $("#chart").hidden = false; renderChart(); });
 $("#close-chart").addEventListener("click", () => { $("#chart").hidden = true; });
