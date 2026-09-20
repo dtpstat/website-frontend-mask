@@ -448,14 +448,18 @@ function renderAdvancedFilters() {
     // Интервалы «от–до» — числовые поля вместо списка значений
     if (filter.key === "intervals") {
       section.className = "advanced-collapse"; options.className = "advanced-options advanced-intervals";
+      const ru = state.language === "ru";
       for (const field of filter.values) {
         const range = state.selectedIntervals[field.param] || { from:"", to:"" }, row = document.createElement("div"), caption = document.createElement("span"), from = document.createElement("input"), to = document.createElement("input");
         row.className = "advanced-interval"; caption.textContent = field.preview;
-        from.type = to.type = "number"; from.min = to.min = String(field.min); from.max = to.max = String(field.max); from.placeholder = t("from"); to.placeholder = t("to");
+        from.type = to.type = "number"; from.min = to.min = String(field.min); from.max = to.max = String(field.max); from.placeholder = to.placeholder = "…";
         from.value = range.from; to.value = range.to;
         const sync = () => { if (from.value || to.value) state.selectedIntervals[field.param] = { from:from.value, to:to.value }; else delete state.selectedIntervals[field.param]; };
         from.addEventListener("input", sync); to.addEventListener("input", sync);
-        row.append(caption, from, to); options.append(row);
+        const mark = (text: string) => { const span = document.createElement("span"); span.textContent = text; return span; };
+        const fromBox = document.createElement("label"); fromBox.className = "advanced-interval-field from"; fromBox.append(mark(ru ? "от" : "from"), from);
+        const toBox = document.createElement("label"); toBox.className = "advanced-interval-field to"; toBox.append(mark(ru ? "до" : "to"), to);
+        row.append(caption, fromBox, toBox); options.append(row);
       }
       title.append(name); section.append(title, options); return section;
     }

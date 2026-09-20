@@ -130,3 +130,11 @@ body .advanced-filter #close-advanced { display:flex; align-items:center; justif
 .advanced-collapse summary::after { width:8px; height:8px; margin-left:12px; flex:none; border:solid var(--navy); border-width:1.5px 1.5px 0 0; content:""; transform:rotate(135deg); transition:transform .15s ease; }
 .advanced-collapse[open] summary::after { transform:rotate(-45deg); }
 .advanced-collapse.has-search summary { grid-template-columns:59px minmax(0, 1fr) 9px; }
+/* Числовые поля «от–до» в секции «Количество»: префикс внутри поля, пустое — серое, заполненное/в фокусе — голубое */
+.advanced-interval-field { display:flex; flex:none; align-items:center; gap:4px; width:118px; height:33px; padding:0 10px; border-radius:4px; background:var(--pale); cursor:text; }
+.advanced-interval-field span { flex:none; color:var(--navy); font-size:14px; line-height:20px; }
+.advanced-interval-field input { flex:1; width:0; min-width:0; height:auto; margin:0; padding:0; border:0; border-radius:0; outline:0; background:transparent; color:var(--navy); font-size:14px; line-height:20px; }
+.advanced-interval-field input::placeholder { color:#18334a66; }
+.advanced-interval-field input::-webkit-outer-spin-button, .advanced-interval-field input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+.advanced-interval-field input[type="number"] { -moz-appearance:textfield; appearance:textfield; }
+.advanced-interval-field:focus-within, .advanced-interval-field:has(input:not(:placeholder-shown)) { background:#e2f0f8; }
