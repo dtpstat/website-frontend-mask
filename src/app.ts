@@ -466,7 +466,7 @@ function renderAdvancedFilters() {
     search.addEventListener("click", (event) => event.stopPropagation()); search.addEventListener("keydown", (event) => event.stopPropagation()); search.addEventListener("input", draw); title.append(name, search); section.append(title, options); draw(); return section;
   }));
 }
-function openAdvanced() { renderAdvancedControls(); renderAdvancedFilters(); $("#filters").hidden = true; $("#statistics").hidden = true; $("#advanced-filter").hidden = false; }
+function openAdvanced() { renderAdvancedControls(); renderAdvancedFilters(); $("#filters").hidden = true; $("#advanced-filter").hidden = false; }
 function passesFilters(item, emTypes, levels, categories) {
   return (!emTypes || emTypes.includes(item.category)) && (!levels.length || levels.includes(item.severity)) && categories.every(([key, values]) => Array.isArray(item[key]) ? item[key].some((value) => values.includes(value)) : values.includes(item[key]));
 }
@@ -709,9 +709,9 @@ $("#end-date").addEventListener("change", reload);
 $("#date-range-button").addEventListener("click", openMonthPicker);
 $("#advanced-date-range-button").addEventListener("click", openMonthPicker);
 document.querySelectorAll('input[name="severity"]').forEach((input) => input.addEventListener("change", reload));
-$("#close-advanced").addEventListener("click", () => { $("#advanced-filter").hidden = true; $("#filters").hidden = false; $("#statistics").hidden = false; });
-$("#apply-advanced").addEventListener("click", () => { $("#advanced-filter").hidden = true; $("#filters").hidden = false; $("#statistics").hidden = false; loadMapData(); });
-function setFiltersCollapsed(collapsed) { $("#filters").classList.toggle("collapsed", collapsed); $("#hide-filters").textContent = collapsed ? t("filters") : "⌃"; $("#hide-filters").setAttribute("aria-expanded", String(!collapsed)); if (collapsed) { $("#advanced-filter").hidden = true; $("#filters").hidden = false; $("#statistics").hidden = false; } }
+$("#close-advanced").addEventListener("click", () => { $("#advanced-filter").hidden = true; $("#filters").hidden = false; });
+$("#apply-advanced").addEventListener("click", () => { $("#advanced-filter").hidden = true; $("#filters").hidden = false; loadMapData(); });
+function setFiltersCollapsed(collapsed) { $("#filters").classList.toggle("collapsed", collapsed); $("#hide-filters").textContent = collapsed ? t("filters") : "⌃"; $("#hide-filters").setAttribute("aria-expanded", String(!collapsed)); if (collapsed) { $("#advanced-filter").hidden = true; $("#filters").hidden = false; } }
 $("#hide-filters").addEventListener("click", () => setFiltersCollapsed(!$("#filters").classList.contains("collapsed")));
 if (matchMedia("(max-width: 800px)").matches) setFiltersCollapsed(true);
 $("#professional-toggle").addEventListener("click", openAdvanced);
