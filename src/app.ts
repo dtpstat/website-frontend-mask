@@ -466,7 +466,14 @@ function renderAdvancedFilters() {
     search.addEventListener("click", (event) => event.stopPropagation()); search.addEventListener("keydown", (event) => event.stopPropagation()); search.addEventListener("input", draw); title.append(name, search); section.append(title, options); draw(); return section;
   }));
 }
-function openAdvanced() { renderAdvancedControls(); renderAdvancedFilters(); document.body.classList.add("advanced-open"); $("#advanced-filter").hidden = false; }
+function openAdvanced() { renderAdvancedControls(); renderAdvancedFilters(); syncAdvancedRegion(); document.body.classList.add("advanced-open"); $("#advanced-filter").hidden = false; }
+function syncAdvancedRegion() {
+  const select = $("#advanced-region") as HTMLSelectElement;
+  const options = [Object.assign(document.createElement("option"), { value: "", textContent: t("allRegions") })];
+  for (const region of [...regionIndex].sort((a, b) => a.name.localeCompare(b.name, "ru"))) options.push(Object.assign(document.createElement("option"), { value: String(region.id), textContent: region.name }));
+  select.replaceChildren(...options);
+  select.value = state.territory ? String(state.territory.id) : "";
+}
 function closeAdvanced() { document.body.classList.remove("advanced-open"); $("#advanced-filter").hidden = true; $("#filters").hidden = false; }
 function passesFilters(item, emTypes, levels, categories) {
   return (!emTypes || emTypes.includes(item.category)) && (!levels.length || levels.includes(item.severity)) && categories.every(([key, values]) => Array.isArray(item[key]) ? item[key].some((value) => values.includes(value)) : values.includes(item[key]));
@@ -709,6 +716,15 @@ $("#start-date").addEventListener("change", reload);
 $("#end-date").addEventListener("change", reload);
 $("#date-range-button").addEventListener("click", openMonthPicker);
 $("#advanced-date-range-button").addEventListener("click", openMonthPicker);
+$("#advanced-region").addEventListener("change", async (event) => {
+  const select = event.target as HTMLSelectElement, id = Number(select.value);
+  if (!id) { state.territory = null; updateTerritoryCard(); loadMapData(); }
+  else {
+    const region = regionIndex.find((item) => item.id === id);
+    if (region) await selectRegion(region);
+  }
+  select.value = state.territory ? String(state.territory.id) : "";
+});
 document.querySelectorAll('input[name="severity"]').forEach((input) => input.addEventListener("change", reload));
 $("#close-advanced").addEventListener("click", closeAdvanced);
 $("#back-to-basic").addEventListener("click", closeAdvanced);
