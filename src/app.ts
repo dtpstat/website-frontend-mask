@@ -729,7 +729,27 @@ document.querySelectorAll('input[name="severity"]').forEach((input) => input.add
 $("#close-advanced").addEventListener("click", closeAdvanced);
 $("#back-to-basic").addEventListener("click", closeAdvanced);
 $("#apply-advanced").addEventListener("click", () => { closeAdvanced(); loadMapData(); });
-function setFiltersCollapsed(collapsed) { $("#filters").classList.toggle("collapsed", collapsed); $("#hide-filters").textContent = collapsed ? t("filters") : "⌃"; $("#hide-filters").setAttribute("aria-expanded", String(!collapsed)); if (collapsed) { $("#advanced-filter").hidden = true; $("#filters").hidden = false; } }
+function setFiltersCollapsed(collapsed) { $("#filters").classList.toggle("collapsed", collapsed); document.body.classList.toggle("filters-collapsed", collapsed); $("#hide-filters").textContent = collapsed ? activeFiltersLabel() : "‹"; $("#hide-filters").setAttribute("aria-expanded", String(!collapsed)); if (collapsed) { $("#advanced-filter").hidden = true; $("#filters").hidden = false; } }
+let defaultPeriod: { start: string; end: string } | null = null;
+let defaultParticipants = "";
+function activeFiltersCount() {
+  if (!defaultPeriod) defaultPeriod = period();
+  if (!defaultParticipants) defaultParticipants = selectedParticipants().sort().join(",");
+  const { start, end } = period();
+  let count = 0;
+  if (start !== defaultPeriod.start || end !== defaultPeriod.end) count++;
+  if (state.territory) count++;
+  if (selectedParticipants().sort().join(",") !== defaultParticipants) count++;
+  const severityInputs = [...document.querySelectorAll('input[name="severity"]')] as HTMLInputElement[];
+  if (severityInputs.length && severityInputs.some((input) => !input.checked)) count++;
+  if (serverQuery().size) count++;
+  return count;
+}
+function activeFiltersLabel() {
+  const count = activeFiltersCount();
+  if (state.language !== "ru") return `${t("filters")} (${count} active)`;
+  return `${t("filters")} (${count} ${count % 10 === 1 && count % 100 !== 11 ? "активный" : "активных"})`;
+}
 $("#hide-filters").addEventListener("click", () => setFiltersCollapsed(!$("#filters").classList.contains("collapsed")));
 if (matchMedia("(max-width: 800px)").matches) setFiltersCollapsed(true);
 $("#professional-toggle").addEventListener("click", openAdvanced);

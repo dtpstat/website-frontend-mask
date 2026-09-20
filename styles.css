@@ -104,3 +104,17 @@ body.advanced-open .filters .filters-heading, body.advanced-open .filters .filte
 body.advanced-open .filters .statistics { position:fixed; left:auto; right:20px; top:auto; bottom:20px; z-index:2; width:344px; margin:0; padding:20px; gap:14px; border:0; border-radius:12px; box-shadow:0 4px 18px #18334a2b; pointer-events:auto; }
 body.advanced-open .heat-controls { bottom:250px; }
 @media (max-width:800px) { body.advanced-open .filters .statistics { display:none; } body .advanced-filter .back-to-basic { width:100%; } }
+/* Кастомный скролл сайдбара: тонкий, с зарезервированным местом — горизонтальная прокрутка не появляется */
+body .filters:not(.collapsed) .filters-body { overflow-x:hidden; scrollbar-gutter:stable; scrollbar-width:thin; scrollbar-color:#b9c9d2 transparent; }
+body .filters:not(.collapsed) .filters-body::-webkit-scrollbar { width:8px; }
+body .filters:not(.collapsed) .filters-body::-webkit-scrollbar-track { background:transparent; }
+body .filters:not(.collapsed) .filters-body::-webkit-scrollbar-thumb { border:2px solid #fff; border-radius:4px; background:#c3d2da; background-clip:padding-box; }
+body .filters:not(.collapsed) .quick-filter-list { grid-template-columns:repeat(3, minmax(0, 1fr)); }
+body .filters:not(.collapsed) #hide-filters { align-items:center; justify-content:center; top:16px; right:-42px; width:32px; height:32px; border-radius:50%; background:#fff; box-shadow:0 2px 8px #18334a30; font-size:20px; line-height:1; }
+/* Свёрнутый сайдбар: пилюля «Фильтры (n активных)» слева сверху + статистика боксом в левом нижнем углу */
+body.filters-collapsed .filters { background:transparent; box-shadow:none; pointer-events:none; overflow:visible; }
+body.filters-collapsed .filters .filters-heading, body.filters-collapsed .filters .filters-body { display:none; }
+body.filters-collapsed .filters #statistics { display:flex; flex-direction:column; align-items:stretch; position:fixed; left:20px; right:auto; top:auto; bottom:20px; z-index:2; width:344px; min-width:0; max-width:calc(100vw - 40px); margin:0; padding:20px; gap:14px; border:0; border-radius:12px; box-shadow:0 4px 18px #18334a2b; pointer-events:auto; }
+body.filters-collapsed .filters #hide-filters { display:flex; align-items:center; justify-content:center; position:fixed; left:20px; right:auto; top:20px; bottom:auto; width:auto; height:40px; padding:0 20px; margin:0; transform:none; border:0; border-radius:20px; color:var(--navy); background:#fff; box-shadow:0 2px 10px #18334a2e; font-size:14px; white-space:nowrap; pointer-events:auto; }
+body.filters-collapsed .filters #hide-filters::after { content:none; }
+@media (max-width:800px) { body .filters:not(.collapsed) { overflow-x:hidden; } body .filters:not(.collapsed) #hide-filters { top:16px; right:-16px; } }
