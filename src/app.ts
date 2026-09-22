@@ -3,10 +3,10 @@
 const api = ["localhost", "127.0.0.1"].includes(location.hostname) ? "/api" : "https://vpn.kulikow.ru:3000/api";
 const $ = (selector) => document.querySelector(selector);
 const dataRange = { min:"2015-01-01", max:"2026-08-31" };
-type MapState = { language: string; mapClient: "leaflet" | "yandex" | "mapbox"; participants: any[]; filters: any[]; selectedFilters: Record<string, any[]>; selectedIntervals: Record<string, { from: string; to: string }>; territory: { id: number; name: string } | null; abort: AbortController | null; items: any[]; rawItems: any[]; rawItemsKey: string; dataLoadId: number; chartMode: string; minDate: string; maxDate: string; bboxSupported: boolean };
+type MapState = { language: string; mapClient: "leaflet" | "yandex" | "mapbox"; heatEnabled: boolean; participants: any[]; filters: any[]; selectedFilters: Record<string, any[]>; selectedIntervals: Record<string, { from: string; to: string }>; territory: { id: number; name: string } | null; abort: AbortController | null; items: any[]; rawItems: any[]; rawItemsKey: string; dataLoadId: number; chartMode: string; minDate: string; maxDate: string; bboxSupported: boolean };
 type Bounds = { west: number; south: number; east: number; north: number };
 const persistedMapClient = localStorage.getItem("map-client");
-const state: MapState = { language: new URLSearchParams(location.search).get("lang") || localStorage.getItem("language") || "ru", mapClient: persistedMapClient === "yandex" || persistedMapClient === "mapbox" ? persistedMapClient : "leaflet", participants: [], filters: [], selectedFilters: {}, selectedIntervals: {}, territory: null, abort: null, items: [], rawItems: [], rawItemsKey: "", dataLoadId: 0, chartMode: "days", minDate: "2015-01-01", maxDate: "2024-12-31", bboxSupported: false };
+const state: MapState = { language: new URLSearchParams(location.search).get("lang") || localStorage.getItem("language") || "ru", mapClient: persistedMapClient === "yandex" || persistedMapClient === "mapbox" ? persistedMapClient : "leaflet", heatEnabled: localStorage.getItem("heat-enabled") === "1", participants: [], filters: [], selectedFilters: {}, selectedIntervals: {}, territory: null, abort: null, items: [], rawItems: [], rawItemsKey: "", dataLoadId: 0, chartMode: "days", minDate: "2015-01-01", maxDate: "2024-12-31", bboxSupported: false };
 // Кэш загруженных точек: ключ запроса (период + фильтры) → ключ набора (регион или рамка) → точки.
 // Новые наборы докачиваются по одному, уже скачанные не запрашиваются повторно.
 const regionCache = new Map<string, Map<string, any[]>>();
@@ -16,19 +16,22 @@ const copy = {
 };
 Object.assign(copy.ru, { regionSearch:"Введите адрес или регион", noInjured:"Без пострадавших (нет данных)", accidentKind:"Вид ДТП", show:"Показать", lockPin:"Данные закреплены по территории", unlock:"Открепить данные", participantUnavailable:"По этому типу участников пока нет данных в открытом API", noMatches:"Ничего не найдено" });
 Object.assign(copy.en, { regionSearch:"Enter address or region", noInjured:"No injuries (no data)", accidentKind:"Accident type", show:"Show", lockPin:"Data is pinned to the territory", unlock:"Unpin data", participantUnavailable:"No open API data for this road-user type yet", noMatches:"Nothing found" });
-Object.assign(copy.ru, { heatIntensity:"Интенсивность", heatMapOpacity:"Непрозрачность" });
-Object.assign(copy.en, { heatIntensity:"Intensity", heatMapOpacity:"Opacity" });
+Object.assign(copy.ru, { heatIntensity:"Интенсивность", heatMapOpacity:"Непрозрачность", heatLayer:"Тепловая карта" });
+Object.assign(copy.en, { heatIntensity:"Intensity", heatMapOpacity:"Opacity", heatLayer:"Heatmap" });
 const participantTranslations = { "Все участники":"All users", "Пешеходы":"Pedestrians", "Велосипедисты":"Cyclists", "Мотоциклисты":"Motorcyclists", "Общ. транспорт":"Public transport", "Дети":"Children", "Без участника":"No road user" };
 // Иконка и приближение по виду ДТП для каждой кнопки участников (значения как на dtp-stat.ru).
-// Мотоциклисты/общ. транспорт/дети в открытых точках не различаются — emTypes нет, фильтр недоступен.
-const participantConfig: Record<number, { icon: string; emTypes?: number[] }> = {
+// emTypes — клиентский фильтр по em_type_id точек; mask — серверный признак /dtp/points.
+// В открытых точках мотоциклисты/общ. транспорт не различаются — фильтр для них недоступен.
+const participantConfig: Record<number, { icon: string; emTypes?: number[]; mask?: { param: string; value: number } }> = {
   1: { icon:"all" },
   2: { icon:"pedestrian", emTypes:[1] },
   3: { icon:"cyclist", emTypes:[8] },
   4: { icon:"motorcycle" },
   5: { icon:"public_transport" },
-  6: { icon:"kids" },
+  // «С детьми до 16 лет» — маска CHILDREN_ATTR=3 в /dtp/filter_fields
+  6: { icon:"kids", mask:{ param:"UNDER_16", value:3 } },
 };
+function participantAvailable(participant) { return participant.value === 1 || Boolean(participantConfig[participant.value]?.emTypes || participantConfig[participant.value]?.mask); }
 // Секции проф-фильтра, которые уходят параметрами на сервер в /dtp/points.
 // Live-проверено (2026-09-10): параметры kind 'arrays' (условие &&), 'mask' и 'interval' выполняются быстро;
 // kind 'array' (= ANY(...)) виснет на стороне БД даже на малом регионе, поэтому секции с ними
@@ -172,9 +175,11 @@ function renderParticipants() {
     button.classList.toggle("active", participant.selected);
     button.setAttribute("aria-pressed", String(participant.selected));
     button.addEventListener("click", () => {
-      // Приближение есть только для пешеходов и велосипедистов — остальное честно отключаем
-      if (!participantConfig[participant.value]?.emTypes) { setStatus(t("participantUnavailable")); return; }
-      state.participants.forEach((item) => { item.selected = item.value === participant.value; });
+      // Приближение есть только у пешеходов и велосипедистов (+ серверная маска у «Детей») — остальное честно отключаем
+      if (!participantAvailable(participant)) { setStatus(t("participantUnavailable")); return; }
+      // Повторный клик по выбранному участнику возвращает «Все участники»
+      const value = participant.selected && participant.value !== 1 ? 1 : participant.value;
+      state.participants.forEach((item) => { item.selected = item.value === value; });
       renderParticipants(); loadMapData();
     });
     return button;
@@ -183,13 +188,18 @@ function renderParticipants() {
 }
 function renderAdvancedControls() {
   const participants = $("#advanced-participants"), severity = $("#advanced-severity");
-  participants.replaceChildren(...state.participants.map((participant) => { const label = document.createElement("label"), input = document.createElement("input"); input.type = "checkbox"; input.checked = participant.selected; input.disabled = !participantConfig[participant.value]?.emTypes && participant.value !== 1; input.addEventListener("change", () => { if (!participantConfig[participant.value]?.emTypes && participant.value !== 1) { input.checked = false; setStatus(t("participantUnavailable")); return; } participant.selected = input.checked; renderParticipants(); loadMapData(); }); label.append(input, document.createTextNode(participantLabel(participant))); return label; }));
+  participants.replaceChildren(...state.participants.map((participant) => { const label = document.createElement("label"), input = document.createElement("input"); input.type = "checkbox"; input.checked = participant.selected; input.disabled = !participantAvailable(participant); input.addEventListener("change", () => { if (!participantAvailable(participant)) { input.checked = false; setStatus(t("participantUnavailable")); return; } // «Все участники» исключает остальные, любой конкретный — снимает «Все»
+    if (input.checked && participant.value === 1) state.participants.forEach((item) => { item.selected = item.value === 1; });
+    else { participant.selected = input.checked; if (input.checked) { const all = state.participants.find((item) => item.value === 1); if (all) all.selected = false; } }
+    renderParticipants(); loadMapData(); }); label.append(input, document.createTextNode(participantLabel(participant))); return label; }));
   severity.replaceChildren(...[...document.querySelectorAll<HTMLInputElement>('input[name="severity"]')].map((source) => { const value = Number(source.value), tone = state.filters.find((filter) => filter.name === "severity")?.values.find((item) => item.value === value)?.ui_tone || "light", label = document.createElement("label"), input = document.createElement("input"); label.className = `severity-tone ${tone}`; input.type = "checkbox"; input.checked = source.checked; input.disabled = source.disabled; input.addEventListener("change", () => { source.checked = input.checked; loadMapData(); }); label.append(input, document.createTextNode(source.parentElement.textContent.trim())); return label; }));
 }
 
 function chartBuckets() {
   const groups = new Map();
   for (const item of state.items) {
+    // Разрезы по дням/часам доступны только для точек с датой (в API её нет)
+    if (state.chartMode !== "types" && !item.datetime) continue;
     const key = state.chartMode === "hours" ? item.datetime.slice(11, 13) : state.chartMode === "types" ? item.category_name : item.datetime.slice(5, 10);
     groups.set(key, (groups.get(key) || 0) + 1);
   }
@@ -215,9 +225,10 @@ function renderChart() {
 }
 
 const mapQuery = new URLSearchParams(location.search), initialCenter = (mapQuery.get("center") || "").split(":").map(Number), zoomQuery = mapQuery.get("zoom"), initialZoom = zoomQuery === null ? NaN : Number(zoomQuery);
-const map = L.map("leaflet-map", { zoomControl: false, minZoom: 4 }).setView(initialCenter.length === 2 && initialCenter.every(Number.isFinite) ? initialCenter : [55.76, 37.64], Number.isFinite(initialZoom) ? initialZoom : 11);
+// preferCanvas: десятки тысяч точек рисуются на одном canvas — SVG-рендер на этом вешает вкладку.
+// Кнопки +/− не показываем ни на одном клиенте (масштаб колесом/щипком)
+const map = L.map("leaflet-map", { zoomControl: false, minZoom: 4, preferCanvas: true }).setView(initialCenter.length === 2 && initialCenter.every(Number.isFinite) ? initialCenter : [55.76, 37.64], Number.isFinite(initialZoom) ? initialZoom : 11);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap contributors" }).addTo(map);
-L.control.zoom({ position: "bottomright" }).addTo(map);
 const accidents = L.layerGroup().addTo(map);
 const markers = new Map<string, any>();
 const heatSettings = { radius: 6, blur: 9, minOpacity: .05 };
@@ -251,7 +262,11 @@ function heatInView(filtered, view) {
   }
   return points;
 }
-function renderMarkers(visible) {
+// Canvas-рендер тянет десятки тысяч точек, но на общероссийском зуме ограничиваем выборку —
+// плотность и так сливается в сплошную массу
+const leafletMarkerLimit = 30000;
+function renderMarkers(markersVisible) {
+  const visible = (markersVisible.length > leafletMarkerLimit ? markersVisible.slice(0, leafletMarkerLimit) : markersVisible);
   // Добавляем/убираем только изменившиеся маркеры вместо полной пересборки слоя
   const alive = new Set(visible.map((item) => item.id));
   for (const [id, marker] of markers) if (!alive.has(id)) { marker.remove(); markers.delete(id); }
@@ -353,8 +368,12 @@ function scheduleYandexHeat() {
   if (yandexHeatFrame) return;
   yandexHeatFrame = requestAnimationFrame(() => { yandexHeatFrame = 0; drawYandexHeat(lastRender.heatPoints, lastRender.heatVisible); });
 }
-function renderYandex(visible, heatPoints, heatVisible) {
+// Placemark'и Яндекса — DOM-элементы: на общероссийском зуме ограничиваем выборку,
+// иначе карта замирает
+const yandexMarkerLimit = 6000;
+function renderYandex(allVisible, heatPoints, heatVisible) {
   if (!yandex.map) return;
+  const visible = allVisible.length > yandexMarkerLimit ? allVisible.slice(0, yandexMarkerLimit) : allVisible;
   // Placemark'и обновляем диффом, а не пересозданием всех на каждый сдвиг карты
   const alive = new Set(heatVisible ? [] : visible.map((item) => item.id));
   for (const [id, placemark] of yandexMarkers) if (!alive.has(id)) { yandex.points.remove(placemark); yandexMarkers.delete(id); }
@@ -369,11 +388,14 @@ function renderYandex(visible, heatPoints, heatVisible) {
   drawYandexHeat(heatPoints, heatVisible);
 }
 function renderMapbox(visible, heatPoints, heatVisible) {
-  if (!mapbox.map?.isStyleLoaded()) return;
-  mapbox.map.getSource("dtp-heat")?.setData({ type:"FeatureCollection", features: heatVisible ? heatFeatures(heatPoints) : [] });
-  mapbox.map.getSource("dtp-points")?.setData({ type:"FeatureCollection", features: heatVisible ? [] : visible.map((item) => ({ type:"Feature", geometry:{ type:"Point", coordinates:[item.point.longitude, item.point.latitude] }, properties:{ severity:item.severity, popup:markerPopup(item) } })) });
+  const map = mapbox.map;
+  // isStyleLoaded() у стиля Standard подолгу остаётся false, поэтому ориентируемся
+  // на сами источники: данные можно заливать, как только они созданы
+  if (!map || !map.getSource("dtp-heat") || !map.getSource("dtp-points")) return;
+  map.getSource("dtp-heat")?.setData({ type:"FeatureCollection", features: heatVisible ? heatFeatures(heatPoints) : [] });
+  map.getSource("dtp-points")?.setData({ type:"FeatureCollection", features: heatVisible ? [] : visible.map((item) => ({ type:"Feature", geometry:{ type:"Point", coordinates:[item.point.longitude, item.point.latitude] }, properties:{ severity:item.severity, popup:markerPopup(item) } })) });
   const paint = mapboxHeatPaint();
-  mapbox.map.setPaintProperty("dtp-heat", "heatmap-radius", paint.radius); mapbox.map.setPaintProperty("dtp-heat", "heatmap-intensity", paint.intensity); mapbox.map.setPaintProperty("dtp-heat", "heatmap-opacity", paint.opacity);
+  map.setPaintProperty("dtp-heat", "heatmap-radius", paint.radius); map.setPaintProperty("dtp-heat", "heatmap-intensity", paint.intensity); map.setPaintProperty("dtp-heat", "heatmap-opacity", paint.opacity);
 }
 function loadScript(src) { return new Promise<void>((resolve, reject) => { const script = document.createElement("script"); script.src = src; script.onload = () => resolve(); script.onerror = () => reject(new Error("Yandex Maps unavailable")); document.head.append(script); }); }
 function loadYandexScript() {
@@ -396,6 +418,8 @@ async function ensureYandex(view) {
   yandex.heatCtx = canvas.getContext("2d", { willReadFrequently: true });
   renderYandex(lastRender.visible, lastRender.heatPoints, lastRender.heatVisible);
   yandex.map.events.add("boundschange", () => { if (state.mapClient === "yandex") { scheduleMapLoad(); scheduleYandexHeat(); } });
+  // Тепло движется вместе с картой: перерисовываем и в процессе перетаскивания/зума
+  yandex.map.events.add("actiontick", () => { if (state.mapClient === "yandex") scheduleYandexHeat(); });
 }
 function loadMapboxScript() {
   const key = (window as any).MAPBOX_ACCESS_TOKEN;
@@ -406,15 +430,21 @@ function loadMapboxScript() {
 async function ensureMapbox(view) {
   if (mapbox.map) { mapbox.map.jumpTo({ center:[view.center.longitude, view.center.latitude], zoom:view.zoom }); return; }
   await loadMapboxScript(); const mapboxgl = (window as any).mapboxgl; mapboxgl.accessToken = (window as any).MAPBOX_ACCESS_TOKEN;
-  mapbox.map = new mapboxgl.Map({ container:"mapbox-map", style:"mapbox://styles/mapbox/standard", config:{ basemap:{ theme:"monochrome", lightPreset:"day" } }, center:[view.center.longitude, view.center.latitude], zoom:view.zoom }); mapbox.map.addControl(new mapboxgl.NavigationControl());
-  mapbox.map.on("load", () => {
-    mapbox.map.addSource("dtp-heat", { type:"geojson", data:{ type:"FeatureCollection", features:[] } }); mapbox.map.addSource("dtp-points", { type:"geojson", data:{ type:"FeatureCollection", features:[] } });
+  mapbox.map = new mapboxgl.Map({ container:"mapbox-map", style:"mapbox://styles/mapbox/standard", config:{ basemap:{ theme:"monochrome", lightPreset:"day" } }, center:[view.center.longitude, view.center.latitude], zoom:view.zoom });
+  // Слои точек и тепла: 'load' у Standard-стиля может не приходить долго, а 'style.load'
+  // срабатывает сразу после разбора стиля — создаём источники там (идемпотентно)
+  const setup = () => {
+    const map = mapbox.map;
+    if (!map || map.getSource("dtp-heat")) return;
+    map.addSource("dtp-heat", { type:"geojson", data:{ type:"FeatureCollection", features:[] } }); map.addSource("dtp-points", { type:"geojson", data:{ type:"FeatureCollection", features:[] } });
     const paint = mapboxHeatPaint();
-    mapbox.map.addLayer({ id:"dtp-heat", type:"heatmap", source:"dtp-heat", paint:{ "heatmap-weight":["get", "weight"], "heatmap-intensity":paint.intensity, "heatmap-radius":paint.radius, "heatmap-opacity":paint.opacity, "heatmap-color":["interpolate", ["linear"], ["heatmap-density"], 0,"rgba(126, 171, 85, 0)", .2,"rgba(126, 171, 85, .6)", .4,"rgba(255, 254, 85, .7)", .6,"rgba(245, 193, 66, .8)", .8,"rgba(223, 130, 68, .9)", 1,"rgba(176, 36, 24, 1)"] } });
-    mapbox.map.addLayer({ id:"dtp-points", type:"circle", source:"dtp-points", paint:{ "circle-radius":["case", ["==", ["get", "severity"], 4], 6.5, 5.5], "circle-color":["match", ["get", "severity"], 4,"#FF001A", 3,"#FF7F24", 1,"#FFB81F", "rgba(24, 51, 74, 0.5)"], "circle-stroke-width":0, "circle-opacity":1 } });
-    mapbox.map.on("click", "dtp-points", (event) => new mapboxgl.Popup().setLngLat(event.features[0].geometry.coordinates).setHTML(event.features[0].properties.popup).addTo(mapbox.map));
+    map.addLayer({ id:"dtp-heat", type:"heatmap", source:"dtp-heat", paint:{ "heatmap-weight":["get", "weight"], "heatmap-intensity":paint.intensity, "heatmap-radius":paint.radius, "heatmap-opacity":paint.opacity, "heatmap-color":["interpolate", ["linear"], ["heatmap-density"], 0,"rgba(126, 171, 85, 0)", .2,"rgba(126, 171, 85, .6)", .4,"rgba(255, 254, 85, .7)", .6,"rgba(245, 193, 66, .8)", .8,"rgba(223, 130, 68, .9)", 1,"rgba(176, 36, 24, 1)"] } });
+    map.addLayer({ id:"dtp-points", type:"circle", source:"dtp-points", paint:{ "circle-radius":["case", ["==", ["get", "severity"], 4], 6.5, 5.5], "circle-color":["match", ["get", "severity"], 4,"#FF001A", 3,"#FF7F24", 1,"#FFB81F", "rgba(24, 51, 74, 0.5)"], "circle-stroke-width":0, "circle-opacity":1 } });
+    map.on("click", "dtp-points", (event) => new mapboxgl.Popup().setLngLat(event.features[0].geometry.coordinates).setHTML(event.features[0].properties.popup).addTo(map));
     renderMapbox(lastRender.visible, lastRender.heatPoints, lastRender.heatVisible);
-  });
+  };
+  mapbox.map.on("style.load", setup);
+  mapbox.map.on("load", setup);
   mapbox.map.on("moveend", () => { if (state.mapClient === "mapbox") scheduleMapLoad(); });
 }
 function renderMapSwitcher() { document.querySelectorAll("[data-map-client], [data-quick-map]").forEach((button) => button.classList.toggle("active", (button.dataset.mapClient || button.dataset.quickMap) === state.mapClient)); }
@@ -435,7 +465,9 @@ function pointItems(data) {
     const item = feature.properties || {}, [longitude, latitude] = feature.geometry?.coordinates || [];
     // hv_category: 1 — никто не пострадал (в точках API не встречается), 2 — лёгкий, 3 — тяжёлый, 4 — с погибшими
     const severity = item.hv_category === 1 ? 0 : item.hv_category === 2 ? 1 : item.hv_category === 3 ? 3 : item.lost_amount ? 4 : item.suffer_amount ? 3 : 0;
-    return { id:String(item.em_number), datetime:item.date_time, participants:Number(item.pers_amount || 0), injured:Number(item.suffer_amount || 0), dead:Number(item.lost_amount || 0), point:{ latitude, longitude }, severity, category:Number(item.em_type_id), category_name:emTypeNames.get(Number(item.em_type_id)) || (state.language === "ru" ? "ДТП" : "Road accident"), address:item.address, street:item.address, participant_categories:[1] };
+    // В открытом API у точек нет даты и адреса (date_time/address отсутствуют в ответе) —
+    // попап и диаграмма должны переживать их отсутствие
+    return { id:String(item.em_number), datetime:item.date_time || null, participants:Number(item.pers_amount || 0), injured:Number(item.suffer_amount || 0), dead:Number(item.lost_amount || 0), point:{ latitude, longitude }, severity, category:Number(item.em_type_id), category_name:emTypeNames.get(Number(item.em_type_id)) || (state.language === "ru" ? "ДТП" : "Road accident"), address:item.address, street:item.address, participant_categories:[1] };
   }).filter((item) => Number.isFinite(item.point.latitude) && Number.isFinite(item.point.longitude));
 }
 // Палитра точек dtp-stat.ru: без пострадавших / лёгкий / тяжёлый / с погибшими
@@ -449,13 +481,15 @@ const popupCache = new WeakMap<object, string>();
 function markerPopup(item) {
   const cached = popupCache.get(item);
   if (cached) return cached;
-  const place = item.address || item.street || t("accidentsInArea");
+  // Адреса в точках API нет — строку места не выводим вовсе
+  const place = item.address || item.street || "";
   const escape = (value) => String(value || "").replace(/[&<>\"]/g, (character) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '\"':"&quot;" })[character]);
   const details = state.language === "en" ? "Accident details" : "Подробности ДТП";
-  const day = intlFormatter("day", { day:"2-digit", month:"2-digit", year:"numeric" }).format(new Date(item.datetime));
+  // Даты в точках API нет — строка с датой просто не выводится
+  const day = item.datetime ? intlFormatter("day", { day:"2-digit", month:"2-digit", year:"numeric" }).format(new Date(item.datetime)) + `, ${item.datetime.slice(11, 16)}` : "";
   const injured = item.injured > 0 ? `<p class="popup-injured">${number().format(item.injured)} ${pluralPeople(item.injured)} ${state.language === "ru" ? (item.injured === 1 && item.injured % 100 !== 11 ? "пострадал" : "пострадали") : item.injured === 1 ? "was injured" : "were injured"}</p>` : "";
   const dead = item.dead > 0 ? `<p class="popup-dead">${number().format(item.dead)} ${pluralPeople(item.dead)} ${state.language === "ru" ? (item.dead % 10 === 1 && item.dead % 100 !== 11 ? "погиб" : "погибло") : item.dead === 1 ? "died" : "died"}</p>` : "";
-  const html = `<div class="marker-popup"><strong>${escape(item.category_name)}</strong><span>${escape(day)}, ${escape(item.datetime.slice(11, 16))}</span><span>${escape(place)}</span>${injured}${dead}<a href="details/?id=${encodeURIComponent(item.id)}&lang=${state.language}">${details}</a></div>`;
+  const html = `<div class="marker-popup"><strong>${escape(item.category_name)}</strong>${day ? `<span>${escape(day)}</span>` : ""}${place ? `<span>${escape(place)}</span>` : ""}${injured}${dead}<a href="details/?id=${encodeURIComponent(item.id)}&lang=${state.language}">${details}</a></div>`;
   popupCache.set(item, html);
   return html;
 }
@@ -534,6 +568,12 @@ function passesFilters(item, emTypes, levels, categories) {
 // Параметры серверной фильтрации /dtp/points: выбранные секции-словари, признаки-маски и интервалы
 function serverQuery() {
   const params = new URLSearchParams();
+  // Участники с серверной маской (например «Дети» → UNDER_16=3) попадают в запрос /dtp/points
+  for (const participant of state.participants) {
+    if (!participant.selected) continue;
+    const mask = participantConfig[participant.value]?.mask;
+    if (mask) params.append(mask.param, String(mask.value));
+  }
   for (const [name, values] of Object.entries(state.selectedFilters)) {
     if (!values.length) continue;
     if (name === "masks") for (const value of values) { const feature = maskFeatures.find((item) => item.value === value); if (feature) params.append(feature.param, String(feature.value)); }
@@ -545,13 +585,14 @@ function serverQuery() {
   }
   return params;
 }
-// Выбранные участники → набор видов ДТП (приближение по em_type_id); null — без фильтра
+// Выбранные участники → набор видов ДТП (приближение по em_type_id); null — без клиентского фильтра.
+// Участники без emTypes (например «Дети») фильтруются на сервере маской в serverQuery
 function participantEmTypes() {
   const selected = selectedParticipants();
   if (!selected.length || selected.includes(1)) return null;
   const set = new Set();
   for (const value of selected) for (const em of participantConfig[value]?.emTypes || []) set.add(em);
-  return set.size ? [...set] : [-1];
+  return set.size ? [...set] : null;
 }
 const regionShapes = fetch("assets/regions.geojson").then((response) => response.ok ? response.json() : Promise.reject(new Error("Region boundaries unavailable")));
 function inRing(point, ring) { let inside = false; for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index++) { const [x, y] = ring[index], [px, py] = ring[previous]; if ((y > point[1]) !== (py > point[1]) && point[0] < (px - x) * (point[1] - y) / (py - y) + x) inside = !inside; } return inside; }
@@ -651,7 +692,9 @@ function renderMapData(view) {
   $("#injured").textContent = number().format(counted.reduce((sum, item) => sum + Number(item.injured || 0), 0));
   $("#dead").textContent = number().format(counted.reduce((sum, item) => sum + Number(item.dead || 0), 0));
   if (!$("#chart").hidden) renderChart();
-  const heatVisible = view.zoom < 12 || visible.length >= 1000;
+  // Тепловая карта — только по явному переключателю; по умолчанию точки-маркеры.
+  // При включённой тепловой маркеры прячутся: поверх точек плотность не читается
+  const heatVisible = state.heatEnabled;
   const heatPoints = heatVisible ? heatInView(filtered, view) : EMPTY_HEAT;
   // Слои переприсовываются только у активного клиента — остальные догонят при переключении
   Object.assign(lastRender, { visible, heatPoints, heatVisible });
@@ -816,6 +859,7 @@ document.addEventListener("click", (event) => {
 document.querySelectorAll("[data-quick-map]").forEach((button) => button.addEventListener("click", () => switchMapClient(button.dataset.quickMap as "leaflet" | "yandex" | "mapbox")));
 $("#chart-button").addEventListener("click", () => { $("#chart").hidden = false; renderChart(); });
 $("#close-chart").addEventListener("click", () => { $("#chart").hidden = true; });
+$("#download-button").addEventListener("click", downloadData);
 $("#chart-tabs").addEventListener("click", (event) => {
   const button = event.target.closest("button[data-mode]");
   if (!button) return;
@@ -823,7 +867,23 @@ $("#chart-tabs").addEventListener("click", (event) => {
   document.querySelectorAll("#chart-tabs button").forEach((item) => item.classList.toggle("active", item === button));
   renderChart();
 });
+// «Скачать данные» выгружает то, что выбрано фильтрами (все загруженные точки текущего
+// набора), как GeoJSON — без перехода на другую страницу
+function downloadData() {
+  const items = filteredPoints(), { start, end } = period();
+  const features = items.map((item) => ({ type:"Feature", geometry:{ type:"Point", coordinates:[item.point.longitude, item.point.latitude] }, properties:{ em_number:item.id, date_time:item.datetime, em_type_id:item.category, em_type:item.category_name, hv_category:item.severity, participants:item.participants, injured:item.injured, dead:item.dead } }));
+  const url = URL.createObjectURL(new Blob([JSON.stringify({ type:"FeatureCollection", features })], { type:"application/geo+json" }));
+  const link = document.createElement("a");
+  link.href = url; link.download = `dtpstat_${start}_${end}.geojson`;
+  document.body.append(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  setStatus(`${t("data")}: GeoJSON, ${number().format(items.length)} ${t("accidents").toLowerCase()}`);
+}
 function renderHeatControls() {
+  // Панель: тумблер «Тепловая карта» + ползунки (видны только при включённой тепловой)
+  $("#heat-controls").classList.toggle("on", state.heatEnabled);
+  const toggle = $("#heat-enabled") as HTMLInputElement;
+  if (toggle.checked !== state.heatEnabled) toggle.checked = state.heatEnabled;
   const remoteActive = state.mapClient === "yandex" || state.mapClient === "mapbox", remoteRadius = state.mapClient === "mapbox" ? mapboxHeatSettings.radius : yandexHeatSettings.radius, remoteIntensity = state.mapClient === "mapbox" ? mapboxHeatSettings.intensity : yandexHeatSettings.intensityOfMidpoint, remoteOpacity = state.mapClient === "mapbox" ? mapboxHeatSettings.opacity : yandexHeatSettings.opacity;
   $("#heat-blur-label").textContent = t(remoteActive ? "heatIntensity" : "heatBlur"); $("#heat-opacity-label").textContent = t(remoteActive ? "heatMapOpacity" : "heatOpacity");
   if (remoteActive) { $("#heat-radius").max = state.mapClient === "mapbox" ? "100" : "30"; $("#heat-radius").value = String(remoteRadius); $("#heat-blur").min = "1"; $("#heat-blur").max = "100"; $("#heat-blur").value = String(remoteIntensity * 100); $("#heat-opacity").max = "100"; $("#heat-opacity").value = String(remoteOpacity * 100); $("#heat-radius-value").textContent = `${remoteRadius} px`; $("#heat-blur-value").textContent = `${Math.round(remoteIntensity * 100)}%`; $("#heat-opacity-value").textContent = `${Math.round(remoteOpacity * 100)}%`; return; }
@@ -835,7 +895,14 @@ function updateHeatControls() {
   else { heatSettings.radius = Number($("#heat-radius").value); heatSettings.blur = Number($("#heat-blur").value); heatSettings.minOpacity = Number($("#heat-opacity").value) / 100; heat.setOptions(heatSettings); }
   renderHeatControls();
 }
-document.querySelectorAll("#heat-controls input").forEach((input) => input.addEventListener("input", updateHeatControls));
+// Ползунки (не тумблер: его input-событие откатил бы чекбокс до change)
+document.querySelectorAll("#heat-controls input:not(#heat-enabled)").forEach((input) => input.addEventListener("input", updateHeatControls));
+$("#heat-enabled").addEventListener("change", (event) => {
+  state.heatEnabled = (event.target as HTMLInputElement).checked;
+  localStorage.setItem("heat-enabled", state.heatEnabled ? "1" : "0");
+  renderHeatControls();
+  renderMapData(currentView());
+});
 let moveTimer;
 function scheduleMapLoad() { clearTimeout(moveTimer); state.abort?.abort(); state.dataLoadId++; moveTimer = setTimeout(loadMapData, 350); }
 map.on("moveend", () => { if (state.mapClient === "leaflet") scheduleMapLoad(); });
