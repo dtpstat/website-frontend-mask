@@ -3,10 +3,10 @@
 const api = ["localhost", "127.0.0.1"].includes(location.hostname) ? "/api" : "https://vpn.kulikow.ru:3000/api";
 const $ = (selector) => document.querySelector(selector);
 const dataRange = { min:"2015-01-01", max:"2026-08-31" };
-type MapState = { language: string; mapClient: "leaflet" | "yandex" | "mapbox"; heatEnabled: boolean; participants: any[]; filters: any[]; selectedFilters: Record<string, any[]>; selectedIntervals: Record<string, { from: string; to: string }>; territory: { id: number; name: string } | null; abort: AbortController | null; items: any[]; rawItems: any[]; rawItemsKey: string; dataLoadId: number; chartMode: string; minDate: string; maxDate: string; bboxSupported: boolean };
+type MapState = { language: string; mapClient: "leaflet" | "yandex" | "mapbox"; participants: any[]; filters: any[]; selectedFilters: Record<string, any[]>; selectedIntervals: Record<string, { from: string; to: string }>; territory: { id: number; name: string } | null; abort: AbortController | null; items: any[]; rawItems: any[]; rawItemsKey: string; dataLoadId: number; chartMode: string; minDate: string; maxDate: string; bboxSupported: boolean };
 type Bounds = { west: number; south: number; east: number; north: number };
 const persistedMapClient = localStorage.getItem("map-client");
-const state: MapState = { language: new URLSearchParams(location.search).get("lang") || localStorage.getItem("language") || "ru", mapClient: persistedMapClient === "yandex" || persistedMapClient === "mapbox" ? persistedMapClient : "leaflet", heatEnabled: localStorage.getItem("heat-enabled") === "1", participants: [], filters: [], selectedFilters: {}, selectedIntervals: {}, territory: null, abort: null, items: [], rawItems: [], rawItemsKey: "", dataLoadId: 0, chartMode: "days", minDate: "2015-01-01", maxDate: "2024-12-31", bboxSupported: false };
+const state: MapState = { language: new URLSearchParams(location.search).get("lang") || localStorage.getItem("language") || "ru", mapClient: persistedMapClient === "yandex" || persistedMapClient === "mapbox" ? persistedMapClient : "leaflet", participants: [], filters: [], selectedFilters: {}, selectedIntervals: {}, territory: null, abort: null, items: [], rawItems: [], rawItemsKey: "", dataLoadId: 0, chartMode: "days", minDate: "2015-01-01", maxDate: "2024-12-31", bboxSupported: false };
 // Кэш загруженных точек: ключ запроса (период + фильтры) → ключ набора (регион или рамка) → точки.
 // Новые наборы докачиваются по одному, уже скачанные не запрашиваются повторно.
 const regionCache = new Map<string, Map<string, any[]>>();
@@ -16,8 +16,8 @@ const copy = {
 };
 Object.assign(copy.ru, { regionSearch:"Введите адрес или регион", noInjured:"Без пострадавших (нет данных)", accidentKind:"Вид ДТП", show:"Показать", lockPin:"Данные закреплены по территории", unlock:"Открепить данные", participantUnavailable:"По этому типу участников пока нет данных в открытом API", noMatches:"Ничего не найдено" });
 Object.assign(copy.en, { regionSearch:"Enter address or region", noInjured:"No injuries (no data)", accidentKind:"Accident type", show:"Show", lockPin:"Data is pinned to the territory", unlock:"Unpin data", participantUnavailable:"No open API data for this road-user type yet", noMatches:"Nothing found" });
-Object.assign(copy.ru, { heatIntensity:"Интенсивность", heatMapOpacity:"Непрозрачность", heatLayer:"Тепловая карта" });
-Object.assign(copy.en, { heatIntensity:"Intensity", heatMapOpacity:"Opacity", heatLayer:"Heatmap" });
+Object.assign(copy.ru, { heatIntensity:"Интенсивность", heatMapOpacity:"Непрозрачность" });
+Object.assign(copy.en, { heatIntensity:"Intensity", heatMapOpacity:"Opacity" });
 const participantTranslations = { "Все участники":"All users", "Пешеходы":"Pedestrians", "Велосипедисты":"Cyclists", "Мотоциклисты":"Motorcyclists", "Общ. транспорт":"Public transport", "Дети":"Children", "Без участника":"No road user" };
 // Иконка и приближение по виду ДТП для каждой кнопки участников (значения как на dtp-stat.ru).
 // emTypes — клиентский фильтр по em_type_id точек; mask — серверный признак /dtp/points.
@@ -251,6 +251,15 @@ function heatFeatures(points) { return points.map(([latitude, longitude, weight]
 const EMPTY_HEAT: number[][] = [];
 // Последний посчитанный срез — к нему переприсовываются слои при смене клиента карты
 const lastRender = { visible: [] as any[], heatPoints: EMPTY_HEAT, heatVisible: false };
+// Тепловая карта живёт на отдалённом масштабе (регион/страна), при приближении
+// сменяется точками; посадка (зум 11, город целиком) — уже точки
+const heatZoomMax = 11;
+// Мгновенная смена режима «тепло/точки» при пересечении порога зума —
+// не дожидаясь отложенной догрузки данных
+function applyHeatMode() {
+  const heatVisible = currentView().zoom < heatZoomMax;
+  if (heatVisible !== lastRender.heatVisible) renderMapData(currentView());
+}
 // Тепловая карта строится только по видимой области с запасом в пол-экрана:
 // тепловой слой Яндекса перерисовывается на каждое изменение границ карты,
 // и при полном наборе точек (вся Россия — 90k+) это замораживает карту
@@ -311,19 +320,28 @@ function heatGradientLut() {
   return yandexHeatLut.data;
 }
 const yandexHeatBuffer = { canvas: null as HTMLCanvasElement | null };
+// Якорь отрисовки в глобальных пикселях: по нему тепло догоняет карту
+// transform-сдвигом, не перерисовываясь
+let yandexHeatAnchor: { x: number; y: number; zoom: number } | null = null;
+// Полотно больше экрана на поля: во время перетаскивания canvas следует за картой
+// сдвигом, и по краям не успевает появиться пустая полоса
+const yandexHeatMargin = 200;
 function drawYandexHeat(heatPoints, heatVisible) {
   const canvas = yandex.heatCanvas, map = yandex.map;
   if (!canvas || !map) return;
-  if (!heatVisible || !heatPoints.length) { canvas.style.display = "none"; return; }
+  if (!heatVisible || !heatPoints.length) { canvas.style.display = "none"; canvas.style.transform = ""; yandexHeatAnchor = null; return; }
   canvas.style.display = "block";
   canvas.style.opacity = String(yandexHeatSettings.opacity);
   const container = $("#yandex-map") as HTMLElement, dpr = window.devicePixelRatio || 1;
-  const width = container.clientWidth, height = container.clientHeight;
+  const width = container.clientWidth + yandexHeatMargin * 2, height = container.clientHeight + yandexHeatMargin * 2;
+  canvas.style.left = `${-yandexHeatMargin}px`; canvas.style.top = `${-yandexHeatMargin}px`;
+  canvas.style.width = `${width}px`; canvas.style.height = `${height}px`;
   if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) { canvas.width = Math.round(width * dpr); canvas.height = Math.round(height * dpr); }
   const ctx = yandex.heatCtx!;
   const projection = map.options.get("projection"), zoom = map.getZoom();
   const [centerX, centerY] = projection.toGlobalPixels(map.getCenter(), zoom);
-  const offsetX = width / 2 - centerX, offsetY = height / 2 - centerY;
+  // Экранная координата центра + сдвиг полотна на поле
+  const offsetX = container.clientWidth / 2 - centerX + yandexHeatMargin, offsetY = container.clientHeight / 2 - centerY + yandexHeatMargin;
   // Копим плотность в буфере вдвое мельче экрана: пиксельных операций вчетверо
   // меньше, а билинейный апскейл сам размывает — широкие кисти не нужны
   const unit = 2 * dpr;
@@ -362,6 +380,8 @@ function drawYandexHeat(heatPoints, heatVisible) {
   bctx.putImageData(image, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(buffer, 0, 0, canvas.width, canvas.height);
+  canvas.style.transform = "";
+  yandexHeatAnchor = { x: centerX, y: centerY, zoom };
 }
 let yandexHeatFrame = 0;
 function scheduleYandexHeat() {
@@ -417,9 +437,20 @@ async function ensureYandex(view) {
   yandex.heatCanvas = canvas;
   yandex.heatCtx = canvas.getContext("2d", { willReadFrequently: true });
   renderYandex(lastRender.visible, lastRender.heatPoints, lastRender.heatVisible);
-  yandex.map.events.add("boundschange", () => { if (state.mapClient === "yandex") { scheduleMapLoad(); scheduleYandexHeat(); } });
-  // Тепло движется вместе с картой: перерисовываем и в процессе перетаскивания/зума
-  yandex.map.events.add("actiontick", () => { if (state.mapClient === "yandex") scheduleYandexHeat(); });
+  yandex.map.events.add("boundschange", () => { if (state.mapClient === "yandex") scheduleMapLoad(); });
+  // Тепло едет вместе с картой: в жесте полотно догоняет вид transform-сдвигом,
+  // перерисовка — по завершении жеста. map.getCenter() и boundschange в ходе жеста
+  // отстают (обновляются один раз в конце), живой центр на каждый тик даёт
+  // action._globalPixelCenter
+  yandex.map.events.add("actiontick", () => {
+    if (state.mapClient !== "yandex") return;
+    const anchor = yandexHeatAnchor, canvas = yandex.heatCanvas, action = yandex.map.action;
+    if (!anchor || !canvas || canvas.style.display === "none" || !action || !action._globalPixelCenter) { applyHeatMode(); return; }
+    if (action._zoom !== anchor.zoom) { applyHeatMode(); scheduleYandexHeat(); return; }
+    const [cx, cy] = action._globalPixelCenter;
+    canvas.style.transform = `translate3d(${Math.round(anchor.x - cx)}px, ${Math.round(anchor.y - cy)}px, 0)`;
+  });
+  yandex.map.events.add("actionend", () => { if (state.mapClient === "yandex") { applyHeatMode(); scheduleYandexHeat(); } });
 }
 function loadMapboxScript() {
   const key = (window as any).MAPBOX_ACCESS_TOKEN;
@@ -446,6 +477,7 @@ async function ensureMapbox(view) {
   mapbox.map.on("style.load", setup);
   mapbox.map.on("load", setup);
   mapbox.map.on("moveend", () => { if (state.mapClient === "mapbox") scheduleMapLoad(); });
+  mapbox.map.on("zoomend", () => { if (state.mapClient === "mapbox") applyHeatMode(); });
 }
 function renderMapSwitcher() { document.querySelectorAll("[data-map-client], [data-quick-map]").forEach((button) => button.classList.toggle("active", (button.dataset.mapClient || button.dataset.quickMap) === state.mapClient)); }
 async function switchMapClient(client) {
@@ -692,12 +724,13 @@ function renderMapData(view) {
   $("#injured").textContent = number().format(counted.reduce((sum, item) => sum + Number(item.injured || 0), 0));
   $("#dead").textContent = number().format(counted.reduce((sum, item) => sum + Number(item.dead || 0), 0));
   if (!$("#chart").hidden) renderChart();
-  // Тепловая карта — только по явному переключателю; по умолчанию точки-маркеры.
-  // При включённой тепловой маркеры прячутся: поверх точек плотность не читается
-  const heatVisible = state.heatEnabled;
+  // На отдалении плотность читается только теплом (точек сотни тысяч), вблизи —
+  // точки-маркеры: поверх точек плотность не читается
+  const heatVisible = view.zoom < heatZoomMax;
   const heatPoints = heatVisible ? heatInView(filtered, view) : EMPTY_HEAT;
   // Слои переприсовываются только у активного клиента — остальные догонят при переключении
   Object.assign(lastRender, { visible, heatPoints, heatVisible });
+  renderHeatControls();
   if (state.mapClient === "leaflet") renderLeaflet(visible, heatPoints, heatVisible);
   else if (state.mapClient === "yandex") renderYandex(visible, heatPoints, heatVisible);
   else renderMapbox(visible, heatPoints, heatVisible);
@@ -880,10 +913,8 @@ function downloadData() {
   setStatus(`${t("data")}: GeoJSON, ${number().format(items.length)} ${t("accidents").toLowerCase()}`);
 }
 function renderHeatControls() {
-  // Панель: тумблер «Тепловая карта» + ползунки (видны только при включённой тепловой)
-  $("#heat-controls").classList.toggle("on", state.heatEnabled);
-  const toggle = $("#heat-enabled") as HTMLInputElement;
-  if (toggle.checked !== state.heatEnabled) toggle.checked = state.heatEnabled;
+  // Панель ползунков имеет смысл только пока на экране тепловая карта
+  $("#heat-controls").hidden = !lastRender.heatVisible;
   const remoteActive = state.mapClient === "yandex" || state.mapClient === "mapbox", remoteRadius = state.mapClient === "mapbox" ? mapboxHeatSettings.radius : yandexHeatSettings.radius, remoteIntensity = state.mapClient === "mapbox" ? mapboxHeatSettings.intensity : yandexHeatSettings.intensityOfMidpoint, remoteOpacity = state.mapClient === "mapbox" ? mapboxHeatSettings.opacity : yandexHeatSettings.opacity;
   $("#heat-blur-label").textContent = t(remoteActive ? "heatIntensity" : "heatBlur"); $("#heat-opacity-label").textContent = t(remoteActive ? "heatMapOpacity" : "heatOpacity");
   if (remoteActive) { $("#heat-radius").max = state.mapClient === "mapbox" ? "100" : "30"; $("#heat-radius").value = String(remoteRadius); $("#heat-blur").min = "1"; $("#heat-blur").max = "100"; $("#heat-blur").value = String(remoteIntensity * 100); $("#heat-opacity").max = "100"; $("#heat-opacity").value = String(remoteOpacity * 100); $("#heat-radius-value").textContent = `${remoteRadius} px`; $("#heat-blur-value").textContent = `${Math.round(remoteIntensity * 100)}%`; $("#heat-opacity-value").textContent = `${Math.round(remoteOpacity * 100)}%`; return; }
@@ -895,17 +926,11 @@ function updateHeatControls() {
   else { heatSettings.radius = Number($("#heat-radius").value); heatSettings.blur = Number($("#heat-blur").value); heatSettings.minOpacity = Number($("#heat-opacity").value) / 100; heat.setOptions(heatSettings); }
   renderHeatControls();
 }
-// Ползунки (не тумблер: его input-событие откатил бы чекбокс до change)
-document.querySelectorAll("#heat-controls input:not(#heat-enabled)").forEach((input) => input.addEventListener("input", updateHeatControls));
-$("#heat-enabled").addEventListener("change", (event) => {
-  state.heatEnabled = (event.target as HTMLInputElement).checked;
-  localStorage.setItem("heat-enabled", state.heatEnabled ? "1" : "0");
-  renderHeatControls();
-  renderMapData(currentView());
-});
+document.querySelectorAll("#heat-controls input").forEach((input) => input.addEventListener("input", updateHeatControls));
 let moveTimer;
 function scheduleMapLoad() { clearTimeout(moveTimer); state.abort?.abort(); state.dataLoadId++; moveTimer = setTimeout(loadMapData, 350); }
 map.on("moveend", () => { if (state.mapClient === "leaflet") scheduleMapLoad(); });
+map.on("zoomend", () => { if (state.mapClient === "leaflet") applyHeatMode(); });
 applyLanguage();
 const savedMapClient = state.mapClient; state.mapClient = "leaflet"; renderMapSwitcher(); if (savedMapClient !== "leaflet") switchMapClient(savedMapClient);
 loadFilters();
