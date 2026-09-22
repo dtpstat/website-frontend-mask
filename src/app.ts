@@ -228,6 +228,8 @@ const mapQuery = new URLSearchParams(location.search), initialCenter = (mapQuery
 // preferCanvas: десятки тысяч точек рисуются на одном canvas — SVG-рендер на этом вешает вкладку.
 // Кнопки +/− не показываем ни на одном клиенте (масштаб колесом/щипком)
 const map = L.map("leaflet-map", { zoomControl: false, minZoom: 4, preferCanvas: true }).setView(initialCenter.length === 2 && initialCenter.every(Number.isFinite) ? initialCenter : [55.76, 37.64], Number.isFinite(initialZoom) ? initialZoom : 11);
+// Префикс атрибуции по умолчанию содержит флаг (svg) перед «Leaflet» — оставляем просто ссылку
+map.attributionControl.setPrefix('<a href="https://leafletjs.com" title="A JavaScript library for interactive maps">Leaflet</a>');
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap contributors" }).addTo(map);
 const accidents = L.layerGroup().addTo(map);
 const markers = new Map<string, any>();
