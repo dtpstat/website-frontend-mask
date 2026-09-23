@@ -282,13 +282,13 @@ function renderMarkers(markersVisible) {
   const alive = new Set(visible.map((item) => item.id));
   for (const [id, marker] of markers) if (!alive.has(id)) { marker.remove(); markers.delete(id); }
   // Плоские точки без обводки — как на dtp-stat.ru
-  for (const item of visible) if (!markers.has(item.id)) markers.set(item.id, L.circleMarker([item.point.latitude, item.point.longitude], { radius: item.severity === 4 ? 6.5 : 5.5, weight: 0, fillColor: markerColor(item), fillOpacity: 1 }).bindPopup(markerPopup(item)).addTo(accidents));
+  for (const item of visible) if (!markers.has(item.id)) markers.set(item.id, L.circleMarker([item.point.latitude, item.point.longitude], { radius: 5, weight: 0, fillColor: markerColor(item), fillOpacity: 1 }).bindPopup(markerPopup(item)).addTo(accidents));
 }
 function renderLeaflet(visible, heatPoints, heatVisible) {
   renderMarkers(heatVisible ? [] : visible);
   heat.setLatLngs(heatVisible ? heatPoints : []);
 }
-const yandexMarkers = new Map<string, any>();
+const yandexMarkers = new Map<string, { placemark: any; latitude: number }>();
 // Слой тепла рисуем своим canvas: ymaps.Heatmap синхронно перерисовывает все тайлы
 // на каждую смену опций/зума (150–400ms) — ползунки и зум «зависали».
 // Набор прореживается до лимита, вес прореженной точки = шагу выборки.
@@ -390,21 +390,35 @@ function scheduleYandexHeat() {
   if (yandexHeatFrame) return;
   yandexHeatFrame = requestAnimationFrame(() => { yandexHeatFrame = 0; drawYandexHeat(lastRender.heatPoints, lastRender.heatVisible); });
 }
+// Точки Яндекса как на dtp-stat.ru: не пресеты-иконки, а GeoObject-круги постоянного
+// ПИКСЕЛЬНОГО радиуса — geometry Circle с радиусом в метрах (метры-на-пиксель × 5),
+// плоская заливка по тяжести без обводки; при смене зума радиус пересчитывается
+const yandexPointRadiusPx = 5;
+function yandexMetersPerPixel(latitude: number, zoom: number) {
+  return (2 * Math.PI * 6378137 * Math.cos((latitude * Math.PI) / 180)) / (256 * Math.pow(2, zoom));
+}
 // Placemark'и Яндекса — DOM-элементы: на общероссийском зуме ограничиваем выборку,
 // иначе карта замирает
 const yandexMarkerLimit = 6000;
+function updateYandexPointRadius() {
+  if (!yandex.map) return;
+  const zoom = yandex.map.getZoom();
+  yandexMarkers.forEach((entry) => entry.placemark.geometry.setRadius(yandexMetersPerPixel(entry.latitude, zoom) * yandexPointRadiusPx));
+}
 function renderYandex(allVisible, heatPoints, heatVisible) {
   if (!yandex.map) return;
   const visible = allVisible.length > yandexMarkerLimit ? allVisible.slice(0, yandexMarkerLimit) : allVisible;
   // Placemark'и обновляем диффом, а не пересозданием всех на каждый сдвиг карты
   const alive = new Set(heatVisible ? [] : visible.map((item) => item.id));
-  for (const [id, placemark] of yandexMarkers) if (!alive.has(id)) { yandex.points.remove(placemark); yandexMarkers.delete(id); }
+  for (const [id, entry] of yandexMarkers) if (!alive.has(id)) { yandex.points.remove(entry.placemark); yandexMarkers.delete(id); }
   if (!heatVisible) for (const item of visible) if (!yandexMarkers.has(item.id)) {
-    // Маленькая плоская точка с цветом по тяжести вместо крупных пресетов CircleDot.
+    const placemark = new (window as any).ymaps.GeoObject({
+      geometry: { type: "Circle", coordinates: [item.point.longitude, item.point.latitude], radius: yandexMetersPerPixel(item.point.latitude, yandex.map.getZoom()) * yandexPointRadiusPx },
+      properties: {},
+    }, { fillColor: markerColor(item), outline: false, balloonOffset: [yandexPointRadiusPx - 2, 0] });
     // Балун строим только по клику: на зуме добавляются сотни точек разом
-    const placemark = new (window as any).ymaps.Placemark([item.point.longitude, item.point.latitude], {}, { preset: "islands#circleIcon", iconColor: markerColor(item) });
     placemark.events.add("click", (event) => { event.stopPropagation(); yandex.map.balloon.open(event.get("coords"), { content: markerPopup(item) }, { autoPan: false }); });
-    yandexMarkers.set(item.id, placemark);
+    yandexMarkers.set(item.id, { placemark, latitude: item.point.latitude });
     yandex.points.add(placemark);
   }
   drawYandexHeat(heatPoints, heatVisible);
@@ -452,7 +466,7 @@ async function ensureYandex(view) {
     const [cx, cy] = action._globalPixelCenter;
     canvas.style.transform = `translate3d(${Math.round(anchor.x - cx)}px, ${Math.round(anchor.y - cy)}px, 0)`;
   });
-  yandex.map.events.add("actionend", () => { if (state.mapClient === "yandex") { applyHeatMode(); scheduleYandexHeat(); } });
+  yandex.map.events.add("actionend", () => { if (state.mapClient === "yandex") { applyHeatMode(); scheduleYandexHeat(); updateYandexPointRadius(); } });
 }
 function loadMapboxScript() {
   const key = (window as any).MAPBOX_ACCESS_TOKEN;
@@ -472,7 +486,7 @@ async function ensureMapbox(view) {
     map.addSource("dtp-heat", { type:"geojson", data:{ type:"FeatureCollection", features:[] } }); map.addSource("dtp-points", { type:"geojson", data:{ type:"FeatureCollection", features:[] } });
     const paint = mapboxHeatPaint();
     map.addLayer({ id:"dtp-heat", type:"heatmap", source:"dtp-heat", paint:{ "heatmap-weight":["get", "weight"], "heatmap-intensity":paint.intensity, "heatmap-radius":paint.radius, "heatmap-opacity":paint.opacity, "heatmap-color":["interpolate", ["linear"], ["heatmap-density"], 0,"rgba(126, 171, 85, 0)", .2,"rgba(126, 171, 85, .6)", .4,"rgba(255, 254, 85, .7)", .6,"rgba(245, 193, 66, .8)", .8,"rgba(223, 130, 68, .9)", 1,"rgba(176, 36, 24, 1)"] } });
-    map.addLayer({ id:"dtp-points", type:"circle", source:"dtp-points", paint:{ "circle-radius":["case", ["==", ["get", "severity"], 4], 6.5, 5.5], "circle-color":["match", ["get", "severity"], 4,"#FF001A", 3,"#FF7F24", 1,"#FFB81F", "rgba(24, 51, 74, 0.5)"], "circle-stroke-width":0, "circle-opacity":1 } });
+    map.addLayer({ id:"dtp-points", type:"circle", source:"dtp-points", paint:{ "circle-radius":5, "circle-color":["match", ["get", "severity"], 4,"#FF001A", 3,"#FF7F24", 1,"#FFB81F", "rgba(24, 51, 74, 0.5)"], "circle-stroke-width":0, "circle-opacity":1 } });
     map.on("click", "dtp-points", (event) => new mapboxgl.Popup().setLngLat(event.features[0].geometry.coordinates).setHTML(event.features[0].properties.popup).addTo(map));
     renderMapbox(lastRender.visible, lastRender.heatPoints, lastRender.heatVisible);
   };
