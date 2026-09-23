@@ -582,13 +582,17 @@ function renderAdvancedFilters() {
       }
       title.append(name); section.append(title, options); return section;
     }
-    const search = document.createElement("input");
-    section.className = "advanced-collapse" + (filter.key === "street" || filter.values.length > 8 ? " has-search" : "");
+    // Поиск живёт внутри раскрытой секции — в свёрнутом заголовке только название и шеврон
+    section.className = "advanced-collapse";
     if (saved?.open) section.open = true;
-    search.type = "search"; search.placeholder = t("search"); search.className = "advanced-search"; options.className = "advanced-options";
-    if (saved?.query) search.value = saved.query;
-    const draw = () => { const query = search.value.trim().toLowerCase(), selected = state.selectedFilters[key] || []; options.replaceChildren(...dynamicValues(filter).filter((item) => item.preview.toLowerCase().includes(query)).map((item) => { const label = document.createElement("label"), input = document.createElement("input"); if (item.ui_tone) label.className = `filter-tone ${item.ui_tone}`; input.type = "checkbox"; input.checked = selected.includes(item.value); input.addEventListener("change", () => { const values = new Set(state.selectedFilters[key] || []); input.checked ? values.add(item.value) : values.delete(item.value); state.selectedFilters[key] = [...values]; loadMapData(); }); label.append(input, document.createTextNode(item.preview)); return label; })); };
-    search.addEventListener("click", (event) => event.stopPropagation()); search.addEventListener("keydown", (event) => event.stopPropagation()); search.addEventListener("input", draw); title.append(name, search); section.append(title, options); draw(); return section;
+    const search = filter.key === "street" || filter.values.length > 8 ? document.createElement("input") : null;
+    if (search) { search.type = "search"; search.placeholder = t("search"); search.className = "advanced-search"; if (saved?.query) search.value = saved.query; }
+    options.className = "advanced-options";
+    const draw = () => { const query = search ? search.value.trim().toLowerCase() : "", selected = state.selectedFilters[key] || []; options.replaceChildren(...dynamicValues(filter).filter((item) => item.preview.toLowerCase().includes(query)).map((item) => { const label = document.createElement("label"), input = document.createElement("input"); if (item.ui_tone) label.className = `filter-tone ${item.ui_tone}`; input.type = "checkbox"; input.checked = selected.includes(item.value); input.addEventListener("change", () => { const values = new Set(state.selectedFilters[key] || []); input.checked ? values.add(item.value) : values.delete(item.value); state.selectedFilters[key] = [...values]; loadMapData(); }); label.append(input, document.createTextNode(item.preview)); return label; })); };
+    title.append(name);
+    if (search) { search.addEventListener("input", draw); search.addEventListener("keydown", (event) => event.stopPropagation()); section.append(title, search, options); }
+    else section.append(title, options);
+    draw(); return section;
   });
   root.replaceChildren(...sections);
   if (restore) {
