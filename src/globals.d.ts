@@ -9,4 +9,6 @@ interface Element {
   hidden: boolean;
   placeholder: string;
   value: string;
+  disabled: boolean;
+  title: string;
 }

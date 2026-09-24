@@ -108,12 +108,14 @@
           <button type="button" data-mode="types" data-i18n="byTypes">По типам</button>
         </div>
         <div id="bars" class="bars" aria-label="Диаграмма количества ДТП"></div>
+        <!-- В открытом API у точек нет даты: дни/часы отключены, вместо пустой сетки здесь пояснение -->
+        <p id="chart-empty" class="chart-empty" hidden></p>
         <p class="chart-note" data-i18n="chartNote">Диаграмма показывает ориентировочное распределение за выбранный период.</p>
       </section>
     </main>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <script src="maps-config.js"></script>
-    <script type="module" src="app.js?v=34"></script>
+    <script type="module" src="app.js?v=35"></script>
   </body>
 </html>
