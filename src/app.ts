@@ -14,14 +14,15 @@ const copy = {
   ru: { brandAria:"Карта ДТП — главная", mapAria:"Интерактивная карта ДТП", map:"Карта", blog:"Блог и исследования", data:"Скачать данные", about:"О проекте", team:"Команда", support:"Поддержать проект", statistics:"Статистика", filters:"Фильтры", analytics:"Аналитика", cancel:"Отмена", backToBasic:"Назад к стандартным фильтрам", allTime:"За всё время", basicFilter:"Базовый фильтр", professionalFilter:"Профессиональные фильтры", search:"Поиск", dataPeriod:"Период данных", accidentsInRussia:"ДТП в России", region:"Регион", allRegions:"Все регионы", from:"С", to:"По", participants:"Участники ДТП", injurySeverity:"Вред здоровью", light:"Лёгкий", serious:"Тяжёлый", fatal:"С погибшими", accidentTypes:"Типы ДТП", violations:"Нарушения ПДД", weather:"Погода", streets:"Улицы", heatRadius:"Радиус", heatBlur:"Размытие", heatOpacity:"Мин. непрозрачность", loading:"Загружаем данные…", loadingMap:"Обновляем карту…", unavailable:"Не удалось получить данные. Попробуйте позднее.", officialData:"Официальные данные", accidents:"ДТП", injured:"Пострадали", dead:"Погибли", distribution:"Распределение ДТП", selectedPeriod:"За выбранный период", byDays:"По дням", byHours:"По часам", byTypes:"По типам ДТП", chartNote:"Диаграмма построена по ДТП в видимой области.", chartNoDates:"В открытом API у точек ДТП нет даты и времени — разрезы по дням и часам недоступны", accidentsInArea:"ДТП в видимой области", people:"чел.", deaths:"погибших", roadConditions:"УДС на месте ДТП", roadConditionsNear:"УДС поблизости", roadFactors:"Факторы, влияющие на движение", roadDefects:"Повреждения УДС", signs:"Признаки ДТП", quantity:"Количество" },
   en: { brandAria:"Road accident map — home", mapAria:"Interactive road accident map", map:"Map", blog:"Blog & research", data:"Download data", about:"About the project", team:"Team", support:"Support the project", statistics:"Statistics", filters:"Filters", analytics:"Analytics", cancel:"Cancel", backToBasic:"Back to standard filters", allTime:"All time", basicFilter:"Basic filter", professionalFilter:"Professional filters", search:"Search", dataPeriod:"Data period", accidentsInRussia:"Road accidents in Russia", region:"Region", allRegions:"All regions", from:"From", to:"To", participants:"Road users", injurySeverity:"Injury severity", light:"Minor", serious:"Serious", fatal:"Fatal", accidentTypes:"Accident types", violations:"Traffic violations", weather:"Weather", streets:"Streets", heatRadius:"Radius", heatBlur:"Blur", heatOpacity:"Min. opacity", loading:"Loading data…", loadingMap:"Updating map…", unavailable:"Could not load data. Please try again later.", officialData:"Official data", accidents:"Accidents", injured:"Injured", dead:"Deaths", distribution:"Distribution", selectedPeriod:"Selected period", byDays:"By day", byHours:"By hour", byTypes:"By type", chartNote:"The chart is based on accidents in the visible area.", chartNoDates:"The open API has no date or time for accident points — day and hour breakdowns are unavailable", accidentsInArea:"Accidents in area", people:"people", deaths:"deaths", roadConditions:"Road conditions on site", roadConditionsNear:"Road conditions nearby", roadFactors:"Factors affecting traffic", roadDefects:"Road defects", signs:"Accident features", quantity:"Counts" },
 };
-Object.assign(copy.ru, { regionSearch:"Введите адрес или регион", noInjured:"Без пострадавших (нет данных)", accidentKind:"Вид ДТП", show:"Показать", lockPin:"Данные закреплены по территории", unlock:"Открепить данные", participantUnavailable:"По этому типу участников пока нет данных в открытом API", noMatches:"Ничего не найдено" });
-Object.assign(copy.en, { regionSearch:"Enter address or region", noInjured:"No injuries (no data)", accidentKind:"Accident type", show:"Show", lockPin:"Data is pinned to the territory", unlock:"Unpin data", participantUnavailable:"No open API data for this road-user type yet", noMatches:"Nothing found" });
+Object.assign(copy.ru, { regionSearch:"Введите адрес или регион", noInjured:"Без пострадавших (нет данных)", accidentKind:"Вид ДТП", show:"Показать", lockPin:"Данные закреплены по территории", unlock:"Открепить данные", participantNoData:"По этим участникам в открытом API нет данных", noMatches:"Ничего не найдено" });
+Object.assign(copy.en, { regionSearch:"Enter address or region", noInjured:"No injuries (no data)", accidentKind:"Accident type", show:"Show", lockPin:"Data is pinned to the territory", unlock:"Unpin data", participantNoData:"No open API data for these road users", noMatches:"Nothing found" });
 Object.assign(copy.ru, { heatIntensity:"Интенсивность", heatMapOpacity:"Непрозрачность" });
 Object.assign(copy.en, { heatIntensity:"Intensity", heatMapOpacity:"Opacity" });
 const participantTranslations = { "Все участники":"All users", "Пешеходы":"Pedestrians", "Велосипедисты":"Cyclists", "Мотоциклисты":"Motorcyclists", "Общ. транспорт":"Public transport", "Дети":"Children", "Без участника":"No road user" };
 // Иконка и приближение по виду ДТП для каждой кнопки участников (значения как на dtp-stat.ru).
 // emTypes — клиентский фильтр по em_type_id точек; mask — серверный признак /dtp/points.
-// В открытых точках мотоциклисты/общ. транспорт не различаются — фильтр для них недоступен.
+// В открытых точках мотоциклисты/общ. транспорт не различаются (PART_TYPE — kind 'array',
+// такие запросы вешают БД): их плитка выбирается, но честно сообщает об отсутствии данных.
 const participantConfig: Record<number, { icon: string; emTypes?: number[]; mask?: { param: string; value: number } }> = {
   1: { icon:"all" },
   2: { icon:"pedestrian", emTypes:[1] },
@@ -31,7 +32,8 @@ const participantConfig: Record<number, { icon: string; emTypes?: number[]; mask
   // «С детьми до 16 лет» — маска CHILDREN_ATTR=3 в /dtp/filter_fields
   6: { icon:"kids", mask:{ param:"UNDER_16", value:3 } },
 };
-function participantAvailable(participant) { return participant.value === 1 || Boolean(participantConfig[participant.value]?.emTypes || participantConfig[participant.value]?.mask); }
+// Выбор у всех плиток доступен; данные после выбора меняют только emTypes и маски
+function participantHasData(participant) { return participant.value === 1 || Boolean(participantConfig[participant.value]?.emTypes || participantConfig[participant.value]?.mask); }
 // Секции проф-фильтра, которые уходят параметрами на сервер в /dtp/points.
 // Live-проверено (2026-09-10): параметры kind 'arrays' (условие &&), 'mask' и 'interval' выполняются быстро;
 // kind 'array' (= ANY(...)) виснет на стороне БД даже на малом регионе, поэтому секции с ними
@@ -177,12 +179,14 @@ function renderParticipants() {
     button.classList.toggle("active", participant.selected);
     button.setAttribute("aria-pressed", String(participant.selected));
     button.addEventListener("click", () => {
-      // Приближение есть только у пешеходов и велосипедистов (+ серверная маска у «Детей») — остальное честно отключаем
-      if (!participantAvailable(participant)) { setStatus(t("participantUnavailable")); return; }
-      // Повторный клик по выбранному участнику возвращает «Все участники»
+      // Повторный клик по выбранному участнику, как и клик по «Все участники», возвращает всех
       const value = participant.selected && participant.value !== 1 ? 1 : participant.value;
+      const filterBefore = participantFilterKey();
       state.participants.forEach((item) => { item.selected = item.value === value; });
-      renderParticipants(); loadMapData();
+      renderParticipants();
+      // У мото/общ. транспорта данных в открытом API нет: выбор сохраняем, точки не трогаем — сообщаем честно
+      if (participant.selected && !participantHasData(participant)) setStatus(t("participantNoData"));
+      else if (participantFilterKey() !== filterBefore) loadMapData();
     });
     return button;
   }));
@@ -190,10 +194,15 @@ function renderParticipants() {
 }
 function renderAdvancedControls() {
   const participants = $("#advanced-participants"), severity = $("#advanced-severity");
-  participants.replaceChildren(...state.participants.map((participant) => { const label = document.createElement("label"), input = document.createElement("input"); input.type = "checkbox"; input.checked = participant.selected; input.disabled = !participantAvailable(participant); input.addEventListener("change", () => { if (!participantAvailable(participant)) { input.checked = false; setStatus(t("participantUnavailable")); return; } // «Все участники» исключает остальные, любой конкретный — снимает «Все»
+  participants.replaceChildren(...state.participants.map((participant) => { const label = document.createElement("label"), input = document.createElement("input"); input.type = "checkbox"; input.checked = participant.selected; input.addEventListener("change", () => { // «Все участники» исключает остальные, любой конкретный — снимает «Все»
+    const filterBefore = participantFilterKey();
     if (input.checked && participant.value === 1) state.participants.forEach((item) => { item.selected = item.value === 1; });
     else { participant.selected = input.checked; if (input.checked) { const all = state.participants.find((item) => item.value === 1); if (all) all.selected = false; } }
-    renderParticipants(); loadMapData(); }); label.append(input, document.createTextNode(participantLabel(participant))); return label; }));
+    renderParticipants();
+    // Мото/общ. транспорт: галочка ставится, но данных в открытом API нет — точки не перезагружаем
+    if (participant.selected && !participantHasData(participant)) setStatus(t("participantNoData"));
+    else if (participantFilterKey() !== filterBefore) loadMapData();
+  }); label.append(input, document.createTextNode(participantLabel(participant))); return label; }));
   severity.replaceChildren(...[...document.querySelectorAll<HTMLInputElement>('input[name="severity"]')].map((source) => { const value = Number(source.value), tone = state.filters.find((filter) => filter.name === "severity")?.values.find((item) => item.value === value)?.ui_tone || "light", label = document.createElement("label"), input = document.createElement("input"); label.className = `severity-tone ${tone}`; input.type = "checkbox"; input.checked = source.checked; input.disabled = source.disabled; input.addEventListener("change", () => { source.checked = input.checked; loadMapData(); }); label.append(input, document.createTextNode(source.parentElement.textContent.trim())); return label; }));
 }
 
@@ -668,6 +677,13 @@ function participantEmTypes() {
   const set = new Set();
   for (const value of selected) for (const em of participantConfig[value]?.emTypes || []) set.add(em);
   return set.size ? [...set] : null;
+}
+// Ключ эффективной выборки участников: emTypes + серверные маски. Выбор участников без
+// признака в API (мото, общ. транспорт) ключ не меняет — перезагрузка точек не нужна
+function participantFilterKey() {
+  const masks = [];
+  for (const item of state.participants) { const mask = item.selected && participantConfig[item.value]?.mask; if (mask) masks.push(mask.param); }
+  return JSON.stringify([participantEmTypes(), masks]);
 }
 const regionShapes = fetch("assets/regions.geojson").then((response) => response.ok ? response.json() : Promise.reject(new Error("Region boundaries unavailable")));
 function inRing(point, ring) { let inside = false; for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index++) { const [x, y] = ring[index], [px, py] = ring[previous]; if ((y > point[1]) !== (py > point[1]) && point[0] < (px - x) * (point[1] - y) / (py - y) + x) inside = !inside; } return inside; }
