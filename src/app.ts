@@ -614,18 +614,26 @@ function syncAdvancedRegion() {
 }
 function closeAdvanced() { document.body.classList.remove("advanced-open"); setAdvancedCollapsed(false); $("#advanced-filter").hidden = true; $("#filters").hidden = false; }
 function setAdvancedCollapsed(collapsed) { document.body.classList.toggle("advanced-collapsed", collapsed); const button = $("#close-advanced"); button.textContent = collapsed ? activeFiltersLabel() : "‹"; button.setAttribute("aria-expanded", String(!collapsed)); }
+// Семантика фильтров: МЕЖДУ группами — И (участники × тяжесть × секции), ВНУТРИ группы — ИЛИ.
+// У точки один тип ДТП, поэтому отмеченные типы («Типы ДТП») дают «любой из отмеченных»:
+// скалярная ветка values.includes(item[key]) истинна при совпадении хоть с одним значением
 function passesFilters(item, emTypes, levels, categories) {
   return (!emTypes || emTypes.includes(item.category)) && (!levels.length || levels.includes(item.severity)) && categories.every(([key, values]) => Array.isArray(item[key]) ? item[key].some((value) => values.includes(value)) : values.includes(item[key]));
 }
 // Параметры серверной фильтрации /dtp/points: выбранные секции-словари, признаки-маски и интервалы
 function serverQuery() {
   const params = new URLSearchParams();
-  // Участники с серверной маской (например «Дети» → UNDER_16=3) попадают в запрос /dtp/points
-  for (const participant of state.participants) {
-    if (!participant.selected) continue;
-    const mask = participantConfig[participant.value]?.mask;
-    if (mask) params.append(mask.param, String(mask.value));
-  }
+  // Участники с серверной маской (например «Дети» → UNDER_16=3). ИЛИ между клиентскими
+  // участниками (Пешеходы/Велосипедисты, participantEmTypes) и «Детьми» невыразимо:
+  // OR-масок у бэкенда нет, признаков участников в точках тоже. Маску отправляем только
+  // если выбраны ТОЛЬКО участники с маской — «Все участники» (без ограничения) и
+  // клиенты-участники её отключают. Иначе серверная маска совмещалась бы с клиентским
+  // ИЛИ по И («Пешеходы»+«Дети» давало бы почти пустое пересечение). В смешанном выборе
+  // остаются клиентские виды ДТП: дети-пешеходы попадают в «Наезд на пешехода»,
+  // теряются только дети из других видов ДТП — это осознанная аппроксимация ИЛИ
+  const selected = selectedParticipants();
+  if (selected.length && !selected.includes(1) && selected.every((value) => participantConfig[value]?.mask))
+    for (const value of selected) { const mask = participantConfig[value]?.mask; if (mask) params.append(mask.param, String(mask.value)); }
   for (const [name, values] of Object.entries(state.selectedFilters)) {
     if (!values.length) continue;
     if (name === "masks") for (const value of values) { const feature = maskFeatures.find((item) => item.value === value); if (feature) params.append(feature.param, String(feature.value)); }
@@ -638,7 +646,10 @@ function serverQuery() {
   return params;
 }
 // Выбранные участники → набор видов ДТП (приближение по em_type_id); null — без клиентского фильтра.
-// Участники без emTypes (например «Дети») фильтруются на сервере маской в serverQuery
+// Мультивыбор участников объединяется по ИЛИ: виды всех выбранных собираются в Set —
+// «Пешеходы»+«Велосипедисты» = ДТП вида 1 ИЛИ 8. «Все участники» и пустой выбор
+// ограничения не накладывают. Участники без emTypes (например «Дети») фильтруются
+// маской в serverQuery — но только если выбраны без клиентов-участников
 function participantEmTypes() {
   const selected = selectedParticipants();
   if (!selected.length || selected.includes(1)) return null;
