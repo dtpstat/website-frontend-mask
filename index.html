@@ -106,21 +106,50 @@
       </aside>
 
       <section id="chart" class="chart" hidden aria-labelledby="chart-title">
-        <div class="chart-heading"><div><h2 id="chart-title" data-i18n="distribution">Распределение по дням</h2><p id="chart-period" data-i18n="selectedPeriod">За выбранный период</p></div><button id="close-chart" class="icon-button" type="button" aria-label="Закрыть статистику">×</button></div>
-        <div id="chart-tabs" class="chart-tabs" role="tablist">
-          <button type="button" data-mode="days" class="active" data-i18n="byDays">По дням</button>
-          <button type="button" data-mode="hours" data-i18n="byHours">По часам</button>
-          <button type="button" data-mode="types" data-i18n="byTypes">По типам</button>
+        <header class="chart-head">
+          <div class="chart-place"><strong id="chart-region">Все регионы</strong><span data-i18n="officialData">Официальные данные</span></div>
+          <div class="chart-counts">
+            <div><span data-i18n="accidents">ДТП</span><strong id="chart-count">—</strong></div>
+            <div><span data-i18n="injured">Пострадали</span><strong id="chart-injured-count" class="yellow">—</strong></div>
+            <div><span data-i18n="dead">Погибли</span><strong id="chart-dead-count" class="red">—</strong></div>
+          </div>
+          <button id="close-chart" class="chart-hide" type="button" data-i18n="hide">Скрыть</button>
+        </header>
+        <div class="chart-main">
+          <div class="chart-body">
+            <h2 id="chart-title" data-i18n="distribution">Распределение ДТП</h2>
+            <p id="chart-period" class="chart-meta">За период</p>
+            <p id="chart-filters" class="chart-meta">Активные фильтры</p>
+            <div class="chart-legend">
+              <span><i class="legend-crashes"></i><span data-i18n="accidentsCount">Количество ДТП</span></span>
+              <span><i class="legend-dead"></i><span data-i18n="deathsLegend">Погибшие</span></span>
+            </div>
+            <div id="bars" class="bars bars-horizontal" aria-label="Диаграмма количества ДТП"></div>
+            <!-- В открытом API у точек нет даты: дни/часы отключены, вместо пустой сетки здесь пояснение -->
+            <p id="chart-empty" class="chart-empty" hidden></p>
+            <p class="chart-note" data-i18n="chartNote">Диаграмма показывает ориентировочное распределение за выбранный период.</p>
+          </div>
+          <aside class="chart-side" id="chart-side" aria-label="Разрезы статистики">
+            <p class="chart-side-title" data-i18n="timeIntervals">Временные интервалы</p>
+            <button type="button" data-mode="days" data-i18n="byDays">По дням</button>
+            <button type="button" data-mode="hours" data-i18n="byHours">По часам</button>
+            <button type="button" data-mode="months" data-i18n="byMonths">По месяцам</button>
+            <button type="button" data-mode="years" data-i18n="byYears">По годам</button>
+            <p class="chart-side-title" data-i18n="accidentProperties">Свойства ДТП</p>
+            <button type="button" data-mode="types" data-i18n="accidentTypes">Типы ДТП</button>
+            <button type="button" data-locked data-i18n="violations">Нарушения ПДД</button>
+            <button type="button" data-locked data-i18n="tags">Теги</button>
+            <button type="button" data-locked data-i18n="streets">Улицы</button>
+            <button type="button" data-locked data-i18n="infrastructure">Инфраструктура</button>
+            <button type="button" data-locked data-i18n="weather">Погода</button>
+            <button type="button" data-locked data-i18n="lighting">Освещённость</button>
+          </aside>
         </div>
-        <div id="bars" class="bars" aria-label="Диаграмма количества ДТП"></div>
-        <!-- В открытом API у точек нет даты: дни/часы отключены, вместо пустой сетки здесь пояснение -->
-        <p id="chart-empty" class="chart-empty" hidden></p>
-        <p class="chart-note" data-i18n="chartNote">Диаграмма показывает ориентировочное распределение за выбранный период.</p>
       </section>
     </main>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <script src="maps-config.js"></script>
-    <script type="module" src="app.js?v=36"></script>
+    <script type="module" src="app.js?v=38"></script>
   </body>
 </html>

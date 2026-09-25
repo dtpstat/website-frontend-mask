@@ -1,2 +1,2 @@
 .mapbox-map { position:absolute; inset:0; z-index:0; }
-.mapboxgl-popup-content { padding:12px; color:var(--navy); }
+.mapboxgl-popup-content { padding:14px 16px; border-radius:8px; box-shadow:0 6px 24px #18334a33; color:var(--navy); }
