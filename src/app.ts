@@ -14,8 +14,8 @@ const copy = {
   ru: { brandAria:"Карта ДТП — главная", mapAria:"Интерактивная карта ДТП", map:"Карта", blog:"Блог и исследования", data:"Скачать данные", about:"О проекте", team:"Команда", support:"Поддержать проект", statistics:"Статистика", filters:"Фильтры", analytics:"Аналитика", cancel:"Отмена", backToBasic:"Назад к стандартным фильтрам", allTime:"За всё время", basicFilter:"Базовый фильтр", professionalFilter:"Профессиональные фильтры", search:"Поиск", dataPeriod:"Период данных", accidentsInRussia:"ДТП в России", region:"Регион", allRegions:"Все регионы", from:"С", to:"По", participants:"Участники ДТП", injurySeverity:"Вред здоровью", light:"Лёгкий", serious:"Тяжёлый", fatal:"С погибшими", accidentTypes:"Типы ДТП", violations:"Нарушения ПДД", weather:"Погода", streets:"Улицы", heatRadius:"Радиус", heatBlur:"Размытие", heatOpacity:"Мин. непрозрачность", loading:"Загружаем данные…", loadingMap:"Обновляем карту…", unavailable:"Не удалось получить данные. Попробуйте позднее.", officialData:"Официальные данные", accidents:"ДТП", injured:"Пострадали", dead:"Погибли", distribution:"Распределение ДТП", selectedPeriod:"За выбранный период", byDays:"По дням", byHours:"По часам", byTypes:"По типам ДТП", chartNote:"Диаграмма построена по ДТП в видимой области.", chartNoDates:"В открытом API у точек ДТП нет даты и времени — разрезы по дням и часам недоступны", accidentsInArea:"ДТП в видимой области", people:"чел.", deaths:"погибших", roadConditions:"УДС на месте ДТП", roadConditionsNear:"УДС поблизости", roadFactors:"Факторы, влияющие на движение", roadDefects:"Повреждения УДС", signs:"Признаки ДТП", quantity:"Количество" },
   en: { brandAria:"Road accident map — home", mapAria:"Interactive road accident map", map:"Map", blog:"Blog & research", data:"Download data", about:"About the project", team:"Team", support:"Support the project", statistics:"Statistics", filters:"Filters", analytics:"Analytics", cancel:"Cancel", backToBasic:"Back to standard filters", allTime:"All time", basicFilter:"Basic filter", professionalFilter:"Professional filters", search:"Search", dataPeriod:"Data period", accidentsInRussia:"Road accidents in Russia", region:"Region", allRegions:"All regions", from:"From", to:"To", participants:"Road users", injurySeverity:"Injury severity", light:"Minor", serious:"Serious", fatal:"Fatal", accidentTypes:"Accident types", violations:"Traffic violations", weather:"Weather", streets:"Streets", heatRadius:"Radius", heatBlur:"Blur", heatOpacity:"Min. opacity", loading:"Loading data…", loadingMap:"Updating map…", unavailable:"Could not load data. Please try again later.", officialData:"Official data", accidents:"Accidents", injured:"Injured", dead:"Deaths", distribution:"Distribution", selectedPeriod:"Selected period", byDays:"By day", byHours:"By hour", byTypes:"By type", chartNote:"The chart is based on accidents in the visible area.", chartNoDates:"The open API has no date or time for accident points — day and hour breakdowns are unavailable", accidentsInArea:"Accidents in area", people:"people", deaths:"deaths", roadConditions:"Road conditions on site", roadConditionsNear:"Road conditions nearby", roadFactors:"Factors affecting traffic", roadDefects:"Road defects", signs:"Accident features", quantity:"Counts" },
 };
-Object.assign(copy.ru, { regionSearch:"Введите адрес или регион", noInjured:"Без пострадавших (нет данных)", accidentKind:"Вид ДТП", show:"Показать", lockPin:"Данные закреплены по территории", unlock:"Открепить данные", participantNoData:"По этим участникам в открытом API нет данных", noMatches:"Ничего не найдено" });
-Object.assign(copy.en, { regionSearch:"Enter address or region", noInjured:"No injuries (no data)", accidentKind:"Accident type", show:"Show", lockPin:"Data is pinned to the territory", unlock:"Unpin data", participantNoData:"No open API data for these road users", noMatches:"Nothing found" });
+Object.assign(copy.ru, { regionSearch:"Введите адрес или регион", noInjured:"Без пострадавших (нет данных)", accidentKind:"Вид ДТП", show:"Показать", lockPin:"Данные закреплены по территории", unlock:"Открепить данные", lockHint:"Сначала открепите территорию", participantNoData:"По этим участникам в открытом API нет данных", noMatches:"Ничего не найдено" });
+Object.assign(copy.en, { regionSearch:"Enter address or region", noInjured:"No injuries (no data)", accidentKind:"Accident type", show:"Show", lockPin:"Data is pinned to the territory", unlock:"Unpin data", lockHint:"Unpin the territory first", participantNoData:"No open API data for these road users", noMatches:"Nothing found" });
 Object.assign(copy.ru, { heatIntensity:"Интенсивность", heatMapOpacity:"Непрозрачность" });
 Object.assign(copy.en, { heatIntensity:"Intensity", heatMapOpacity:"Opacity" });
 const participantTranslations = { "Все участники":"All users", "Пешеходы":"Pedestrians", "Велосипедисты":"Cyclists", "Мотоциклисты":"Motorcyclists", "Общ. транспорт":"Public transport", "Дети":"Children", "Без участника":"No road user" };
@@ -637,12 +637,42 @@ function renderAdvancedFilters() {
   }
 }
 function openAdvanced() { renderAdvancedControls(); renderAdvancedFilters(); syncAdvancedRegion(); document.body.classList.add("advanced-open"); setAdvancedCollapsed(false); $("#advanced-filter").hidden = false; }
+// Регион про-панели — то же поле с подсказками, что в стандартной панели; можно впечатать вручную (DTP-25).
+// Подсказки прижаты к ПРАВОМУ краю поля. Пустой ввод + Enter (или кнопка сброса) возвращает «Все регионы»
 function syncAdvancedRegion() {
-  const select = $("#advanced-region") as HTMLSelectElement;
-  const options = [Object.assign(document.createElement("option"), { value: "", textContent: t("allRegions") })];
-  for (const region of [...regionIndex].sort((a, b) => a.name.localeCompare(b.name, "ru"))) options.push(Object.assign(document.createElement("option"), { value: String(region.id), textContent: region.name }));
-  select.replaceChildren(...options);
-  select.value = state.territory ? String(state.territory.id) : "";
+  const input = $("#advanced-region") as HTMLInputElement;
+  input.value = state.territory ? state.territory.name : "";
+}
+function drawAdvancedRegionSuggest() {
+  const input = $("#advanced-region") as HTMLInputElement, suggest = $("#region-suggest-adv");
+  if (document.activeElement !== input && !input.value.trim()) { suggest.hidden = true; suggest.replaceChildren(); return; }
+  // Замок территории запрещает смену региона — вместо подсказок объясняем почему (DTP-28)
+  if (state.territory) {
+    suggest.hidden = false;
+    suggest.replaceChildren(Object.assign(document.createElement("p"), { className:"region-lock-hint", textContent:t("lockHint") }));
+    return;
+  }
+  const query = input.value.trim().toLowerCase();
+  if (!query) { suggest.hidden = true; suggest.replaceChildren(); return; }
+  const matches = regionIndex.filter((region) => region.lower.includes(query)).slice(0, 8);
+  suggest.hidden = false;
+  suggest.replaceChildren(...matches.map((region) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = region.name;
+    button.addEventListener("mousedown", (event) => { event.preventDefault(); selectRegion(region); syncAdvancedRegion(); suggest.hidden = true; });
+    return button;
+  }));
+  if (!matches.length) suggest.append(Object.assign(document.createElement("p"), { className:"region-suggest-empty", textContent:t("noMatches") }));
+}
+function advancedRegionCommit() {
+  const input = $("#advanced-region") as HTMLInputElement, suggest = $("#region-suggest-adv");
+  if (state.territory) { suggest.hidden = true; return; } // замок: смену региона не даём (DTP-28)
+  const query = input.value.trim().toLowerCase();
+  if (!query) { state.territory = null; updateTerritoryCard(); suggest.hidden = true; loadMapData(); return; }
+  const first = regionIndex.find((region) => region.lower.includes(query));
+  if (first) { selectRegion(first); syncAdvancedRegion(); }
+  suggest.hidden = true;
 }
 function closeAdvanced() { document.body.classList.remove("advanced-open"); setAdvancedCollapsed(false); $("#advanced-filter").hidden = true; $("#filters").hidden = false; }
 function setAdvancedCollapsed(collapsed) { document.body.classList.toggle("advanced-collapsed", collapsed); const button = $("#close-advanced"); button.textContent = collapsed ? activeFiltersLabel() : "‹"; button.setAttribute("aria-expanded", String(!collapsed)); }
@@ -753,6 +783,15 @@ function updateTerritoryCard() {
   $("#lock-button").classList.toggle("locked", locked);
   $("#lock-button").setAttribute("aria-pressed", String(locked));
   $("#lock-button").title = locked ? t("unlock") : t("lockPin");
+  applyRegionLock();
+}
+// Закрытый замок блокирует смену региона: поля поиска приглушены, попытка ввода
+// показывает подсказку «Сначала открепите территорию» вместо списка (DTP-28)
+function applyRegionLock() {
+  for (const input of document.querySelectorAll<HTMLInputElement>("#region-search, #advanced-region")) {
+    if (state.territory) input.setAttribute("data-locked", ""); else input.removeAttribute("data-locked");
+    input.title = state.territory ? t("lockHint") : "";
+  }
 }
 async function selectRegion(region) {
   const data = await regionShapes;
@@ -771,6 +810,12 @@ async function selectRegion(region) {
 }
 function drawRegionSuggest() {
   const input = $("#region-search") as HTMLInputElement, suggest = $("#region-suggest");
+  // Замок территории запрещает смену региона — вместо подсказок объясняем почему (DTP-28)
+  if (state.territory) {
+    suggest.hidden = false;
+    suggest.replaceChildren(Object.assign(document.createElement("p"), { className:"region-lock-hint", textContent:t("lockHint") }));
+    return;
+  }
   const query = input.value.trim().toLowerCase();
   if (!query) { suggest.hidden = true; suggest.replaceChildren(); return; }
   const matches = regionIndex.filter((region) => region.lower.includes(query)).slice(0, 8);
@@ -915,15 +960,15 @@ $("#start-date").addEventListener("change", reload);
 $("#end-date").addEventListener("change", reload);
 $("#date-range-button").addEventListener("click", (event) => openDateMenu(event.currentTarget as Element));
 $("#advanced-date-range-button").addEventListener("click", (event) => openDateMenu(event.currentTarget as Element));
-$("#advanced-region").addEventListener("change", async (event) => {
-  const select = event.target as HTMLSelectElement, id = Number(select.value);
-  if (!id) { state.territory = null; updateTerritoryCard(); loadMapData(); }
-  else {
-    const region = regionIndex.find((item) => item.id === id);
-    if (region) await selectRegion(region);
-  }
-  select.value = state.territory ? String(state.territory.id) : "";
+// Регион про-панели: подсказки на ввод, Enter — выбор первого совпадения, пустой ввод — сброс (DTP-25)
+$("#advanced-region").addEventListener("input", drawAdvancedRegionSuggest);
+$("#advanced-region").addEventListener("focus", drawAdvancedRegionSuggest);
+$("#advanced-region").addEventListener("keydown", (event) => {
+  if (event.key === "Enter") { event.preventDefault(); advancedRegionCommit(); }
+  if (event.key === "Escape") { syncAdvancedRegion(); ($("#region-suggest-adv") as HTMLElement).hidden = true; }
+  event.stopPropagation();
 });
+$("#advanced-region").addEventListener("blur", () => setTimeout(() => { ($("#region-suggest-adv") as HTMLElement).hidden = true; }, 150));
 document.querySelectorAll('input[name="severity"]').forEach((input) => input.addEventListener("change", reload));
 $("#close-advanced").addEventListener("click", () => setAdvancedCollapsed(!document.body.classList.contains("advanced-collapsed")));
 $("#back-to-basic").addEventListener("click", closeAdvanced);
