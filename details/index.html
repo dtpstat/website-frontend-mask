@@ -9,6 +9,55 @@
   </head>
   <body>
     <main id="detail" class="loading" aria-live="polite">Загружаем данные ДТП…</main>
+
+    <!-- Подвал — статичная копия футера WP-темы dtpstat-child (footer.php):
+         цифры сбора захардкожены (в WP их отдаёт dtp_fund()), при изменении
+         сбора на WP обновить здесь и --fund-pct/--fund-stretch ниже -->
+    <footer class="site-footer">
+      <div class="footer-container">
+        <div class="fund-strip">
+          <div class="fund-main">
+            <div class="fund-bar"><i></i></div>
+            <div class="fund-row"><span class="fund-raised">Собрано: 15 546 ₽ из 50 000 ₽</span><span class="fund-days">До конца сбора 6 дней</span></div>
+          </div>
+          <a class="fund-btn" href="../support/">Поддержать проект</a>
+        </div>
+        <hr />
+        <div class="footer-cols">
+          <div class="footer-col footer-col--about">
+            <a class="footer-logo" href="../" aria-label="Карта ДТП"><img src="../assets/footer/logo.svg" alt="Карта ДТП" /></a>
+            <p>Проект посвящен проблеме дорожно-транспортных происшествий в России. Цель проекта — повышение безопасности дорожного движения и снижение смертности в ДТП.</p>
+          </div>
+          <div class="footer-col">
+            <h4>Связаться:</h4>
+            <p class="footer-contact"><img src="../assets/footer/telegram-sm.svg" alt="" /><a href="https://t.me/shehovsov_md" target="_blank" rel="noopener">@shehovsov_md</a></p>
+            <p class="footer-contact"><img src="../assets/footer/envelope-sm.svg" alt="" /><a href="mailto:dtp.stat@gmail.com">dtp.stat@gmail.com</a></p>
+          </div>
+          <div class="footer-col">
+            <h4>Карта сайта:</h4>
+            <ul class="footer-menu">
+              <li><a href="../">Карта ДТП</a></li>
+              <li><a href="../blog/">Блог и исследования</a></li>
+              <li><a href="../data/">Скачать данные</a></li>
+              <li><a href="../about/">О проекте</a></li>
+              <li><a href="../team/">Команда</a></li>
+            </ul>
+          </div>
+        </div>
+        <hr />
+        <div class="footer-bottom">
+          <div class="footer-cc"><img src="../assets/footer/cc.svg" alt="CC" /><img src="../assets/footer/by.svg" alt="BY" /></div>
+          <div class="footer-copy">Использование материалов возможно с указанием активной ссылки на сайт.</div>
+          <div class="footer-socials">
+            <a href="https://t.me/dtp_stat" aria-label="Telegram" target="_blank" rel="noopener"><img src="../assets/footer/social/telegram.svg" alt="" /></a>
+            <a href="https://twitter.com/dtp_stat" aria-label="X" target="_blank" rel="noopener"><img src="../assets/footer/social/twitter.svg" alt="" /></a>
+            <a href="https://www.instagram.com/dtp_stat" aria-label="Instagram" target="_blank" rel="noopener"><img src="../assets/footer/social/instagram.svg" alt="" /></a>
+            <a href="https://patreon.com/crash_map" aria-label="Patreon" class="social-black" target="_blank" rel="noopener"><img src="../assets/footer/social/patreon.svg" alt="" /></a>
+            <a href="https://boosty.to/dtp-stat" aria-label="Boosty" class="social-black" target="_blank" rel="noopener"><img src="../assets/footer/social/boosty.svg" alt="" /></a>
+          </div>
+        </div>
+      </div>
+    </footer>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="../maps-config.js"></script>
     <script type="module" src="app.js"></script>

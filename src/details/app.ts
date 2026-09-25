@@ -12,12 +12,21 @@ const formatDate = (value: string) => {
   const day = new Intl.DateTimeFormat(language === "en" ? "en-GB" : "ru-RU", { day:"2-digit", month:"2-digit", year:"numeric" }).format(date);
   return `${weekday}, ${day} ${language === "en" ? "at" : "в"} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 };
-const personIcon = (partType: string) => /пешеход/i.test(partType) ? "pedestrian" : /велосипед/i.test(partType) ? "cyclist" : "driver";
-const hvTone = (value: string) => /^не пострадал/i.test(value) ? "ok" : /погиб/i.test(value) ? "dead" : /ранен|пострада|травм/i.test(value) ? "injured" : "ok";
+const personIcon = (partType: string) => /пешеход/i.test(partType) ? "pedestrian" : /велосипед/i.test(partType) ? "cyclist" : /пассажир/i.test(partType) ? "passenger" : "driver";
+// «Скончался…» — тоже погибший (в данных ГИБДД встречаются обе формулировки)
+const hvTone = (value: string) => /^не пострадал/i.test(value) ? "ok" : /погиб|скончал/i.test(value) ? "dead" : /ранен|пострада|травм/i.test(value) ? "injured" : "ok";
+// SCHEMA_ID нового API — pk справочника /api/dict/schemas, имя — код схемы ГИБДД.
+// Картинки схем лежат локально (assets/scheme/<код>.png); у восьми кодов (x90)
+// картинки в репозитории старого сайта не было — карточка скроется по onerror
+const SCHEMA_MAP: Record<string, string> = { "1":"740", "2":"610", "3":"780", "4":"820", "5":"600", "6":"120", "7":"490", "8":"700", "9":"950", "10":"300", "11":"430", "12":"130", "13":"990", "14":"500", "15":"200", "16":"880", "17":"750", "18":"890", "19":"070", "20":"290", "21":"840", "22":"420", "23":"010", "24":"590", "25":"230", "26":"870", "27":"800", "28":"930", "29":"940", "30":"220", "31":"790", "32":"210", "33":"910", "34":"090", "35":"830", "36":"920", "37":"330", "38":"410", "39":"400", "40":"860", "41":"960", "42":"190", "43":"690", "44":"730", "45":"810", "46":"140", "47":"040", "48":"030", "49":"340", "50":"630", "51":"060", "52":"710", "53":"720", "54":"110", "55":"850", "56":"050", "57":"390", "58":"020", "59":"760", "60":"620", "61":"770", "62":"980", "63":"440", "64":"900", "65":"970", "66":"100", "67":"310", "68":"320" };
+const schemeImage = (schema: number) => { const code = SCHEMA_MAP[String(schema)]; return code ? `../assets/scheme/${code}.png` : ""; };
+// Карточка участника в стиле старого сайта: иконка роли в «квадряке», состояние
+// в светлой плашке (у погибших/пострадавших — красная/жёлтая), нарушения с иконкой
 const personCard = (person: any) => {
   const violations = [...list(person.MAIN_PDD_DERANGEMENT), ...list(person.ATTENDANT_PDD_DERANGEMENT)].filter((value, index, all) => all.indexOf(value) === index);
-  const role = [person.PART_TYPE, person.SEX].filter(Boolean).join(", ") + (person.DRIVER_SERVICE_LENGTH != null ? `, ${language === "en" ? "experience" : "стаж"} ${person.DRIVER_SERVICE_LENGTH}` : "");
-  return `<article class="person"><div class="person-head"><img src="../assets/icons/${personIcon(String(person.PART_TYPE || ""))}.svg" alt=""><div><h4>${escape(person.PART_TYPE || text.users)}</h4><p>${escape(role)}</p></div></div>${person.HV_TYPE ? `<p class="hv ${hvTone(String(person.HV_TYPE))}">${escape(person.HV_TYPE)}</p>` : ""}${violations.length ? `<ul class="violations">${violations.map((value) => `<li class="${/нет нарушений/i.test(value) ? "" : "bad"}"><i>!</i>${escape(value)}</li>`).join("")}</ul>` : ""}</article>`;
+  const role = [person.SEX, person.DRIVER_SERVICE_LENGTH != null ? `${language === "en" ? "experience" : "стаж"} ${person.DRIVER_SERVICE_LENGTH}` : ""].filter(Boolean).join(", ");
+  const tone = person.HV_TYPE ? hvTone(String(person.HV_TYPE)) : "ok";
+  return `<article class="person ${tone}"><div class="person-head"><span class="person-icon"><img src="../assets/icons/person/${personIcon(String(person.PART_TYPE || ""))}.svg" alt=""></span><div><h4>${escape(person.PART_TYPE || text.users)}</h4><p>${escape(role)}</p></div></div><p class="person-state">${escape(person.HV_TYPE || (language === "en" ? "condition unknown" : "состояние неизвестно"))}</p>${violations.length ? `<ul class="violations">${violations.map((value) => `<li>${escape(value)}</li>`).join("")}</ul>` : ""}</article>`;
 };
 
 function loadYandex() {
@@ -35,6 +44,15 @@ function initMap(detail: any) {
   loadYandex().then((ymaps) => {
     const map = new ymaps.Map("detail-map", { center:point, zoom:16, controls:["zoomControl"] }, { maxZoom:20, minZoom:1, avoidFractionalZoom:true, yandexMapDisablePoiInteractivity:true, suppressMapOpenBlock:true });
     map.geoObjects.add(new ymaps.Placemark(point, {}, { preset:"islands#redCircleDotIcon" }));
+    // У Яндекса «Как добраться» и «Создать свою карту» живут в панели копирайтов —
+    // убираем их точечно, оставляя «© Яндекс Условия использования». Кнопки
+    // дорисовываются позже карты, поэтому чистим и по мере появления (MutationObserver)
+    const copyrights = map.panes.get("copyrights")?.getElement();
+    if (copyrights) {
+      const clean = () => copyrights.querySelectorAll("a, button").forEach((node) => { if (/добраться|свою карту|constructor/i.test(node.textContent || "")) node.remove(); });
+      clean();
+      new MutationObserver(clean).observe(copyrights, { childList: true, subtree: true });
+    }
     const mapButton = document.querySelector("#show-map") as HTMLButtonElement, panoramaButton = document.querySelector("#show-panorama") as HTMLButtonElement, mapNode = document.querySelector("#detail-map") as HTMLElement, panoramaNode = document.querySelector("#detail-panorama") as HTMLElement;
     mapButton.addEventListener("click", () => { mapNode.hidden = false; panoramaNode.hidden = true; mapButton.classList.add("active"); panoramaButton.classList.remove("active"); map.container.fitToViewport(); });
     ymaps.panorama.createPlayer("detail-panorama", point, { controls:[] }).then(() => { panoramaButton.disabled = false; panoramaButton.addEventListener("click", () => { mapNode.hidden = true; panoramaNode.hidden = false; panoramaButton.classList.add("active"); mapButton.classList.remove("active"); }); }, () => { panoramaNode.remove(); panoramaButton.remove(); });
@@ -64,14 +82,16 @@ async function load() {
   document.documentElement.lang = language;
   document.title = `${text.title} — ${detail.category_name || text.title}`;
   root.className = "";
-  const counter = (icon: string, label: string, value: any, tone = "") => `<div class="${tone}"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">${icon}</svg><span>${label}</span><strong>${escape(value ?? 0)}</strong></div>`;
-  const carIcon = '<path d="M5 16l1.5-5.5A2 2 0 0 1 8.4 9h7.2a2 2 0 0 1 1.9 1.5L19 16"/><rect x="4" y="15" width="16" height="4.5" rx="1.2"/><path d="M7 19.5v1.5M17 19.5v1.5"/>';
-  const personIconSvg = '<circle cx="12" cy="7.5" r="3"/><path d="M6 20v-1.5a6 6 0 0 1 12 0V20"/>';
-  const groups = `<div class="person-group">${detail.people.length ? `<div class="person-cards">${detail.people.map(personCard).join("")}</div>` : ""}</div>${detail.vehicles.map((vehicle: any) => {
+  // Индикаторы старого сайта: иконки media/all|participants|injured|dead.svg,
+  // значения «Пострадали»/«Погибли» в фирменных жёлтом/красном
+  const counter = (icon: string, label: string, value: any, tone = "") => `<div class="${tone}"><img src="../assets/icons/${icon}.svg" alt=""><span>${label}<strong>${escape(value ?? 0)}</strong></span></div>`;
+  // Участники: сначала люди вне транспорта, затем по ТС — единый горизонтальный
+  // скролл, заголовки ТС sticky слева (как .participants__inner на старом сайте)
+  const groups = `<div class="person-scroll"><div class="person-group">${detail.people.length ? `<div class="person-cards">${detail.people.map(personCard).join("")}</div>` : ""}</div>${detail.vehicles.map((vehicle: any) => {
     const title = [vehicle.MARK, vehicle.COLOR, vehicle.YEAR].filter(Boolean).join(", ");
     return `<div class="person-group">${title ? `<h3>${escape(title)}</h3>` : ""}<div class="person-cards">${objects(vehicle.PERSONS).map(personCard).join("")}</div></div>`;
-  }).join("")}`;
-  root.innerHTML = `<section class="map-stage"><div id="detail-map" class="detail-map" aria-label="${language === "en" ? "Accident location" : "Место ДТП"}"></div><div id="detail-panorama" class="detail-map" hidden aria-label="${text.panorama}"></div><div class="map-tools"><a class="pill" href="../?center=${detail.point.latitude}:${detail.point.longitude}&zoom=15">${text.nearby}</a><span class="pill-group"><button id="show-map" class="active" type="button">${text.map}</button><button id="show-panorama" type="button" disabled>${text.panorama}</button></span></div></section><article class="content"><div class="head-grid${detail.schema ? "" : " no-scheme"}">${detail.schema ? `<figure class="scheme"><img src="https://dtp-stat.ru/static/scheme/${detail.schema}.png" alt="${text.scheme}" onerror="this.closest('figure').remove();document.querySelector('.head-grid').classList.add('no-scheme')"><figcaption>${text.scheme}</figcaption></figure>` : ""}<div class="head"><p class="meta">${escape(formatDate(detail.datetime))} <i>|</i> ${escape(detail.address)}</p><h1>${escape(detail.category_name || text.title)}</h1><div class="counters">${counter(carIcon, text.transport, detail.vehiclesCount)}${counter(personIconSvg, text.users, detail.participants)}${counter(personIconSvg, text.injured, detail.injured, "injured")}${counter(personIconSvg, text.dead, detail.dead, "dead")}</div>${detail.tags.length ? `<div class="chips">${detail.tags.map((tag: string) => `<span>${escape(tag)}</span>`).join("")}</div>` : ""}</div></div><section class="participants"><h2>${text.users}</h2>${groups}</section><p class="official"><span><i></i>${text.official}</span></p></article>`;
+  }).join("")}</div>`;
+  root.innerHTML = `<section class="map-stage"><div id="detail-map" class="detail-map" aria-label="${language === "en" ? "Accident location" : "Место ДТП"}"></div><div id="detail-panorama" class="detail-map" hidden aria-label="${text.panorama}"></div><div class="map-tools"><a class="pill" href="../?center=${detail.point.latitude}:${detail.point.longitude}&zoom=15" target="_blank" rel="noopener">${text.nearby}</a><span class="pill-group"><button id="show-map" class="active" type="button">${text.map}</button><button id="show-panorama" type="button" disabled>${text.panorama}</button></span></div></section><article class="content"><div class="head-grid${detail.schema ? "" : " no-scheme"}">${detail.schema && schemeImage(detail.schema) ? `<figure class="scheme"><img src="${schemeImage(detail.schema)}" alt="${text.scheme}" onerror="this.closest('figure').remove();document.querySelector('.head-grid').classList.add('no-scheme')"><figcaption>${text.scheme}</figcaption></figure>` : ""}<div class="head"><p class="meta">${escape(formatDate(detail.datetime))} <i>|</i> ${escape(detail.address)}</p><h1>${escape(detail.category_name || text.title)}</h1><div class="counters">${counter("all", text.transport, detail.vehiclesCount)}${counter("participants", text.users, detail.participants)}${counter("injured", text.injured, detail.injured, "injured")}${counter("dead", text.dead, detail.dead, "dead")}</div>${detail.tags.length ? `<div class="chips">${detail.tags.map((tag: string) => `<span>${escape(tag)}</span>`).join("")}</div>` : ""}</div></div><section class="participants"><h2>${text.users}</h2>${groups}</section><p class="official"><a href="https://gibdd.ru" target="_blank" rel="noopener"><img src="https://wp.dtp-stat.ru/wp-content/uploads/2026/09/gibdd-5ee641.svg" alt="">${text.official}</a></p></article>`;
   initMap(detail);
 }
 

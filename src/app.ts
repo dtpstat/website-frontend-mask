@@ -893,6 +893,31 @@ function drawRegionSuggest() {
   }));
   if (!matches.length) { const empty = document.createElement("p"); empty.className = "region-suggest-empty"; empty.textContent = t("noMatches"); suggest.append(empty); }
 }
+// Прямая ссылка на конкретное ДТП открывает его попап (?popup=<em_number>).
+// Единожды: при первом рендере, где точка уже загружена — иначе попап
+// пересоздавался бы на каждый сдвиг карты
+let linkedPopupPending = Boolean(mapQuery.get("popup"));
+function openLinkedPopup() {
+  const popupId = mapQuery.get("popup");
+  if (!popupId) return true;
+  if (state.mapClient === "leaflet") {
+    const marker = markers.get(popupId);
+    if (!marker) return false;
+    marker.openPopup();
+    return true;
+  }
+  const item = lastRender.visible.find((candidate) => candidate.id === popupId);
+  if (!item) return false;
+  if (state.mapClient === "yandex" && yandex.map) {
+    yandex.map.balloon.open([item.point.longitude, item.point.latitude], { content: markerPopup(item) }, { autoPan: false });
+    return true;
+  }
+  if (state.mapClient === "mapbox" && mapbox.map && (window as any).mapboxgl) {
+    new (window as any).mapboxgl.Popup().setLngLat([item.point.longitude, item.point.latitude]).setHTML(markerPopup(item)).addTo(mapbox.map);
+    return true;
+  }
+  return false;
+}
 function renderMapData(view) {
   const filtered = filteredPoints(), visible = [];
   for (const item of filtered) if (contains(view.bounds, item.point)) visible.push(item);
@@ -913,9 +938,7 @@ function renderMapData(view) {
   if (state.mapClient === "leaflet") renderLeaflet(visible, heatPoints, heatVisible);
   else if (state.mapClient === "yandex") renderYandex(visible, heatPoints, heatVisible);
   else renderMapbox(visible, heatPoints, heatVisible);
-  // Прямая ссылка на конкретное ДТП открывает его попап (?popup=<em_number>)
-  const linkedMarker = mapQuery.get("popup") && markers.get(mapQuery.get("popup"));
-  if (linkedMarker) linkedMarker.openPopup();
+  if (linkedPopupPending) linkedPopupPending = !openLinkedPopup();
   setStatus(`${number().format(counted.length)} ${(state.territory ? t("accidents") : t("accidentsInArea")).toLowerCase()}`);
 }
 

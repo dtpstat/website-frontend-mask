@@ -1,60 +1,129 @@
-:root { --navy:#18334a; --muted:#5f7482; --pale:#f4f8fa; --line:#d6e0e6; --yellow:#ffb81f; --red:#ff001a; }
+/* Страница ДТП: раскладка и стиль эталона — старый dtp-stat.ru
+   (templates/dtp/dtp.html + style-dtp-card.css) и макет «1 detail card». */
+:root { --navy:#18334a; --navy-soft:#4e6e87; --muted:#5f7482; --pale:#f4f8fa; --line:#d6e0e6; --yellow:#ffb81f; --red:#ff001a; }
 * { box-sizing:border-box; } body { margin:0; color:var(--navy); background:#fff; font:16px/24px Roboto,Arial,sans-serif; } a { color:inherit; text-decoration:none; } button { cursor:pointer; font:inherit; }
 .loading, .error { display:grid; min-height:60vh; place-items:center; padding:24px; color:var(--muted); }
+
+/* Карта и плавающие кнопки: ряд кнопок перекрывает нижний край карты (как на
+   старом сайте: .map-buttons { margin-top:-74px }), схема — верхний край */
 .map-stage { position:relative; }
 .detail-map { height:280px; background:var(--pale); }
 .detail-map [class*="ground-pane"] ymaps:first-child { filter:grayscale(.8); }
-.detail-map [class*="route-panel"], .detail-map [class*="route-button"], .detail-map [class*="taxi"] { display:none !important; }
+.detail-map [class*="route-panel"], .detail-map [class*="route-button"], .detail-map [class*="taxi"], .detail-map [class*="gotoymaps"] { display:none !important; }
 .leaflet-tile-pane { filter:grayscale(.8); }
-.map-tools { position:absolute; top:18px; right:max(20px, calc((100vw - 1120px) / 2)); z-index:1001; display:flex; gap:10px; }
-.map-tools .pill { display:inline-flex; align-items:center; gap:8px; padding:9px 16px; border-radius:20px; color:var(--navy); background:#fff; box-shadow:0 3px 10px #18334a30; font-size:14px; font-weight:500; border:0; }
-.map-tools .pill-group { display:flex; padding:3px; border-radius:20px; background:#fff; box-shadow:0 3px 10px #18334a30; }
+.map-tools { position:absolute; left:0; right:0; bottom:40px; z-index:1001; display:flex; justify-content:space-between; gap:10px; padding:0 24px; pointer-events:none; }
+.map-tools .pill { pointer-events:auto; display:inline-flex; align-items:center; gap:8px; padding:9px 16px; border-radius:20px; color:var(--navy); background:#fff; box-shadow:0 3px 10px #18334a30; font-size:14px; font-weight:500; border:0; }
+.map-tools .pill-group { pointer-events:auto; display:flex; padding:3px; border-radius:20px; background:#fff; box-shadow:0 3px 10px #18334a30; }
 .map-tools .pill-group button { padding:7px 14px; border:0; border-radius:16px; color:var(--navy); background:#fff; font-size:14px; font-weight:500; }
 .map-tools .pill-group button.active { color:#fff; background:var(--navy); }
 .map-tools .pill-group button:disabled { color:#9cabb5; }
-.content { width:min(1120px, calc(100% - 40px)); margin:0 auto; padding:26px 0 58px; }
+
+.content { width:min(1120px, calc(100% - 40px)); margin:0 auto; padding:0 0 58px; }
 .head-grid { display:grid; grid-template-columns:264px minmax(0, 1fr); gap:34px; align-items:start; }
 .head-grid.no-scheme { grid-template-columns:minmax(0, 1fr); }
-.scheme { margin:0; padding:10px; border:1px solid var(--line); border-radius:12px; background:#fff; }
-.scheme img { display:block; width:100%; height:auto; border-radius:6px; }
-.scheme figcaption { margin-top:8px; color:var(--muted); font-size:13px; text-align:center; }
+/* Схема ДТП — квадратная карточка 240×240 внахлёст над картой (старый сайт:
+   .scheme-wrap { width:240px; height:240px; margin:-80px auto 0; border-radius:8px }) */
+.scheme { margin:-80px auto 0; padding:5px; width:240px; height:240px; border-radius:8px; background:#fff; box-shadow:0 0 2.4px rgba(9,42,70,.04), 0 0 6.8px rgba(9,42,70,.06), 0 0 16.3px rgba(9,42,70,.07), 0 0 54px rgba(9,42,70,.11); }
+.scheme img { display:block; width:100%; height:100%; object-fit:contain; border-radius:6px; }
+.scheme figcaption { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
 .meta { margin:0; color:var(--navy); font-size:15px; }
 .meta i { margin:0 10px; color:var(--line); font-style:normal; }
-.content h1 { margin:10px 0 0; font-size:32px; line-height:40px; }
-.counters { display:flex; flex-wrap:wrap; gap:18px 44px; margin-top:20px; }
-.counters > div { display:grid; grid-template-columns:auto auto; column-gap:10px; align-items:center; }
-.counters svg { grid-row:span 2; width:26px; height:26px; }
-.counters span { color:var(--muted); font-size:14px; }
-.counters strong { font-size:20px; line-height:26px; }
-.counters .injured strong { color:#e9b32a; }
-.counters .dead { color:var(--red); }
-.chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:20px; }
-.chips span { padding:5px 12px; border-radius:6px; color:var(--navy); background:var(--pale); font-size:14px; }
-.participants { margin-top:38px; }
+.content h1 { margin:10px 0 17px; font-size:30px; line-height:40px; }
+/* Индикаторы-плитки: иконка + подпись (полупрозрачный navy) + жирное значение;
+   «Пострадали» #FFB81F, «Погибли» #FF001A — как на старом сайте */
+.counters { display:flex; flex-wrap:wrap; gap:18px 44px; }
+.counters > div { display:flex; align-items:center; gap:10px; }
+.counters img { width:26px; height:26px; object-fit:contain; }
+.counters span { color:rgba(24,51,74,.5); font-size:14px; line-height:1.3; }
+.counters strong { display:block; font-size:20px; line-height:1.3; }
+.counters .injured strong { color:var(--yellow); }
+.counters .dead strong { color:var(--red); }
+/* Теги условий — chip-кнопки старого сайта (.tag-btn) */
+.chips { display:flex; flex-wrap:wrap; gap:8px 0; margin:20px -8px 0 0; padding:0; }
+.chips span { margin:0 8px 0 0; padding:5px 8px; border-radius:4px; color:var(--navy); background:var(--pale); font-size:14px; font-weight:500; line-height:20px; letter-spacing:.15px; }
+
+/* Участники: горизонтальный скролл ряда (старый .participants__inner),
+   заголовки ТС sticky слева; карточки погибших/пострадавших подсвечены */
+.participants { margin-top:14px; overflow:hidden; }
 .participants h2 { margin:0 0 16px; font-size:24px; }
-.person-group + .person-group { margin-top:24px; }
-.person-group h3 { margin:0 0 12px; font-size:18px; }
-.person-cards { display:flex; flex-wrap:wrap; gap:14px; }
-.person { width:270px; padding:14px; border:1px solid var(--line); border-radius:12px; background:#fff; box-shadow:0 2px 8px #18334a14; }
-.person-head { display:flex; align-items:center; gap:10px; }
-.person-head img { width:26px; height:26px; object-fit:contain; }
-.person-head h4 { margin:0; font-size:16px; }
-.person-head p { margin:0; color:var(--muted); font-size:14px; }
-.hv { margin:10px 0 0; padding:7px 10px; border-radius:6px; font-size:14px; }
-.hv.injured { color:#8a6d00; background:#fff5d6; }
-.hv.dead { color:#fff; background:var(--red); }
-.hv.ok { color:var(--muted); background:var(--pale); }
-.violations { display:grid; gap:6px; margin:10px 0 0; padding:0; list-style:none; }
-.violations li { display:flex; align-items:flex-start; gap:8px; padding:7px 10px; border-radius:6px; background:var(--pale); font-size:14px; }
-.violations li.bad { background:#ffe9ea; }
-.violations li i { flex:none; display:grid; place-items:center; width:16px; height:16px; margin-top:3px; border-radius:50%; color:#fff; background:#9cabb5; font:700 11px/16px Roboto,Arial,sans-serif; font-style:normal; }
-.violations li.bad i { background:var(--red); }
-.official { display:flex; justify-content:center; margin:44px 0 0; }
-.official span { display:inline-flex; align-items:center; gap:10px; padding:12px 22px; border:1px solid var(--line); border-radius:10px; font-size:16px; font-weight:500; }
-.official i { width:22px; height:22px; border-radius:50%; background:radial-gradient(circle at 50% 42%, #f6c14b 0 34%, #1d4f9e 35% 100%); }
-@media (max-width:800px) {
-  .map-tools { left:12px; right:12px; flex-wrap:wrap; }
+.person-scroll { overflow-x:auto; padding-bottom:25px; }
+.person-group h3 { position:sticky; left:0; margin:10px 0; font-size:20px; line-height:28px; }
+.person-cards { display:flex; flex-wrap:nowrap; gap:12px; }
+.person { flex:none; width:300px; padding:12px 16px; border:1px solid #ebedf0; border-radius:20px; background:#fff; }
+.person-head { display:flex; align-items:center; gap:10px; margin-bottom:4px; }
+.person-icon { flex:none; display:grid; place-items:center; width:32px; height:32px; border-radius:44%; background:rgba(24,51,74,.5); }
+.person-icon img { width:20px; height:20px; object-fit:contain; }
+.person-head h4 { margin:0; font-size:18px; line-height:24px; letter-spacing:.15px; }
+.person-head p { margin:0; font-size:14px; line-height:20px; }
+.person-state { margin:0; padding:5px 8px; border-radius:4px; background:var(--pale); font-size:14px; font-weight:500; line-height:20px; letter-spacing:.15px; }
+.violations { margin:8px 0 0; padding:5px 8px; border-radius:4px; background:var(--pale); font-size:14px; font-weight:500; line-height:20px; letter-spacing:.15px; }
+.violations li { display:flex; align-items:flex-start; gap:8px; padding-left:34px; background:url("../assets/icons/attention.svg") no-repeat left 2px center / 22px auto; list-style:none; }
+.violations li + li { margin-top:6px; }
+.person.dead .person-icon { background:var(--red); }
+.person.dead .person-state { color:var(--red); background:rgba(227,26,28,.1); }
+.person.injured .person-icon { background:var(--yellow); }
+.person.injured .person-state { color:#d69a00; background:rgba(255,184,31,.1); }
+
+/* Бейдж «Официальные данные ГИБДД»: лого из медиатеки WP, лого и бейдж — ссылки
+   на gibdd.ru (DTP-33) */
+.official { display:flex; justify-content:center; margin:34px 0 0; }
+.official a { display:inline-flex; align-items:center; gap:12px; padding:12px 22px 12px 16px; border:1px solid #ebeef0; border-radius:8px; font-size:16px; font-weight:500; line-height:24px; letter-spacing:.15px; }
+.official a:hover { opacity:.75; }
+.official img { width:36px; height:32px; object-fit:contain; }
+
+/* ---------- Подвал (статичная копия футера WP-темы dtpstat-child) ---------- */
+.site-footer { margin-top:60px; background:var(--pale); padding:40px 0 32px; font-size:16px; line-height:24px; }
+.footer-container { max-width:1140px; margin:0 auto; padding:0 20px; }
+.fund-strip { display:flex; align-items:center; gap:30px; }
+.fund-main { flex:1 1 auto; }
+/* прогресс-бар сбора: трек #d1dee4, заливка радужным градиентом;
+   ширина = 15546/50000, градиент растянут в 1/долю ширины (как dtp_fund_css) */
+.fund-bar { height:20px; border-radius:10px; background:#d1dee4; overflow:hidden; }
+.fund-bar i { display:block; height:100%; width:31.09%; border-radius:10px; background:linear-gradient(90deg, #ff001a 0%, #ff7f24 26%, #ffb81f 53%, #17aa14 100%); background-size:321.54% 100%; }
+.fund-row { display:flex; align-items:baseline; justify-content:space-between; margin-top:4px; font-size:14px; }
+.fund-raised { font-weight:500; }
+.fund-days { color:var(--navy-soft); }
+.fund-btn { display:inline-flex; align-items:center; justify-content:center; flex:none; min-height:40px; padding:8px 20px; border-radius:10px; color:#fff; background:var(--navy); font-weight:500; }
+.fund-btn:hover { background:var(--navy-soft); }
+.site-footer hr { border:0; border-top:1px solid var(--line); margin:40px 0; }
+.footer-cols { display:grid; grid-template-columns:380px 1fr 1fr; gap:48px; }
+.footer-col h4 { margin:0 0 12px; font-size:16px; line-height:24px; font-weight:700; }
+.footer-col p { margin:0; }
+.footer-col--about p { line-height:22px; }
+.footer-logo img { display:block; width:170px; height:24px; margin-bottom:20px; }
+.footer-contact { display:flex; align-items:center; gap:5px; margin-bottom:12px !important; }
+.footer-contact img { width:12px; height:auto; }
+.footer-menu { list-style:none; margin:0; padding:0; }
+.footer-menu li + li { margin-top:12px; }
+.footer-menu a:hover { text-decoration:underline; }
+.footer-bottom { display:flex; align-items:center; gap:15px; }
+.footer-cc { display:flex; gap:8px; }
+.footer-cc img { width:32px; height:32px; }
+.footer-copy { max-width:260px; font-size:14px; line-height:20px; }
+.footer-socials { display:flex; gap:15px; margin-left:auto; }
+.footer-socials a { display:flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:50%; background:rgba(24,51,74,.1); }
+.footer-socials a:hover { background:rgba(24,51,74,.18); }
+.footer-socials img { width:20px; height:20px; }
+.footer-socials .social-black img { filter:brightness(0); }
+
+@media (max-width:1024px) {
+  .map-tools { flex-wrap:wrap; padding:0 12px; }
+}
+@media (max-width:860px) {
+  .footer-cols { grid-template-columns:1fr; gap:32px; }
+  .fund-strip { flex-direction:column; align-items:stretch; }
+  .footer-bottom { flex-wrap:wrap; }
+  .footer-socials { margin-left:0; width:100%; justify-content:flex-start; }
+  /* на узких экранах схема встаёт в поток (старый сайт: margin:10px auto 0) */
+  .scheme { margin:10px auto 0; }
   .head-grid, .head-grid.no-scheme { grid-template-columns:1fr; gap:20px; }
+}
+@media (max-width:800px) {
   .content h1 { font-size:26px; line-height:34px; }
   .counters { gap:14px 26px; }
+}
+@media (max-width:768px) {
+  .person-cards { flex-wrap:wrap; }
+  .person { width:100%; }
+  .map-tools { left:12px; right:12px; padding:0; }
 }
