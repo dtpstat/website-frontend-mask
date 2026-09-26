@@ -1,7 +1,7 @@
 // Локальный сервер разработки: раздаёт dist/ и проксирует /api на бэкенд dtp-stat
 // (запасной origin через env DTP_ORIGIN; по умолчанию — стенд за cloudflare-туннелем).
 // Запуск: npm run build && npm run serve → http://localhost:8080
-import { createServer } from "node:http";
+import { createServer, request as plainRequest } from "node:http";
 import { request as tlsRequest } from "node:https";
 import { statSync, createReadStream } from "node:fs";
 import { join, extname, normalize } from "node:path";
@@ -23,12 +23,13 @@ const server = createServer((req, res) => {
   // /api/* — без изменений в бэкенд (тело и заголовки отдаются как есть, включая gzip)
   if (url.pathname.startsWith("/api/")) {
     const target = new URL(origin);
-    const upstream = tlsRequest({
+    const http = target.protocol === "http:" ? plainRequest : tlsRequest;
+    const upstream = http({
       hostname: target.hostname,
-      port: target.port || 443,
+      port: target.port || (target.protocol === "http:" ? 80 : 443),
       path: url.pathname + url.search,
       method: req.method,
-      headers: { ...req.headers, host: `${target.hostname}:${target.port || 443}` },
+      headers: { ...req.headers, host: `${target.hostname}:${target.port || (target.protocol === "http:" ? 80 : 443)}` },
       rejectUnauthorized: false,
     }, (answer) => {
       const headers = { ...answer.headers };
