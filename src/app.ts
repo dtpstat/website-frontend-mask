@@ -416,6 +416,9 @@ const yandexHeatBuffer = { canvas: null as HTMLCanvasElement | null };
 // Якорь отрисовки в глобальных пикселях: по нему тепло догоняет карту
 // transform-сдвигом, не перерисовываясь
 let yandexHeatAnchor: { x: number; y: number; zoom: number } | null = null;
+// Идёт зум-жест (DTP-30): полотно держим невидимым до actionend, перерисовки
+// посреди жеста видимость не возвращают
+let yandexHeatZoomHold = false;
 // Полотно больше экрана на поля: во время перетаскивания canvas следует за картой
 // сдвигом, и по краям не успевает появиться пустая полоса
 const yandexHeatMargin = 200;
@@ -424,7 +427,7 @@ function drawYandexHeat(heatPoints, heatVisible) {
   if (!canvas || !map) return;
   if (!heatVisible || !heatPoints.length) { canvas.style.display = "none"; canvas.style.transform = ""; yandexHeatAnchor = null; return; }
   canvas.style.display = "block";
-  canvas.style.opacity = String(yandexHeatSettings.opacity);
+  canvas.style.opacity = yandexHeatZoomHold ? "0" : String(yandexHeatSettings.opacity);
   const container = $("#yandex-map") as HTMLElement, dpr = window.devicePixelRatio || 1;
   const width = container.clientWidth + yandexHeatMargin * 2, height = container.clientHeight + yandexHeatMargin * 2;
   canvas.style.left = `${-yandexHeatMargin}px`; canvas.style.top = `${-yandexHeatMargin}px`;
@@ -546,20 +549,23 @@ async function ensureYandex(view) {
   renderYandex(lastRender.visible, lastRender.heatPoints, lastRender.heatVisible);
   yandex.map.events.add("boundschange", () => { if (state.mapClient === "yandex") scheduleMapLoad(); });
   // Тепло едет вместе с картой: в жесте полотно догоняет вид transform-сдвигом,
-  // перерисовка — по завершении жеста. map.getCenter() и boundschange в ходе жеста
-  // отстают (обновляются один раз в конце), живой центр на каждый тик даёт
-  // action._globalPixelCenter
-  yandex.map.events.add("actiontick", () => {
+  // перерисовка — по завершении жеста. Живые центр и зум берём из тика события
+  // actiontick (публичные tick.globalPixelCenter/tick.zoom): map.getCenter() в ходе
+  // жеста отстаёт, а приватные поля action (_zoom, _globalPixelCenter) ненадёжны
+  yandex.map.events.add("actiontick", (e: any) => {
     if (state.mapClient !== "yandex") return;
-    const anchor = yandexHeatAnchor, canvas = yandex.heatCanvas, action = yandex.map.action;
-    if (!anchor || !canvas || canvas.style.display === "none" || !action || !action._globalPixelCenter) { applyHeatMode(); return; }
-    // Зум-жест (DTP-30): тепло скрывается и догоняет вид уже по завершении,
-    // в actionend — перерисовка drawYandexHeat вернёт слой с исходной прозрачностью
-    if (action._zoom !== anchor.zoom) { canvas.style.opacity = "0"; return; }
-    const [cx, cy] = action._globalPixelCenter;
+    const anchor = yandexHeatAnchor, canvas = yandex.heatCanvas;
+    const tick = e?.originalEvent?.tick;
+    if (!anchor || !canvas || canvas.style.display === "none" || !tick?.globalPixelCenter) { applyHeatMode(); return; }
+    // Зум-жест (DTP-30): тепло скрывается до конца жеста. Холд не даёт вернуть
+    // видимость: если полотно перерисовалось прямо в жесте (якорь перескочил на
+    // целевой зум), оставшиеся тики продолжают гасить слой
+    if (tick.zoom !== anchor.zoom) { yandexHeatZoomHold = true; canvas.style.opacity = "0"; return; }
+    if (yandexHeatZoomHold) { canvas.style.opacity = "0"; return; }
+    const [cx, cy] = tick.globalPixelCenter;
     canvas.style.transform = `translate3d(${Math.round(anchor.x - cx)}px, ${Math.round(anchor.y - cy)}px, 0)`;
   });
-  yandex.map.events.add("actionend", () => { if (state.mapClient === "yandex") { applyHeatMode(); scheduleYandexHeat(); updateYandexPointRadius(); } });
+  yandex.map.events.add("actionend", () => { if (state.mapClient === "yandex") { yandexHeatZoomHold = false; applyHeatMode(); scheduleYandexHeat(); updateYandexPointRadius(); } });
 }
 function loadMapboxScript() {
   const key = (window as any).MAPBOX_ACCESS_TOKEN;
