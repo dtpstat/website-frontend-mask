@@ -7,7 +7,7 @@ import { statSync, createReadStream } from "node:fs";
 import { join, extname, normalize } from "node:path";
 
 const port = Number(process.env.PORT) || 8124;
-const origin = "https://vpn.kulikow.ru:3000";
+const origin = "https://dtpstat-backend.7190805.xyz";
 const root = new URL("./dist/", import.meta.url).pathname;
 
 const types = {

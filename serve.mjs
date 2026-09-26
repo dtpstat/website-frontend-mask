@@ -1,6 +1,5 @@
-// Локальный сервер разработки: раздаёт dist/ и проксирует /api на бэкенд dtp-stat.
-// Бэкенд живёт на self-signed TLS-сертификате — браузеры блокируют такие запросы
-// напрямую, поэтому проксируем здесь с отключенной проверкой сертификата.
+// Локальный сервер разработки: раздаёт dist/ и проксирует /api на бэкенд dtp-stat
+// (запасной origin через env DTP_ORIGIN; по умолчанию — стенд за cloudflare-туннелем).
 // Запуск: npm run build && npm run serve → http://localhost:8080
 import { createServer } from "node:http";
 import { request as tlsRequest } from "node:https";
@@ -8,7 +7,7 @@ import { statSync, createReadStream } from "node:fs";
 import { join, extname, normalize } from "node:path";
 
 const port = Number(process.env.PORT) || 8080;
-const origin = process.env.DTP_ORIGIN || "https://vpn.kulikow.ru:3000";
+const origin = process.env.DTP_ORIGIN || "https://dtpstat-backend.7190805.xyz";
 const root = new URL("./dist/", import.meta.url).pathname;
 
 const types = {

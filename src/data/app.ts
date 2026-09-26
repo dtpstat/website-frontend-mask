@@ -1,5 +1,5 @@
-// Локально (npm run serve) API доступен по тому же origin: serve.mjs проксирует /api на vpn.kulikow.ru:3000
-const api = ["localhost", "127.0.0.1"].includes(location.hostname) ? "/api" : "https://vpn.kulikow.ru:3000/api";
+// Локально (npm run serve) API доступен по тому же origin: serve.mjs проксирует /api на dtpstat-backend.7190805.xyz
+const api = ["localhost", "127.0.0.1"].includes(location.hostname) ? "/api" : "https://dtpstat-backend.7190805.xyz/api";
 const $ = (selector) => document.querySelector(selector);
 const state = { language: new URLSearchParams(location.search).get("lang") || localStorage.getItem("language") || "ru" };
 const copy = {
