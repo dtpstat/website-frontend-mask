@@ -318,14 +318,14 @@ function renderChart() {
       const crashBar = document.createElement("i"); crashBar.style.width = `${Math.max(2, Math.round(bucket.count / maxCount * 100))}%`; crashTrack.append(crashBar);
       const dead = document.createElement("span"); dead.className = "hcount"; dead.textContent = number().format(bucket.dead);
       const deadTrack = document.createElement("span"); deadTrack.className = "htrack dead";
-      const deadBar = document.createElement("i"); deadBar.style.width = `${bucket.dead ? Math.max(2, Math.round(bucket.dead / maxDead * 100)) : 0}%`; deadTrack.append(deadBar);
+      const deadBar = document.createElement("i"); deadBar.style.left = `${Math.round(bucket.dead / maxDead * 100)}%`; deadTrack.append(deadBar);
       row.append(name, count, crashTrack, dead, deadTrack);
       return row;
     }));
     return;
   }
-  // Разрезы по времени (когда появятся даты): комбо — navy-столбцы по левой оси
-  // и красная линия погибших с квадратными маркерами по правой
+  // Разрезы по времени (когда появятся даты): комбо как на старом сайте — светло-серые
+  // скруглённые столбцы по левой оси и красная линия погибших с круглыми маркерами по правой
   bars.className = "bars bars-combo";
   const width = Math.max(320, values.length * 52), height = 260, padL = 46, padR = 46, padT = 12, padB = 24, plotW = width - padL - padR, plotH = height - padT - padB;
   const x = (index) => padL + (values.length === 1 ? plotW / 2 : index / (values.length - 1) * plotW);
@@ -340,11 +340,11 @@ function renderChart() {
     }
     return lines.join("");
   };
-  const columns = values.map(([, bucket], index) => `<rect x="${x(index) - 14}" y="${yCount(bucket.count)}" width="28" height="${Math.max(2, padT + plotH - yCount(bucket.count))}" fill="#18334a"></rect>`).join("");
+  const columns = values.map(([, bucket], index) => `<rect x="${x(index) - 14}" y="${yCount(bucket.count)}" width="28" height="${Math.max(2, padT + plotH - yCount(bucket.count))}" rx="4" fill="#e2e6ea"></rect>`).join("");
   const line = values.map(([, bucket], index) => `${index ? "L" : "M"}${x(index)},${yDead(bucket.dead)}`).join("");
-  const markers = values.map(([, bucket], index) => `<rect x="${x(index) - 4}" y="${yDead(bucket.dead) - 4}" width="8" height="8" fill="#FF001A"></rect>`).join("");
+  const markers = values.map(([, bucket], index) => `<circle cx="${x(index)}" cy="${yDead(bucket.dead)}" r="4.5" fill="#FF001A"></circle>`).join("");
   const labels = values.map(([label], index) => `<text x="${x(index)}" y="${height - 6}" text-anchor="middle" font-size="11" fill="#8296a5">${String(label).replace(/&/g, "&amp;").replace(/</g, "&lt;")}</text>`).join("");
-  bars.replaceChildren(Object.assign(document.createElement("div"), { innerHTML: `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${axis(maxCount, yCount, "l")}${axis(maxDead, yDead, "r")}<line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="#d1dee4"></line>${columns}<path d="${line}" fill="none" stroke="#FF001A" stroke-width="2"></path>${markers}${labels}</svg>` }));
+  bars.replaceChildren(Object.assign(document.createElement("div"), { innerHTML: `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${axis(maxCount, yCount, "l")}${axis(maxDead, yDead, "r")}<line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="#d1dee4"></line>${columns}<path d="${line}" fill="none" stroke="#FF001A" stroke-opacity=".35" stroke-width="2"></path>${markers}${labels}</svg>` }));
 }
 
 const mapQuery = new URLSearchParams(location.search), initialCenter = (mapQuery.get("center") || "").split(":").map(Number), zoomQuery = mapQuery.get("zoom"), initialZoom = zoomQuery === null ? NaN : Number(zoomQuery);

@@ -198,3 +198,18 @@ body .advanced-interval .advanced-interval-field.to { margin-left:-4px; }
 body .advanced-options .advanced-interval-field input { flex:1 1 0; width:0; min-width:0; height:auto; margin:0; padding:0; border:0; border-radius:0; outline:0; background:transparent; color:var(--navy); font-size:14px; line-height:20px; }
 body .advanced-interval-field:focus-within { background:#e2f0f8; }
 body .advanced-interval-field:has(input:not(:placeholder-shown)) { background:var(--pale); }
+
+/* Панель статистики — под макет старого сайта: серые скруглённые бары, погибшие — красные точки,
+   легенда на круглых точках, активный разрез — светло-серая плашка, у «Скрыть» крестик */
+.chart-hide::after { content:"✕"; margin-left:10px; font-size:13px; }
+.chart-legend i { width:10px; height:10px; border-radius:50%; }
+.legend-crashes { background:#e2e6ea; }
+.bars-horizontal { gap:10px; }
+.hrow { gap:12px 14px; }
+.htrack { height:22px; background:none; }
+.htrack.crash i { border-radius:5px; background:#e2e6ea; }
+.htrack.dead i { top:50%; width:12px; height:12px; border-radius:50%; background:var(--red); transform:translate(-50%,-50%); }
+.chart-side-title { color:var(--muted); font-size:13px; font-weight:400; }
+.chart-side button { border-radius:4px; }
+.chart-side button:hover:not(:disabled) { background:#f2f4f6; }
+.chart-side button.active { color:var(--navy); background:#ececec; }
