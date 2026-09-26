@@ -11,8 +11,8 @@ const state: MapState = { language: new URLSearchParams(location.search).get("la
 // Новые наборы докачиваются по одному, уже скачанные не запрашиваются повторно.
 const regionCache = new Map<string, Map<string, any[]>>();
 const copy = {
-  ru: { brandAria:"Карта ДТП — главная", mapAria:"Интерактивная карта ДТП", map:"Карта", blog:"Блог и исследования", data:"Скачать данные", about:"О проекте", team:"Команда", support:"Поддержать проект", statistics:"Статистика", filters:"Фильтры", analytics:"Аналитика", cancel:"Отмена", backToBasic:"Назад к стандартным фильтрам", allTime:"За всё время", apply:"Применить", datePlaceholder:"ДД.ММ.ГГГГ", basicFilter:"Базовый фильтр", professionalFilter:"Профессиональные фильтры", search:"Поиск", dataPeriod:"Период данных", accidentsInRussia:"ДТП в России", region:"Регион", allRegions:"Все регионы", from:"С", to:"По", participants:"Участники ДТП", injurySeverity:"Вред здоровью", light:"Лёгкий", serious:"Тяжёлый", fatal:"С погибшими", accidentTypes:"Типы ДТП", violations:"Нарушения ПДД", weather:"Погода", streets:"Улицы", heatRadius:"Радиус", heatBlur:"Размытие", heatOpacity:"Мин. непрозрачность", loading:"Загружаем данные…", loadingMap:"Обновляем карту…", unavailable:"Не удалось получить данные. Попробуйте позднее.", officialData:"Официальные данные", accidents:"ДТП", injured:"Пострадали", dead:"Погибли", distribution:"Распределение ДТП", selectedPeriod:"За выбранный период", byDays:"По дням", byHours:"По часам", byTypes:"По типам ДТП", chartNote:"Диаграмма построена по ДТП в видимой области.", chartNoDates:"В открытом API у точек ДТП нет даты и времени — разрезы по дням и часам недоступны", chartNoData:"Нет данных в открытом API", forPeriod:"За период", activeFilters:"Активные фильтры", hide:"Скрыть", timeIntervals:"Временные интервалы", accidentProperties:"Свойства ДТП", accidentsCount:"Количество ДТП", deathsLegend:"Погибшие", byMonths:"По месяцам", byYears:"По годам", tags:"Теги", infrastructure:"Инфраструктура", lighting:"Освещённость", chartTitleDays:"Распределение по дням", chartTitleHours:"Распределение по часам", chartTitleMonths:"Распределение по месяцам", chartTitleYears:"Распределение по годам", chartTitleTypes:"Распределение по типам", accidentsInArea:"ДТП в видимой области", people:"чел.", deaths:"погибших", roadConditions:"УДС на месте ДТП", roadConditionsNear:"УДС поблизости", roadFactors:"Факторы, влияющие на движение", roadDefects:"Повреждения УДС", signs:"Признаки ДТП", quantity:"Количество" },
-  en: { brandAria:"Road accident map — home", mapAria:"Interactive road accident map", map:"Map", blog:"Blog & research", data:"Download data", about:"About the project", team:"Team", support:"Support the project", statistics:"Statistics", filters:"Filters", analytics:"Analytics", cancel:"Cancel", backToBasic:"Back to standard filters", allTime:"All time", apply:"Apply", datePlaceholder:"DD.MM.YYYY", basicFilter:"Basic filter", professionalFilter:"Professional filters", search:"Search", dataPeriod:"Data period", accidentsInRussia:"Road accidents in Russia", region:"Region", allRegions:"All regions", from:"From", to:"To", participants:"Road users", injurySeverity:"Injury severity", light:"Minor", serious:"Serious", fatal:"Fatal", accidentTypes:"Accident types", violations:"Traffic violations", weather:"Weather", streets:"Streets", heatRadius:"Radius", heatBlur:"Blur", heatOpacity:"Min. opacity", loading:"Loading data…", loadingMap:"Updating map…", unavailable:"Could not load data. Please try again later.", officialData:"Official data", accidents:"Accidents", injured:"Injured", dead:"Deaths", distribution:"Distribution", selectedPeriod:"Selected period", byDays:"By day", byHours:"By hour", byTypes:"By type", chartNote:"The chart is based on accidents in the visible area.", chartNoDates:"The open API has no date or time for accident points — day and hour breakdowns are unavailable", chartNoData:"No data in the open API", forPeriod:"For the period", activeFilters:"Active filters", hide:"Hide", timeIntervals:"Time intervals", accidentProperties:"Accident properties", accidentsCount:"Accident count", deathsLegend:"Deaths", byMonths:"By month", byYears:"By year", tags:"Tags", infrastructure:"Infrastructure", lighting:"Lighting", chartTitleDays:"Distribution by day", chartTitleHours:"Distribution by hour", chartTitleMonths:"Distribution by month", chartTitleYears:"Distribution by year", chartTitleTypes:"Distribution by type", accidentsInArea:"Accidents in area", people:"people", deaths:"deaths", roadConditions:"Road conditions on site", roadConditionsNear:"Road conditions nearby", roadFactors:"Factors affecting traffic", roadDefects:"Road defects", signs:"Accident features", quantity:"Counts" },
+  ru: { brandAria:"Карта ДТП — главная", mapAria:"Интерактивная карта ДТП", map:"Карта", blog:"Блог и исследования", data:"Скачать данные", about:"О проекте", team:"Команда", support:"Поддержать проект", statistics:"Статистика", filters:"Фильтры", analytics:"Аналитика", cancel:"Отмена", backToBasic:"Назад к стандартным фильтрам", allTime:"За всё время", basicFilter:"Базовый фильтр", professionalFilter:"Профессиональные фильтры", search:"Поиск", dataPeriod:"Период данных", accidentsInRussia:"ДТП в России", region:"Регион", allRegions:"Все регионы", from:"С", to:"По", participants:"Участники ДТП", injurySeverity:"Вред здоровью", light:"Лёгкий", serious:"Тяжёлый", fatal:"С погибшими", accidentTypes:"Типы ДТП", violations:"Нарушения ПДД", weather:"Погода", streets:"Улицы", heatRadius:"Радиус", heatBlur:"Размытие", heatOpacity:"Мин. непрозрачность", loading:"Загружаем данные…", loadingMap:"Обновляем карту…", unavailable:"Не удалось получить данные. Попробуйте позднее.", officialData:"Официальные данные", accidents:"ДТП", injured:"Пострадали", dead:"Погибли", distribution:"Распределение ДТП", selectedPeriod:"За выбранный период", byDays:"По дням", byHours:"По часам", byTypes:"По типам ДТП", chartNote:"Диаграмма построена по ДТП в видимой области.", chartNoDates:"В открытом API у точек ДТП нет даты и времени — разрезы по дням и часам недоступны", chartNoData:"Нет данных в открытом API", forPeriod:"За период", activeFilters:"Активные фильтры", hide:"Скрыть", timeIntervals:"Временные интервалы", accidentProperties:"Свойства ДТП", accidentsCount:"Количество ДТП", deathsLegend:"Погибшие", byMonths:"По месяцам", byYears:"По годам", tags:"Теги", infrastructure:"Инфраструктура", lighting:"Освещённость", chartTitleDays:"Распределение по дням", chartTitleHours:"Распределение по часам", chartTitleMonths:"Распределение по месяцам", chartTitleYears:"Распределение по годам", chartTitleTypes:"Распределение по типам", accidentsInArea:"ДТП в видимой области", people:"чел.", deaths:"погибших", roadConditions:"УДС на месте ДТП", roadConditionsNear:"УДС поблизости", roadFactors:"Факторы, влияющие на движение", roadDefects:"Повреждения УДС", signs:"Признаки ДТП", quantity:"Количество" },
+  en: { brandAria:"Road accident map — home", mapAria:"Interactive road accident map", map:"Map", blog:"Blog & research", data:"Download data", about:"About the project", team:"Team", support:"Support the project", statistics:"Statistics", filters:"Filters", analytics:"Analytics", cancel:"Cancel", backToBasic:"Back to standard filters", allTime:"All time", basicFilter:"Basic filter", professionalFilter:"Professional filters", search:"Search", dataPeriod:"Data period", accidentsInRussia:"Road accidents in Russia", region:"Region", allRegions:"All regions", from:"From", to:"To", participants:"Road users", injurySeverity:"Injury severity", light:"Minor", serious:"Serious", fatal:"Fatal", accidentTypes:"Accident types", violations:"Traffic violations", weather:"Weather", streets:"Streets", heatRadius:"Radius", heatBlur:"Blur", heatOpacity:"Min. opacity", loading:"Loading data…", loadingMap:"Updating map…", unavailable:"Could not load data. Please try again later.", officialData:"Official data", accidents:"Accidents", injured:"Injured", dead:"Deaths", distribution:"Distribution", selectedPeriod:"Selected period", byDays:"By day", byHours:"By hour", byTypes:"By type", chartNote:"The chart is based on accidents in the visible area.", chartNoDates:"The open API has no date or time for accident points — day and hour breakdowns are unavailable", chartNoData:"No data in the open API", forPeriod:"For the period", activeFilters:"Active filters", hide:"Hide", timeIntervals:"Time intervals", accidentProperties:"Accident properties", accidentsCount:"Accident count", deathsLegend:"Deaths", byMonths:"By month", byYears:"By year", tags:"Tags", infrastructure:"Infrastructure", lighting:"Lighting", chartTitleDays:"Distribution by day", chartTitleHours:"Distribution by hour", chartTitleMonths:"Distribution by month", chartTitleYears:"Distribution by year", chartTitleTypes:"Distribution by type", accidentsInArea:"Accidents in area", people:"people", deaths:"deaths", roadConditions:"Road conditions on site", roadConditionsNear:"Road conditions nearby", roadFactors:"Factors affecting traffic", roadDefects:"Road defects", signs:"Accident features", quantity:"Counts" },
 };
 Object.assign(copy.ru, { regionSearch:"Введите адрес или регион", noInjured:"Без пострадавших (нет данных)", accidentKind:"Вид ДТП", show:"Показать", lockPin:"Данные закреплены по территории", unlock:"Открепить данные", lockHint:"Сначала открепите территорию", participantNoData:"По этим участникам в открытом API нет данных", noMatches:"Ничего не найдено" });
 Object.assign(copy.en, { regionSearch:"Enter address or region", noInjured:"No injuries (no data)", accidentKind:"Accident type", show:"Show", lockPin:"Data is pinned to the territory", unlock:"Unpin data", lockHint:"Unpin the territory first", participantNoData:"No open API data for these road users", noMatches:"Nothing found" });
@@ -107,7 +107,7 @@ function formatDate(value) { const [year, month, day] = value.split("-"); return
 
 function renderDateFields() {
   const value = `${formatDate($("#start-date").value)} - ${formatDate($("#end-date").value)}`;
-  document.querySelectorAll("#date-range-value, #advanced-date-range-value").forEach((node) => { node.textContent = value; });
+  document.querySelectorAll("#date-range-value, #advanced-date-range-value").forEach((node) => { if (node !== document.activeElement) (node as HTMLInputElement).value = value; });
   document.querySelectorAll("#date-range-button, #advanced-date-range-button").forEach((node) => node.setAttribute("aria-expanded", String(!$("#date-menu").hidden)));
 }
 
@@ -128,7 +128,7 @@ function dateMenuPresets() {
   return presets;
 }
 
-// ДД.ММ.ГГГГ → YYYY-MM-DD, иначе null (ручной ввод периода в дропдауне дат)
+// ДД.ММ.ГГГГ → YYYY-MM-DD, иначе null (ручной ввод периода)
 function parseManualDate(value) {
   const match = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(value.trim());
   if (!match) return null;
@@ -137,37 +137,35 @@ function parseManualDate(value) {
   return date.getDate() === Number(match[1]) && date.getMonth() + 1 === Number(match[2]) ? iso : null;
 }
 
+// Маска поля периода: 16 цифр → «ДД.ММ.ГГГГ - ДД.ММ.ГГГГ»
+function maskRangeDigits(digits) {
+  let out = digits.slice(0, 2);
+  if (digits.length > 2) out += `.${digits.slice(2, 4)}`;
+  if (digits.length > 4) out += `.${digits.slice(4, 8)}`;
+  if (digits.length > 8) out += ` - ${digits.slice(8, 10)}`;
+  if (digits.length > 10) out += `.${digits.slice(10, 12)}`;
+  if (digits.length > 12) out += `.${digits.slice(12, 16)}`;
+  return out;
+}
+
+// Применение отредактированного периода (Enter/потеря фокуса): при ошибке — откат, иначе swap перепутанных дат и клэмп к диапазону данных
+function applyRangeInput(input) {
+  const [rawStart, rawEnd] = input.value.split(" - ");
+  const start = parseManualDate(rawStart || ""), end = parseManualDate(rawEnd || "");
+  if (!start || !end) { renderDateFields(); return; }
+  let [from, till] = start <= end ? [start, end] : [end, start];
+  const now = new Date(), todayValue = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  if (from < dataRange.min) from = dataRange.min;
+  if (till > todayValue) till = todayValue;
+  if (from > till) from = till;
+  if ($("#start-date").value === from && $("#end-date").value === till) { renderDateFields(); return; }
+  $("#start-date").value = from; $("#end-date").value = till;
+  renderDateFields(); loadMapData();
+}
+
 function renderDateMenu() {
   const menu = $("#date-menu");
   menu.replaceChildren(...dateMenuPresets().map((preset) => { const item = document.createElement("div"); item.className = "date-value"; item.textContent = preset.label; item.addEventListener("click", () => { $("#start-date").value = preset.start; $("#end-date").value = preset.end; closeDateMenu(); loadMapData(); }); return item; }));
-  // Ручной ввод периода: поля «С»/«По» в формате ДД.ММ.ГГГГ + «Применить» (Enter тоже применяет)
-  const now = new Date(), todayValue = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  const manual = document.createElement("div"); manual.className = "date-manual";
-  const apply = () => {
-    const parsed = inputs.map((input) => { const value = parseManualDate(input.value); input.classList.toggle("invalid", !value); return value; });
-    if (parsed.some((value) => !value)) return;
-    let [start, end] = parsed;
-    if (start > end) [start, end] = [end, start];
-    if (start < dataRange.min) start = dataRange.min;
-    if (end > todayValue) end = todayValue;
-    if (start > end) start = end;
-    $("#start-date").value = start; $("#end-date").value = end;
-    closeDateMenu(); loadMapData();
-  };
-  const inputs = [$("#start-date"), $("#end-date")].map((hidden, index) => {
-    const input = document.createElement("input");
-    input.type = "text"; input.inputMode = "numeric"; input.maxLength = 10; input.autocomplete = "off";
-    input.placeholder = t("datePlaceholder");
-    input.value = formatDate((hidden as HTMLInputElement).value);
-    input.addEventListener("input", () => { const digits = input.value.replace(/\D/g, "").slice(0, 8); input.value = digits.length > 4 ? `${digits.slice(0, 2)}.${digits.slice(2, 4)}.${digits.slice(4)}` : digits.length > 2 ? `${digits.slice(0, 2)}.${digits.slice(2)}` : digits; input.classList.remove("invalid"); });
-    input.addEventListener("keydown", (event) => { if (event.key === "Enter") apply(); });
-    const label = document.createElement("span"); label.textContent = index === 0 ? t("from") : t("to");
-    manual.append(label, input);
-    return input;
-  });
-  const button = document.createElement("button"); button.type = "button"; button.textContent = t("apply"); button.addEventListener("click", apply);
-  manual.append(button);
-  menu.append(manual);
 }
 
 function closeDateMenu() { dateMenuButton = null; $("#date-menu").hidden = true; renderDateFields(); }
@@ -178,7 +176,7 @@ function openDateMenu(button) {
   renderDateMenu();
   dateMenuButton = button;
   menu.hidden = false;
-  const rect = button.getBoundingClientRect();
+  const rect = (button.closest(".date-range") || button).getBoundingClientRect();
   menu.style.top = `${Math.round(rect.bottom + 4)}px`;
   const width = menu.offsetWidth || 200;
   let left = rect.left;
@@ -298,7 +296,7 @@ function renderChart() {
   $("#chart-injured-count").textContent = $("#injured").textContent;
   $("#chart-dead-count").textContent = $("#dead").textContent;
   $("#chart-title").textContent = chartTitle();
-  $("#chart-period").textContent = `${t("forPeriod")}: ${$("#date-range-value").textContent}`;
+  $("#chart-period").textContent = `${t("forPeriod")}: ${($("#date-range-value") as HTMLInputElement).value}`;
   $("#chart-filters").textContent = `${t("activeFilters")}: ${activeFiltersSummary()}`;
   // Выбран день/час при отсутствии дат — честное пояснение вместо пустой области графика
   if (state.chartMode !== "types" && !chartDatesAvailable()) {
@@ -1090,6 +1088,13 @@ $("#start-date").addEventListener("change", reload);
 $("#end-date").addEventListener("change", reload);
 $("#date-range-button").addEventListener("click", (event) => openDateMenu(event.currentTarget as Element));
 $("#advanced-date-range-button").addEventListener("click", (event) => openDateMenu(event.currentTarget as Element));
+// Поле периода: текст редактируется напрямую (маска + применение по Enter/потере фокуса), дропдаун пресетов — только по стрелке
+document.querySelectorAll("#date-range-value, #advanced-date-range-value").forEach((node) => {
+  const input = node as HTMLInputElement;
+  input.addEventListener("input", () => { input.value = maskRangeDigits(input.value.replace(/\D/g, "").slice(0, 16)); });
+  input.addEventListener("blur", () => applyRangeInput(input));
+  input.addEventListener("keydown", (event) => { if (event.key === "Enter") input.blur(); });
+});
 // Регион про-панели: подсказки на ввод, Enter — выбор первого совпадения, пустой ввод — сброс (DTP-25)
 $("#advanced-region").addEventListener("input", drawAdvancedRegionSuggest);
 $("#advanced-region").addEventListener("focus", drawAdvancedRegionSuggest);
