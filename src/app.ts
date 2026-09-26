@@ -360,12 +360,11 @@ function renderChart() {
     return lines.join("");
   };
   const columns = values.map(([, bucket], index) => `<rect x="${x(index) - colW / 2}" y="${yCount(bucket.count)}" width="${colW}" height="${Math.max(2, padT + plotH - yCount(bucket.count))}" rx="4" fill="#e2e6ea"></rect>`).join("");
-  const line = values.map(([, bucket], index) => `${index ? "L" : "M"}${x(index)},${yDead(bucket.dead)}`).join("");
   const markers = values.map(([, bucket], index) => `<circle cx="${x(index)}" cy="${yDead(bucket.dead)}" r="4.5" fill="#FF001A"></circle>`).join("");
   // Подписи оси X: каждая — когда влезает (шаг ≥22px), иначе через одну/через пять, но крайние всегда
   const every = slot >= 22 ? 1 : slot >= 11 ? 2 : 5;
   const labels = values.map(([label], index) => index % every === 0 || index === values.length - 1 ? `<text x="${x(index)}" y="${height - 6}" text-anchor="middle" font-size="11" fill="#8296a5">${String(label).replace(/&/g, "&amp;").replace(/</g, "&lt;")}</text>` : "").join("");
-  bars.replaceChildren(Object.assign(document.createElement("div"), { innerHTML: `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${axis(maxCount, yCount, "l")}${axis(maxDead, yDead, "r")}<line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="#d1dee4"></line>${columns}<path d="${line}" fill="none" stroke="#FF001A" stroke-opacity=".35" stroke-width="2"></path>${markers}${labels}</svg>` }));
+  bars.replaceChildren(Object.assign(document.createElement("div"), { innerHTML: `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${axis(maxCount, yCount, "l")}${axis(maxDead, yDead, "r")}<line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="#d1dee4"></line>${columns}${markers}${labels}</svg>` }));
 }
 
 const mapQuery = new URLSearchParams(location.search), initialCenter = (mapQuery.get("center") || "").split(":").map(Number), zoomQuery = mapQuery.get("zoom"), initialZoom = zoomQuery === null ? NaN : Number(zoomQuery);
