@@ -708,7 +708,7 @@ function renderAdvancedFilters() {
       for (const field of filter.values) {
         const range = state.selectedIntervals[field.param] || { from:"", to:"" }, row = document.createElement("div"), caption = document.createElement("span"), from = document.createElement("input"), to = document.createElement("input");
         row.className = "advanced-interval"; caption.textContent = field.preview;
-        from.type = to.type = "number"; from.min = to.min = String(field.min); from.max = to.max = String(field.max); from.placeholder = to.placeholder = "…";
+        from.type = to.type = "number"; from.min = to.min = String(field.min); from.max = to.max = String(field.max); from.placeholder = to.placeholder = "";
         from.value = range.from; to.value = range.to;
         const sync = () => { if (from.value || to.value) state.selectedIntervals[field.param] = { from:from.value, to:to.value }; else delete state.selectedIntervals[field.param]; scheduleFilterReload(); };
         from.addEventListener("input", sync); to.addEventListener("input", sync);

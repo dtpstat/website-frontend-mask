@@ -188,3 +188,12 @@ body .filters:not(.collapsed) .quick-filter-list button.active { box-shadow:inse
 /* Регион заблокирован замком территории: поле приглушено, ввод даёт подсказку (DTP-28) */
 body .region-search input[data-locked] { opacity:.55; cursor:not-allowed; }
 .region-lock-hint { margin:6px; color:var(--muted); font-size:13px; }
+/* Диапазоны «от–до» в проф-фильтрах: одна колонка, поля как в макете — равные смежные (зазор 4px), ввод без вложенного бокса */
+body .advanced-options.advanced-intervals { display:grid; columns:auto; grid-template-columns:1fr; gap:4px; }
+body .advanced-interval { gap:8px; min-height:38px; }
+body .advanced-interval > span:first-child { flex:none; }
+body .advanced-interval .advanced-interval-field { flex:1 1 0; width:auto; min-width:0; height:38px; }
+body .advanced-interval .advanced-interval-field.to { margin-left:-4px; }
+body .advanced-options .advanced-interval-field input { flex:1 1 0; width:0; min-width:0; height:auto; margin:0; padding:0; border:0; border-radius:0; outline:0; background:transparent; color:var(--navy); font-size:14px; line-height:20px; }
+body .advanced-interval-field:focus-within { background:#e2f0f8; }
+body .advanced-interval-field:has(input:not(:placeholder-shown)) { background:var(--pale); }
