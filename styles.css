@@ -103,7 +103,7 @@ body .statistics #chart-button svg { width:20px; height:20px; }
 @media (max-width:800px) { .heat-controls { display:none; } }
 
 /* The three desktop map states from the design use one uninterrupted composition. */
-@media (min-width:801px) { body .filters:not(.collapsed) { top:0; left:0; width:340px; height:100vh; min-height:100vh; padding:30px 20px 0; overflow:visible; background:#fff; box-shadow:none; display:flex; flex-direction:column; } body .filters:not(.collapsed) .filters-body { flex:1 1 auto; min-height:0; overflow-y:auto; padding-bottom:16px; } body .filters:not(.collapsed) .statistics { margin:14px -20px 0; padding:16px 20px 18px; } body .filters:not(.collapsed) #hide-filters { top:24px; right:-42px; } }
+@media (min-width:801px) { body .filters:not(.collapsed) { top:0; left:0; width:340px; height:100vh; min-height:100vh; padding:30px 20px 0; overflow:visible; background:#fff; box-shadow:none; display:flex; flex-direction:column; } body .filters:not(.collapsed) .filters-body { flex:1 1 auto; min-height:0; overflow-y:auto; padding-bottom:16px; } body .filters:not(.collapsed) .statistics { margin:15px -5px 15px; padding:16px 20px 18px; } /* DTP-38: отступы 15px вокруг контейнера статистики (родитель даёт 20px по бокам → -5px) */ body .filters:not(.collapsed) #hide-filters { top:24px; right:-42px; } }
 body .professional-toggle { height:36px; margin-top:14px; padding:16px 0 0; border-top:2px solid var(--pale); background:transparent; font-size:16px; }
 body .filters:not(.collapsed) .quick-filters { margin-top:16px; padding:14px 0 0; border-top:2px solid var(--pale); }
 body .filters:not(.collapsed) .quick-filters .eyebrow { margin:0; color:var(--navy); font-size:14px; font-weight:500; }
