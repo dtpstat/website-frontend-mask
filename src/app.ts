@@ -11,8 +11,8 @@ const state: MapState = { language: new URLSearchParams(location.search).get("la
 // Новые наборы докачиваются по одному, уже скачанные не запрашиваются повторно.
 const regionCache = new Map<string, Map<string, any[]>>();
 const copy = {
-  ru: { brandAria:"Карта ДТП — главная", mapAria:"Интерактивная карта ДТП", map:"Карта", blog:"Блог и исследования", data:"Скачать данные", about:"О проекте", team:"Команда", support:"Поддержать проект", statistics:"Статистика", filters:"Фильтры", analytics:"Аналитика", cancel:"Отмена", backToBasic:"Назад к стандартным фильтрам", allTime:"За всё время", basicFilter:"Базовый фильтр", professionalFilter:"Профессиональные фильтры", search:"Поиск", dataPeriod:"Период данных", accidentsInRussia:"ДТП в России", region:"Регион", allRegions:"Все регионы", from:"С", to:"По", participants:"Участники ДТП", injurySeverity:"Вред здоровью", light:"Лёгкий", serious:"Тяжёлый", fatal:"С погибшими", accidentTypes:"Типы ДТП", weather:"Погода", heatRadius:"Радиус", heatBlur:"Размытие", heatOpacity:"Мин. непрозрачность", loading:"Загружаем данные…", loadingMap:"Обновляем карту…", unavailable:"Не удалось получить данные. Попробуйте позднее.", officialData:"Официальные данные", accidents:"ДТП", injured:"Пострадали", dead:"Погибли", distribution:"Распределение ДТП", selectedPeriod:"За выбранный период", byDays:"По дням", byHours:"По часам", byTypes:"По типам ДТП", chartNote:"Диаграмма построена по ДТП в видимой области.", chartNoDates:"В открытом API у точек ДТП нет даты и времени — разрезы по дням и часам недоступны", forPeriod:"За период", activeFilters:"Активные фильтры", hide:"Скрыть", timeIntervals:"Временные интервалы", accidentProperties:"Свойства ДТП", accidentsCount:"Количество ДТП", deathsLegend:"Погибшие", byMonths:"По месяцам", byYears:"По годам", chartTitleDays:"Распределение по дням", chartTitleHours:"Распределение по часам", chartTitleMonths:"Распределение по месяцам", chartTitleYears:"Распределение по годам", chartTitleTypes:"Распределение по типам", accidentsInArea:"ДТП в видимой области", people:"чел.", deaths:"погибших", roadConditions:"УДС на месте ДТП", roadConditionsNear:"УДС поблизости", roadFactors:"Факторы, влияющие на движение", roadDefects:"Повреждения УДС", signs:"Признаки ДТП", quantity:"Количество" },
-  en: { brandAria:"Road accident map — home", mapAria:"Interactive road accident map", map:"Map", blog:"Blog & research", data:"Download data", about:"About the project", team:"Team", support:"Support the project", statistics:"Statistics", filters:"Filters", analytics:"Analytics", cancel:"Cancel", backToBasic:"Back to standard filters", allTime:"All time", basicFilter:"Basic filter", professionalFilter:"Professional filters", search:"Search", dataPeriod:"Data period", accidentsInRussia:"Road accidents in Russia", region:"Region", allRegions:"All regions", from:"From", to:"To", participants:"Road users", injurySeverity:"Injury severity", light:"Minor", serious:"Serious", fatal:"Fatal", accidentTypes:"Accident types", weather:"Weather", heatRadius:"Radius", heatBlur:"Blur", heatOpacity:"Min. opacity", loading:"Loading data…", loadingMap:"Updating map…", unavailable:"Could not load data. Please try again later.", officialData:"Official data", accidents:"Accidents", injured:"Injured", dead:"Deaths", distribution:"Distribution", selectedPeriod:"Selected period", byDays:"By day", byHours:"By hour", byTypes:"By type", chartNote:"The chart is based on accidents in the visible area.", chartNoDates:"The open API has no date or time for accident points — day and hour breakdowns are unavailable", forPeriod:"For the period", activeFilters:"Active filters", hide:"Hide", timeIntervals:"Time intervals", accidentProperties:"Accident properties", accidentsCount:"Accident count", deathsLegend:"Deaths", byMonths:"By month", byYears:"By year", chartTitleDays:"Distribution by day", chartTitleHours:"Distribution by hour", chartTitleMonths:"Distribution by month", chartTitleYears:"Distribution by year", chartTitleTypes:"Distribution by type", accidentsInArea:"Accidents in area", people:"people", deaths:"deaths", roadConditions:"Road conditions on site", roadConditionsNear:"Road conditions nearby", roadFactors:"Factors affecting traffic", roadDefects:"Road defects", signs:"Accident features", quantity:"Counts" },
+  ru: { brandAria:"Карта ДТП — главная", mapAria:"Интерактивная карта ДТП", map:"Карта", blog:"Блог и исследования", data:"Скачать данные", about:"О проекте", team:"Команда", support:"Поддержать проект", statistics:"Статистика", filters:"Фильтры", analytics:"Аналитика", cancel:"Отмена", backToBasic:"Назад к стандартным фильтрам", allTime:"За всё время", basicFilter:"Базовый фильтр", professionalFilter:"Профессиональные фильтры", search:"Поиск", dataPeriod:"Период данных", accidentsInRussia:"ДТП в России", region:"Регион", allRegions:"Все регионы", from:"С", to:"По", participants:"Участники ДТП", injurySeverity:"Вред здоровью", light:"Лёгкий", serious:"Тяжёлый", fatal:"С погибшими", accidentTypes:"Типы ДТП", weather:"Погода", heatRadius:"Радиус", heatBlur:"Размытие", heatOpacity:"Мин. непрозрачность", loading:"Загружаем данные…", loadingMap:"Обновляем карту…", unavailable:"Не удалось получить данные. Попробуйте позднее.", officialData:"Официальные данные", accidents:"ДТП", injured:"Пострадали", dead:"Погибли", distribution:"Распределение ДТП", selectedPeriod:"За выбранный период", byDays:"По дням", byHours:"По часам", byTypes:"По типам ДТП", chartNote:"Диаграмма построена по ДТП в видимой области.", chartNoDates:"В открытом API у точек ДТП нет даты и времени — временные разрезы недоступны", forPeriod:"За период", activeFilters:"Активные фильтры", hide:"Скрыть", timeIntervals:"Временные интервалы", accidentProperties:"Свойства ДТП", accidentsCount:"Количество ДТП", deathsLegend:"Погибшие", byMonths:"По месяцам", byYears:"По годам", chartTitleDays:"Распределение по дням", chartTitleHours:"Распределение по часам", chartTitleMonths:"Распределение по месяцам", chartTitleYears:"Распределение по годам", chartTitleTypes:"Распределение по типам", accidentsInArea:"ДТП в видимой области", people:"чел.", deaths:"погибших", roadConditions:"УДС на месте ДТП", roadConditionsNear:"УДС поблизости", roadFactors:"Факторы, влияющие на движение", roadDefects:"Повреждения УДС", signs:"Признаки ДТП", quantity:"Количество" },
+  en: { brandAria:"Road accident map — home", mapAria:"Interactive road accident map", map:"Map", blog:"Blog & research", data:"Download data", about:"About the project", team:"Team", support:"Support the project", statistics:"Statistics", filters:"Filters", analytics:"Analytics", cancel:"Cancel", backToBasic:"Back to standard filters", allTime:"All time", basicFilter:"Basic filter", professionalFilter:"Professional filters", search:"Search", dataPeriod:"Data period", accidentsInRussia:"Road accidents in Russia", region:"Region", allRegions:"All regions", from:"From", to:"To", participants:"Road users", injurySeverity:"Injury severity", light:"Minor", serious:"Serious", fatal:"Fatal", accidentTypes:"Accident types", weather:"Weather", heatRadius:"Radius", heatBlur:"Blur", heatOpacity:"Min. opacity", loading:"Loading data…", loadingMap:"Updating map…", unavailable:"Could not load data. Please try again later.", officialData:"Official data", accidents:"Accidents", injured:"Injured", dead:"Deaths", distribution:"Distribution", selectedPeriod:"Selected period", byDays:"By day", byHours:"By hour", byTypes:"By type", chartNote:"The chart is based on accidents in the visible area.", chartNoDates:"The open API has no date or time for accident points — time breakdowns are unavailable", forPeriod:"For the period", activeFilters:"Active filters", hide:"Hide", timeIntervals:"Time intervals", accidentProperties:"Accident properties", accidentsCount:"Accident count", deathsLegend:"Deaths", byMonths:"By month", byYears:"By year", chartTitleDays:"Distribution by day", chartTitleHours:"Distribution by hour", chartTitleMonths:"Distribution by month", chartTitleYears:"Distribution by year", chartTitleTypes:"Distribution by type", accidentsInArea:"Accidents in area", people:"people", deaths:"deaths", roadConditions:"Road conditions on site", roadConditionsNear:"Road conditions nearby", roadFactors:"Factors affecting traffic", roadDefects:"Road defects", signs:"Accident features", quantity:"Counts" },
 };
 Object.assign(copy.ru, { regionSearch:"Введите адрес или регион", noInjured:"Без пострадавших (нет данных)", accidentKind:"Вид ДТП", show:"Показать", lockPin:"Данные закреплены по территории", unlock:"Открепить данные", lockHint:"Сначала открепите территорию", participantNoData:"По этим участникам в открытом API нет данных", noMatches:"Ничего не найдено" });
 Object.assign(copy.en, { regionSearch:"Enter address or region", noInjured:"No injuries (no data)", accidentKind:"Accident type", show:"Show", lockPin:"Data is pinned to the territory", unlock:"Unpin data", lockHint:"Unpin the territory first", participantNoData:"No open API data for these road users", noMatches:"Nothing found" });
@@ -244,15 +244,29 @@ function renderAdvancedControls() {
 function chartBuckets() {
   const groups = new Map();
   for (const item of state.items) {
-    // Разрезы по дням/часам доступны только для точек с датой (в API её нет)
+    // Разрезы по времени доступны только для точек с датой (сейчас в открытом API её нет)
     if (state.chartMode !== "types" && !item.datetime) continue;
-    const key = state.chartMode === "hours" ? item.datetime.slice(11, 13) : state.chartMode === "types" ? item.category_name : item.datetime.slice(5, 10);
+    // Часы 0–23 → колонки 1–24 («1-й час» = 00:00–01:00 … «24-й» = 23:00–24:00)
+    const key = state.chartMode === "hours" ? String(Number(item.datetime.slice(11, 13)) + 1) : state.chartMode === "days" ? String(Number(item.datetime.slice(8, 10))) : state.chartMode === "months" ? String(Number(item.datetime.slice(5, 7))) : state.chartMode === "years" ? item.datetime.slice(0, 4) : item.category_name;
     const bucket = groups.get(key) || { count: 0, dead: 0 };
     bucket.count++; bucket.dead += Number(item.dead || 0);
     groups.set(key, bucket);
   }
-  const values = [...groups.entries()].sort((a, b) => state.chartMode === "types" ? b[1].count - a[1].count : a[0].localeCompare(b[0]));
-  return state.chartMode === "types" ? values.slice(0, 10) : values;
+  const values = [...groups.entries()].sort((a, b) => state.chartMode === "types" ? b[1].count - a[1].count : Number(a[0]) - Number(b[0]) || a[0].localeCompare(b[0]));
+  // Типы — топ-10; время — вся ось с нулями: часы 1–24, дни 1–31, месяцы 1–12, годы
+  if (state.chartMode === "types") return values.slice(0, 10);
+  const axis = chartAxis(state.chartMode);
+  return axis ? axis.map((key) => [key, groups.get(key) || { count: 0, dead: 0 }]) : values;
+}
+
+// Полная ось X временных разрезов: часы 1–24, дни 1–31, месяцы 1–12, годы — весь диапазон данных
+function chartAxis(mode: string) {
+  const span = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, index) => String(from + index));
+  if (mode === "hours") return span(1, 24);
+  if (mode === "days") return span(1, 31);
+  if (mode === "months") return span(1, 12);
+  if (mode === "years") return span(Number(state.minDate.slice(0, 4)), new Date().getFullYear());
+  return null;
 }
 
 // Дни/часы требуют дату точки: в открытом API её нет — табы отключаем с пояснением.
@@ -305,7 +319,9 @@ function renderChart() {
   }
   empty.hidden = true; bars.hidden = false;
   const values = chartBuckets();
-  const maxCount = Math.max(...values.map(([, bucket]) => bucket.count), 1), maxDead = Math.max(...values.map(([, bucket]) => bucket.dead), 1);
+  // Оси до «красивых» пределов (1/2/5×10^k), чтобы деления были целыми
+  const niceCeil = (value: number) => { const mag = Math.pow(10, Math.floor(Math.log10(Math.max(1, value)))); for (const m of [1, 2, 5, 10]) if (m * mag >= value) return m * mag; return 10 * mag; };
+  const maxCount = niceCeil(Math.max(...values.map(([, bucket]) => bucket.count), 1)), maxDead = niceCeil(Math.max(...values.map(([, bucket]) => bucket.dead), 1));
   // Разрез по типам (данные есть только он) — горизонтальные пары баров «ДТП/погибшие» как в макете
   if (state.chartMode === "types") {
     bars.className = "bars bars-horizontal";
@@ -327,12 +343,15 @@ function renderChart() {
   // Разрезы по времени (когда появятся даты): комбо как на старом сайте — светло-серые
   // скруглённые столбцы по левой оси и красная линия погибших с круглыми маркерами по правой
   bars.className = "bars bars-combo";
-  const width = Math.max(320, values.length * 52), height = 260, padL = 46, padR = 46, padT = 12, padB = 24, plotW = width - padL - padR, plotH = height - padT - padB;
-  const x = (index) => padL + (values.length === 1 ? plotW / 2 : index / (values.length - 1) * plotW);
+  // Ось помещается в панель: шаг колонок 18–52px, сама колонка — примерно половина шага
+  const slot = Math.max(18, Math.min(52, Math.floor(((bars.clientWidth || 900) - 92) / values.length)));
+  const width = values.length * slot + 92, height = 300, padL = 46, padR = 46, padT = 14, padB = 24, plotW = width - padL - padR, plotH = height - padT - padB;
+  const x = (index) => padL + slot * (index + 0.5);
+  const colW = Math.max(8, Math.round(slot * 0.52));
   const yCount = (value) => padT + plotH * (1 - value / maxCount), yDead = (value) => padT + plotH * (1 - value / maxDead);
   const tick = (value) => number().format(value);
   const axis = (max, scale, side) => {
-    const lines = [], steps = 4;
+    const lines = [], steps = 5;
     for (let step = 0; step <= steps; step++) {
       const value = max / steps * step, y = scale(value);
       lines.push(`<line x1="${side === "l" ? padL : padL + plotW}" y1="${y}" x2="${side === "l" ? padL + plotW : padL + plotW}" y2="${y}" stroke="#e3e9ed"></line>`);
@@ -340,10 +359,12 @@ function renderChart() {
     }
     return lines.join("");
   };
-  const columns = values.map(([, bucket], index) => `<rect x="${x(index) - 14}" y="${yCount(bucket.count)}" width="28" height="${Math.max(2, padT + plotH - yCount(bucket.count))}" rx="4" fill="#e2e6ea"></rect>`).join("");
+  const columns = values.map(([, bucket], index) => `<rect x="${x(index) - colW / 2}" y="${yCount(bucket.count)}" width="${colW}" height="${Math.max(2, padT + plotH - yCount(bucket.count))}" rx="4" fill="#e2e6ea"></rect>`).join("");
   const line = values.map(([, bucket], index) => `${index ? "L" : "M"}${x(index)},${yDead(bucket.dead)}`).join("");
   const markers = values.map(([, bucket], index) => `<circle cx="${x(index)}" cy="${yDead(bucket.dead)}" r="4.5" fill="#FF001A"></circle>`).join("");
-  const labels = values.map(([label], index) => `<text x="${x(index)}" y="${height - 6}" text-anchor="middle" font-size="11" fill="#8296a5">${String(label).replace(/&/g, "&amp;").replace(/</g, "&lt;")}</text>`).join("");
+  // Подписи оси X: каждая — когда влезает (шаг ≥22px), иначе через одну/через пять, но крайние всегда
+  const every = slot >= 22 ? 1 : slot >= 11 ? 2 : 5;
+  const labels = values.map(([label], index) => index % every === 0 || index === values.length - 1 ? `<text x="${x(index)}" y="${height - 6}" text-anchor="middle" font-size="11" fill="#8296a5">${String(label).replace(/&/g, "&amp;").replace(/</g, "&lt;")}</text>` : "").join("");
   bars.replaceChildren(Object.assign(document.createElement("div"), { innerHTML: `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${axis(maxCount, yCount, "l")}${axis(maxDead, yDead, "r")}<line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="#d1dee4"></line>${columns}<path d="${line}" fill="none" stroke="#FF001A" stroke-opacity=".35" stroke-width="2"></path>${markers}${labels}</svg>` }));
 }
 
