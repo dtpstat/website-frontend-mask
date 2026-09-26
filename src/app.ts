@@ -725,6 +725,22 @@ function cascadeSignature(name: string): string {
   const parent = sectionParents[name];
   return `${parent}:${cascadeParentIds(parent).join(",")}`;
 }
+// Словари секций грузим лениво: не на старте страницы, а при первом открытии
+// про-панели (openAdvanced). Каскадные (PLACE/ROAD/STREET/NP/MODEL) — отдельно,
+// в refreshCascade, по выбору родителя. loaded не даёт перекачивать при каждом
+// открытии; при ошибке сети сбрасывается — следующее открытие повторит попытку
+async function loadLazyDicts() {
+  const jobs: Promise<void>[] = [];
+  for (const filter of state.filters) {
+    if (!filter.dict || filter.loaded || filter.values.length || sectionParents[filter.name]) continue;
+    filter.loaded = true; filter.loading = true;
+    jobs.push(fetch(`${api}/dict/${filter.dict}`).then((response) => response.ok ? response.json() : []).then((rows) => {
+      filter.loading = false;
+      filter.values = (rows || []).map((row) => ({ value:Number(row.id), preview:String(row.name) }));
+    }).catch(() => { filter.loading = false; filter.loaded = false; }));
+  }
+  if (jobs.length) { renderAdvancedFilters(); await Promise.all(jobs); renderAdvancedFilters(); }
+}
 async function refreshCascade() {
   const jobs: Promise<void>[] = [];
   let dirty = false;
@@ -787,9 +803,10 @@ function renderAdvancedFilters() {
     // Поиск живёт внутри раскрытой секции — в свёрнутом заголовке только название и шеврон
     section.className = "advanced-collapse";
     if (saved?.open) section.open = true;
-    // Каскадная секция: без выбранного родителя — подсказка вместо списка, при загрузке — «загружаем»
+    // Не загруженная (ленивый словарь) или каскадная без выбранного родителя —
+    // подсказка вместо списка; в процессе загрузки — «загружаем»
     const parent = sectionParents[key];
-    if (parent && (filter.loading || !cascadeParentIds(parent).length)) {
+    if (filter.loading || (parent && !cascadeParentIds(parent).length)) {
       title.append(name);
       options.className = "advanced-hint";
       options.textContent = filter.loading ? t("loading") : t(parent === "REGION" ? "pickRegion" : parent === "PLACE" ? "pickPlace" : "pickMark");
@@ -814,7 +831,7 @@ function renderAdvancedFilters() {
     }
   }
 }
-function openAdvanced() { renderAdvancedControls(); renderAdvancedFilters(); syncAdvancedRegion(); refreshCascade(); document.body.classList.add("advanced-open"); setAdvancedCollapsed(false); $("#advanced-filter").hidden = false; }
+function openAdvanced() { renderAdvancedControls(); renderAdvancedFilters(); syncAdvancedRegion(); loadLazyDicts(); refreshCascade(); document.body.classList.add("advanced-open"); setAdvancedCollapsed(false); $("#advanced-filter").hidden = false; }
 // Регион про-панели — то же поле с подсказками, что в стандартной панели; можно впечатать вручную (DTP-25).
 // Подсказки прижаты к ПРАВОМУ краю поля. Пустой ввод + Enter (или кнопка сброса) возвращает «Все регионы»
 function syncAdvancedRegion() {
@@ -1121,8 +1138,10 @@ async function loadFilters() {
     // Рамка видимой области доступна, только если бэкенд знает LATITUDE/LONGITUDE
     state.bboxSupported = fields.some((field) => field.name === "LATITUDE");
     const dictionaries = await Promise.all(advancedFields.map(async (field) => {
-      // Каскадные секции (PLACE/ROAD/STREET/NP/MODEL) грузятся лениво, по выбору родителя
-      if (sectionParents[field.name]) return [field, []];
+      // Словари грузятся лениво: секции — при открытии про-панели (loadLazyDicts),
+      // каскадные (PLACE/ROAD/STREET/NP/MODEL) — по выбору родителя (refreshCascade).
+      // Исключение — EM_TYPE: его имена нужны сразу для попапов и категорий
+      if (field.name !== "EM_TYPE") return [field, []];
       const response = await fetch(`${api}/dict/${field.dict}`);
       return [field, response.ok ? await response.json() : []];
     }));
