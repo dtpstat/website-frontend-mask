@@ -11,8 +11,8 @@ const state: MapState = { language: new URLSearchParams(location.search).get("la
 // Новые наборы докачиваются по одному, уже скачанные не запрашиваются повторно.
 const regionCache = new Map<string, Map<string, any[]>>();
 const copy = {
-  ru: { brandAria:"Карта ДТП — главная", mapAria:"Интерактивная карта ДТП", map:"Карта", blog:"Блог и исследования", data:"Скачать данные", about:"О проекте", team:"Команда", support:"Поддержать проект", statistics:"Статистика", filters:"Фильтры", analytics:"Аналитика", cancel:"Отмена", backToBasic:"Назад к стандартным фильтрам", allTime:"За всё время", basicFilter:"Базовый фильтр", professionalFilter:"Профессиональные фильтры", search:"Поиск", dataPeriod:"Период данных", accidentsInRussia:"ДТП в России", region:"Регион", allRegions:"Все регионы", from:"С", to:"По", participants:"Участники ДТП", injurySeverity:"Вред здоровью", light:"Лёгкий", serious:"Тяжёлый", fatal:"С погибшими", accidentTypes:"Типы ДТП", weather:"Погода", heatRadius:"Радиус", heatBlur:"Размытие", heatOpacity:"Мин. непрозрачность", loading:"Загружаем данные…", loadingMap:"Обновляем карту…", unavailable:"Не удалось получить данные. Попробуйте позднее.", officialData:"Официальные данные", accidents:"ДТП", injured:"Пострадали", dead:"Погибли", distribution:"Распределение ДТП", selectedPeriod:"За выбранный период", byDays:"По дням", byHours:"По часам", byTypes:"По типам ДТП", chartNote:"Диаграмма построена по ДТП в видимой области.", chartNoDates:"В открытом API у точек ДТП нет даты и времени — временные разрезы недоступны", chartRangeTooLong:"Период в фильтре слишком длинный для этого разреза", forPeriod:"За период", activeFilters:"Активные фильтры", hide:"Скрыть", timeIntervals:"Временные интервалы", accidentProperties:"Свойства ДТП", accidentsCount:"Количество ДТП", deathsLegend:"Погибшие", byMonths:"По месяцам", byYears:"По годам", chartTitleDays:"Распределение по дням", chartTitleHours:"Распределение по часам", chartTitleMonths:"Распределение по месяцам", chartTitleYears:"Распределение по годам", chartTitleTypes:"Распределение по типам", accidentsInArea:"ДТП в видимой области", people:"чел.", deaths:"погибших", roadConditions:"УДС на месте ДТП", roadConditionsNear:"УДС поблизости", roadFactors:"Факторы, влияющие на движение", roadDefects:"Повреждения УДС", lighting:"Освещение", roadSurface:"Состояние проезжей части", movementChange:"Изменение движения", participantType:"Вид участника", seatBelt:"Ремень безопасности", sex:"Пол", harmSeverity:"Тяжесть вреда здоровью", ruleViolations:"Нарушения ПДД", signs:"Признаки ДТП", quantity:"Количество" },
-  en: { brandAria:"Road accident map — home", mapAria:"Interactive road accident map", map:"Map", blog:"Blog & research", data:"Download data", about:"About the project", team:"Team", support:"Support the project", statistics:"Statistics", filters:"Filters", analytics:"Analytics", cancel:"Cancel", backToBasic:"Back to standard filters", allTime:"All time", basicFilter:"Basic filter", professionalFilter:"Professional filters", search:"Search", dataPeriod:"Data period", accidentsInRussia:"Road accidents in Russia", region:"Region", allRegions:"All regions", from:"From", to:"To", participants:"Road users", injurySeverity:"Injury severity", light:"Minor", serious:"Serious", fatal:"Fatal", accidentTypes:"Accident types", weather:"Weather", heatRadius:"Radius", heatBlur:"Blur", heatOpacity:"Min. opacity", loading:"Loading data…", loadingMap:"Updating map…", unavailable:"Could not load data. Please try again later.", officialData:"Official data", accidents:"Accidents", injured:"Injured", dead:"Deaths", distribution:"Distribution", selectedPeriod:"Selected period", byDays:"By day", byHours:"By hour", byTypes:"By type", chartNote:"The chart is based on accidents in the visible area.", chartNoDates:"The open API has no date or time for accident points — time breakdowns are unavailable", chartRangeTooLong:"The selected period is too long for this breakdown", forPeriod:"For the period", activeFilters:"Active filters", hide:"Hide", timeIntervals:"Time intervals", accidentProperties:"Accident properties", accidentsCount:"Accident count", deathsLegend:"Deaths", byMonths:"By month", byYears:"By year", chartTitleDays:"Distribution by day", chartTitleHours:"Distribution by hour", chartTitleMonths:"Distribution by month", chartTitleYears:"Distribution by year", chartTitleTypes:"Distribution by type", accidentsInArea:"Accidents in area", people:"people", deaths:"deaths", roadConditions:"Road conditions on site", roadConditionsNear:"Road conditions nearby", roadFactors:"Factors affecting traffic", roadDefects:"Road defects", lighting:"Lighting", roadSurface:"Road surface", movementChange:"Traffic disruption", participantType:"Participant type", seatBelt:"Seat belt", sex:"Sex", harmSeverity:"Injury outcome", ruleViolations:"Traffic violations", signs:"Accident features", quantity:"Counts" },
+  ru: { brandAria:"Карта ДТП — главная", mapAria:"Интерактивная карта ДТП", map:"Карта", blog:"Блог и исследования", data:"Скачать данные", about:"О проекте", team:"Команда", support:"Поддержать проект", statistics:"Статистика", filters:"Фильтры", analytics:"Аналитика", cancel:"Отмена", backToBasic:"Назад к стандартным фильтрам", allTime:"За всё время", basicFilter:"Базовый фильтр", professionalFilter:"Профессиональные фильтры", search:"Поиск", dataPeriod:"Период данных", accidentsInRussia:"ДТП в России", region:"Регион", allRegions:"Все регионы", from:"С", to:"По", participants:"Участники ДТП", injurySeverity:"Вред здоровью", light:"Лёгкий", serious:"Тяжёлый", fatal:"С погибшими", accidentTypes:"Типы ДТП", weather:"Погода", heatRadius:"Радиус", heatBlur:"Размытие", heatOpacity:"Мин. непрозрачность", loading:"Загружаем данные…", loadingMap:"Обновляем карту…", unavailable:"Не удалось получить данные. Попробуйте позднее.", officialData:"Официальные данные", accidents:"ДТП", injured:"Пострадали", dead:"Погибли", distribution:"Распределение ДТП", selectedPeriod:"За выбранный период", byDays:"По дням", byHours:"По часам", byTypes:"По типам ДТП", chartNote:"Диаграмма построена по ДТП в видимой области.", chartNoDates:"В открытом API у точек ДТП нет даты и времени — временные разрезы недоступны", chartRangeTooLong:"Период в фильтре слишком длинный для этого разреза", forPeriod:"За период", activeFilters:"Активные фильтры", hide:"Скрыть", timeIntervals:"Временные интервалы", accidentProperties:"Свойства ДТП", accidentsCount:"Количество ДТП", deathsLegend:"Погибшие", byMonths:"По месяцам", byYears:"По годам", chartTitleDays:"Распределение по дням", chartTitleHours:"Распределение по часам", chartTitleMonths:"Распределение по месяцам", chartTitleYears:"Распределение по годам", chartTitleTypes:"Распределение по типам", accidentsInArea:"ДТП в видимой области", people:"чел.", deaths:"погибших", roadConditions:"УДС на месте ДТП", roadConditionsNear:"УДС поблизости", roadFactors:"Факторы, влияющие на движение", roadDefects:"Повреждения УДС", lighting:"Освещение", roadSurface:"Состояние проезжей части", movementChange:"Изменение движения", participantType:"Вид участника", seatBelt:"Ремень безопасности", sex:"Пол", harmSeverity:"Тяжесть вреда здоровью", ruleViolations:"Нарушения ПДД", attendantViolations:"Дополнительные нарушения ПДД", vehicleEscape:"Скрылось с места ДТП (ТС)", participantEscape:"Скрылся с места ДТП (участник)", childRestraint:"Детские удерживающие устройства", damageDisposition:"Места повреждений ТС", techFailure:"Технические неисправности", places:"Место ДТП", roads:"Дорога", streets:"Улица", nps:"Населённый пункт", marks:"Марка ТС", models:"Модель ТС", pickRegion:"Сначала выберите регион", pickPlace:"Сначала выберите место ДТП", pickMark:"Сначала выберите марку ТС", signs:"Признаки ДТП", quantity:"Количество" },
+  en: { brandAria:"Road accident map — home", mapAria:"Interactive road accident map", map:"Map", blog:"Blog & research", data:"Download data", about:"About the project", team:"Team", support:"Support the project", statistics:"Statistics", filters:"Filters", analytics:"Analytics", cancel:"Cancel", backToBasic:"Back to standard filters", allTime:"All time", basicFilter:"Basic filter", professionalFilter:"Professional filters", search:"Search", dataPeriod:"Data period", accidentsInRussia:"Road accidents in Russia", region:"Region", allRegions:"All regions", from:"From", to:"To", participants:"Road users", injurySeverity:"Injury severity", light:"Minor", serious:"Serious", fatal:"Fatal", accidentTypes:"Accident types", weather:"Weather", heatRadius:"Radius", heatBlur:"Blur", heatOpacity:"Min. opacity", loading:"Loading data…", loadingMap:"Updating map…", unavailable:"Could not load data. Please try again later.", officialData:"Official data", accidents:"Accidents", injured:"Injured", dead:"Deaths", distribution:"Distribution", selectedPeriod:"Selected period", byDays:"By day", byHours:"By hour", byTypes:"By type", chartNote:"The chart is based on accidents in the visible area.", chartNoDates:"The open API has no date or time for accident points — time breakdowns are unavailable", chartRangeTooLong:"The selected period is too long for this breakdown", forPeriod:"For the period", activeFilters:"Active filters", hide:"Hide", timeIntervals:"Time intervals", accidentProperties:"Accident properties", accidentsCount:"Accident count", deathsLegend:"Deaths", byMonths:"By month", byYears:"By year", chartTitleDays:"Distribution by day", chartTitleHours:"Distribution by hour", chartTitleMonths:"Distribution by month", chartTitleYears:"Distribution by year", chartTitleTypes:"Distribution by type", accidentsInArea:"Accidents in area", people:"people", deaths:"deaths", roadConditions:"Road conditions on site", roadConditionsNear:"Road conditions nearby", roadFactors:"Factors affecting traffic", roadDefects:"Road defects", lighting:"Lighting", roadSurface:"Road surface", movementChange:"Traffic disruption", participantType:"Participant type", seatBelt:"Seat belt", sex:"Sex", harmSeverity:"Injury outcome", ruleViolations:"Traffic violations", attendantViolations:"Additional traffic violations", vehicleEscape:"Fled the scene (vehicle)", participantEscape:"Fled the scene (participant)", childRestraint:"Child restraints", damageDisposition:"Vehicle damage areas", techFailure:"Technical failures", places:"Location", roads:"Road", streets:"Street", nps:"Locality", marks:"Vehicle make", models:"Vehicle model", pickRegion:"Select a region first", pickPlace:"Select locations first", pickMark:"Select vehicle makes first", signs:"Accident features", quantity:"Counts" },
 };
 Object.assign(copy.ru, { regionSearch:"Введите адрес или регион", noInjured:"Без пострадавших (нет данных)", accidentKind:"Вид ДТП", show:"Показать", lockPin:"Данные закреплены по территории", unlock:"Открепить данные", lockHint:"Сначала открепите территорию", participantNoData:"По этим участникам в открытом API нет данных", noMatches:"Ничего не найдено" });
 Object.assign(copy.en, { regionSearch:"Enter address or region", noInjured:"No injuries (no data)", accidentKind:"Accident type", show:"Show", lockPin:"Data is pinned to the territory", unlock:"Unpin data", lockHint:"Unpin the territory first", participantNoData:"No open API data for these road users", noMatches:"Nothing found" });
@@ -38,8 +38,11 @@ function participantHasData(participant) { return participant.value === 1 || Boo
 // Серверные секции проф-фильтра уходят параметрами `${name}_IDS` в /dtp/points.
 // 2026-09-26: бэкенд поддержал все kind 'array' (скалярные *_IDS-колонки в DTP_VIEW)
 // и 'arrays' по агрегатам persons/vehicles — секции включены, live-проверено на :3100.
-const serverSections = ["CLOUD", "DEFECT", "MOTION_INFLUENCE", "RD_CONSTR_HERE", "RD_CONSTR_THERE", "LIGHT_TYPE", "TRAFFIC_AREA_STATE", "MT_RATE", "PART_TYPE", "SAFETY_BELT", "SEX", "HV_TYPE", "MAIN_PDD_DERANGEMENT", "masks"];
-const serverSectionLabels: Record<string, string> = { EM_TYPE:"accidentTypes", CLOUD:"weather", DEFECT:"roadDefects", MOTION_INFLUENCE:"roadFactors", RD_CONSTR_HERE:"roadConditions", RD_CONSTR_THERE:"roadConditionsNear", LIGHT_TYPE:"lighting", TRAFFIC_AREA_STATE:"roadSurface", MT_RATE:"movementChange", PART_TYPE:"participantType", SAFETY_BELT:"seatBelt", SEX:"sex", HV_TYPE:"harmSeverity", MAIN_PDD_DERANGEMENT:"ruleViolations" };
+const serverSections = ["CLOUD", "DEFECT", "MOTION_INFLUENCE", "RD_CONSTR_HERE", "RD_CONSTR_THERE", "LIGHT_TYPE", "TRAFFIC_AREA_STATE", "MT_RATE", "PART_TYPE", "SAFETY_BELT", "SEX", "HV_TYPE", "MAIN_PDD_DERANGEMENT", "ATTENDANT_PDD_DERANGEMENT", "V_ESCAPE", "P_ESCAPE", "CHILD_SAFETY_TYPE", "DAMAGE_DISPOSITION", "TECH_FAILURE_TYPE", "PLACE", "ROAD", "STREET", "NP", "MARK", "MODEL", "masks"];
+const serverSectionLabels: Record<string, string> = { EM_TYPE:"accidentTypes", CLOUD:"weather", DEFECT:"roadDefects", MOTION_INFLUENCE:"roadFactors", RD_CONSTR_HERE:"roadConditions", RD_CONSTR_THERE:"roadConditionsNear", LIGHT_TYPE:"lighting", TRAFFIC_AREA_STATE:"roadSurface", MT_RATE:"movementChange", PART_TYPE:"participantType", SAFETY_BELT:"seatBelt", SEX:"sex", HV_TYPE:"harmSeverity", MAIN_PDD_DERANGEMENT:"ruleViolations", ATTENDANT_PDD_DERANGEMENT:"attendantViolations", V_ESCAPE:"vehicleEscape", P_ESCAPE:"participantEscape", CHILD_SAFETY_TYPE:"childRestraint", DAMAGE_DISPOSITION:"damageDisposition", TECH_FAILURE_TYPE:"techFailure", PLACE:"places", ROAD:"roads", STREET:"streets", NP:"nps", MARK:"marks", MODEL:"models" };
+// Каскадные секции: словарь тянется с сервера только при выбранном родителе
+// (у улиц/дорог/НП сотни тысяч записей — сразу не грузим). PLACE живёт под регионом.
+const sectionParents: Record<string, string> = { PLACE:"REGION", ROAD:"PLACE", STREET:"PLACE", NP:"PLACE", MODEL:"MARK" };
 // Значение параметра-маски — сама битовая маска столбца: ADDITIONAL_ATTR (SIM=4, камеры=8, наркотики=1, отказ=2), CHILDREN_ATTR (3/7/71/135)
 const maskFeatures = [
   { value:4, param:"SIM", preview:"ДТП с СИМ" },
@@ -56,6 +59,10 @@ const intervalFields = [
   { param:"PERS_AMOUNT", preview:"Участники", min:0, max:299 },
   { param:"LOST_AMOUNT", preview:"Погибшие", min:0, max:299 },
   { param:"SUFFER_AMOUNT", preview:"Раненые", min:0, max:299 },
+  // Интервалы по массивным колонкам dtp_view (совпадение любой ТС/участника)
+  { param:"VEHICLE_YEARS", preview:"Год выпуска ТС", min:1900, max:2100 },
+  { param:"DRIVER_SERVICE_LENGTHS", preview:"Водительский стаж, лет", min:0, max:99 },
+  { param:"MED_RESULT_PERMILLES", preview:"Промилле алкоголя", min:0, max:30 },
 ];
 // Названия видов ДТП из /dict/em_types — заполняется в loadFilters
 const emTypeNames = new Map<number, string>();
@@ -706,6 +713,41 @@ let filterReloadTimer: any;
 // Живая перезагрузка данных при смене параметров про-фильтров (без кнопки «Применить»);
 // для ввода с клавиатуры — с задержкой, для чекбоксов — сразу через loadMapData
 function scheduleFilterReload() { clearTimeout(filterReloadTimer); filterReloadTimer = setTimeout(loadMapData, 500); }
+// Каскадные секции (PLACE→регион, ROAD/STREET/NP→PLACE, MODEL→MARK): словари с
+// сотнями тысяч значений не грузим на старте — тянем /dict/<имя>?parent_id=… только
+// когда выбран родитель. На секции храним parentSel (подпись выбора родителя, для
+// которой загружены values); смена родителя сбрасывает и выбор в самой секции
+function cascadeParentIds(parent: string): number[] {
+  if (parent === "REGION") return state.territory ? [state.territory.id] : [];
+  return state.selectedFilters[parent] || [];
+}
+function cascadeSignature(name: string): string {
+  const parent = sectionParents[name];
+  return `${parent}:${cascadeParentIds(parent).join(",")}`;
+}
+async function refreshCascade() {
+  const jobs: Promise<void>[] = [];
+  let dirty = false;
+  // Родители раньше детей: смена выбора в PLACE перезагружает и ROAD/STREET/NP
+  for (const name of ["PLACE", "ROAD", "STREET", "NP", "MODEL"]) {
+    const filter = state.filters.find((item) => item.name === name);
+    if (!filter || !sectionParents[name]) continue;
+    const signature = cascadeSignature(name);
+    if (filter.parentSel === signature) continue; // значения уже для этого родителя
+    dirty = true;
+    if (filter.parentSel !== undefined && filter.parentSel !== signature) delete state.selectedFilters[name]; // старый выбор при новом родителе невалиден
+    const ids = cascadeParentIds(sectionParents[name]);
+    filter.parentSel = signature; filter.values = []; filter.loading = Boolean(ids.length);
+    if (!ids.length) continue;
+    jobs.push(fetch(`${api}/dict/${filter.dict}?parent_id=${ids.join(",")}`).then((response) => response.ok ? response.json() : []).then((rows) => {
+      if (filter.parentSel !== signature) return; // пока грузили, родитель снова сменился — придёт следующий refreshCascade
+      filter.loading = false;
+      filter.values = (rows || []).map((row) => ({ value:Number(row.id), preview:String(row.name) }));
+    }).catch(() => { filter.loading = false; }));
+  }
+  if (dirty) renderAdvancedFilters(); // сброс/загрузка детей — сразу перерисовываем (хинты, «загружаем»)
+  if (jobs.length) { await Promise.all(jobs); renderAdvancedFilters(); }
+}
 function renderAdvancedFilters() {
   const root = $("#advanced-dynamic");
   // Живая перезагрузка данных пересобирает панель — сохраняем раскрытые секции, поисковые запросы и фокус ввода
@@ -745,10 +787,18 @@ function renderAdvancedFilters() {
     // Поиск живёт внутри раскрытой секции — в свёрнутом заголовке только название и шеврон
     section.className = "advanced-collapse";
     if (saved?.open) section.open = true;
+    // Каскадная секция: без выбранного родителя — подсказка вместо списка, при загрузке — «загружаем»
+    const parent = sectionParents[key];
+    if (parent && (filter.loading || !cascadeParentIds(parent).length)) {
+      title.append(name);
+      options.className = "advanced-hint";
+      options.textContent = filter.loading ? t("loading") : t(parent === "REGION" ? "pickRegion" : parent === "PLACE" ? "pickPlace" : "pickMark");
+      section.append(title, options); return section;
+    }
     const search = filter.key === "street" || filter.values.length > 8 ? document.createElement("input") : null;
     if (search) { search.type = "search"; search.placeholder = t("search"); search.className = "advanced-search"; if (saved?.query) search.value = saved.query; }
     options.className = "advanced-options";
-    const draw = () => { const query = search ? search.value.trim().toLowerCase() : "", selected = state.selectedFilters[key] || []; options.replaceChildren(...dynamicValues(filter).filter((item) => item.preview.toLowerCase().includes(query)).map((item) => { const label = document.createElement("label"), input = document.createElement("input"); if (item.ui_tone) label.className = `filter-tone ${item.ui_tone}`; input.type = "checkbox"; input.checked = selected.includes(item.value); input.addEventListener("change", () => { const values = new Set(state.selectedFilters[key] || []); input.checked ? values.add(item.value) : values.delete(item.value); state.selectedFilters[key] = [...values]; loadMapData(); }); label.append(input, document.createTextNode(item.preview)); return label; })); };
+    const draw = () => { const query = search ? search.value.trim().toLowerCase() : "", selected = state.selectedFilters[key] || []; options.replaceChildren(...dynamicValues(filter).filter((item) => item.preview.toLowerCase().includes(query)).map((item) => { const label = document.createElement("label"), input = document.createElement("input"); if (item.ui_tone) label.className = `filter-tone ${item.ui_tone}`; input.type = "checkbox"; input.checked = selected.includes(item.value); input.addEventListener("change", () => { const values = new Set(state.selectedFilters[key] || []); input.checked ? values.add(item.value) : values.delete(item.value); state.selectedFilters[key] = [...values]; loadMapData(); refreshCascade(); }); label.append(input, document.createTextNode(item.preview)); return label; })); };
     title.append(name);
     if (search) { search.addEventListener("input", draw); search.addEventListener("keydown", (event) => event.stopPropagation()); section.append(title, search, options); }
     else section.append(title, options);
@@ -764,7 +814,7 @@ function renderAdvancedFilters() {
     }
   }
 }
-function openAdvanced() { renderAdvancedControls(); renderAdvancedFilters(); syncAdvancedRegion(); document.body.classList.add("advanced-open"); setAdvancedCollapsed(false); $("#advanced-filter").hidden = false; }
+function openAdvanced() { renderAdvancedControls(); renderAdvancedFilters(); syncAdvancedRegion(); refreshCascade(); document.body.classList.add("advanced-open"); setAdvancedCollapsed(false); $("#advanced-filter").hidden = false; }
 // Регион про-панели — то же поле с подсказками, что в стандартной панели; можно впечатать вручную (DTP-25).
 // Подсказки прижаты к ПРАВОМУ краю поля. Пустой ввод + Enter (или кнопка сброса) возвращает «Все регионы»
 function syncAdvancedRegion() {
@@ -797,7 +847,7 @@ function advancedRegionCommit() {
   const input = $("#advanced-region") as HTMLInputElement, suggest = $("#region-suggest-adv");
   if (state.territory) { suggest.hidden = true; return; } // замок: смену региона не даём (DTP-28)
   const query = input.value.trim().toLowerCase();
-  if (!query) { state.territory = null; updateTerritoryCard(); suggest.hidden = true; loadMapData(); return; }
+  if (!query) { state.territory = null; updateTerritoryCard(); suggest.hidden = true; refreshCascade(); loadMapData(); return; }
   const first = regionIndex.find((region) => region.lower.includes(query));
   if (first) { selectRegion(first); syncAdvancedRegion(); }
   suggest.hidden = true;
@@ -927,6 +977,7 @@ async function selectRegion(region) {
   if (!feature) return;
   state.territory = { id: region.id, name: region.name };
   updateTerritoryCard();
+  refreshCascade(); // регион — родитель каскадной секции «Место ДТП»
   $("#region-suggest").hidden = true;
   $("#region-search").value = "";
   // Карта открывается по центру выбранной области (города региона)
@@ -1069,7 +1120,12 @@ async function loadFilters() {
     const fields = await fieldsResponse.json(), advancedFields = fields.filter((field) => field.name === "EM_TYPE" || serverSections.includes(field.name));
     // Рамка видимой области доступна, только если бэкенд знает LATITUDE/LONGITUDE
     state.bboxSupported = fields.some((field) => field.name === "LATITUDE");
-    const dictionaries = await Promise.all(advancedFields.map(async (field) => { const response = await fetch(`${api}/dict/${field.dict}`); return [field, response.ok ? await response.json() : []]; }));
+    const dictionaries = await Promise.all(advancedFields.map(async (field) => {
+      // Каскадные секции (PLACE/ROAD/STREET/NP/MODEL) грузятся лениво, по выбору родителя
+      if (sectionParents[field.name]) return [field, []];
+      const response = await fetch(`${api}/dict/${field.dict}`);
+      return [field, response.ok ? await response.json() : []];
+    }));
     // В emTypeNames идут только виды ДТП: id других словарей пересекаются и сломают попапы
     for (const [field, values] of dictionaries) if (field.name === "EM_TYPE") for (const value of values) emTypeNames.set(Number(value.id), value.name);
     const end = new Date(dataRange.max), start = new Date(end); start.setDate(1); start.setMonth(start.getMonth() - 11);
@@ -1084,7 +1140,7 @@ async function loadFilters() {
         { preview:"Дети", value:6 },
       ] },
       { name:"severity", values:[{ preview:"Без пострадавших", value:0, ui_tone:"none" }, { preview:"Лёгкий", value:1, ui_tone:"light" }, { preview:"Тяжёлый", value:3, ui_tone:"serious" }, { preview:"С погибшими", value:4, ui_tone:"fatal" }] },
-      ...dictionaries.map(([field, values]) => ({ name:field.name, key:field.name === "EM_TYPE" ? "category" : field.name, param:`${field.name}_IDS`, label:t(serverSectionLabels[field.name]) || field.caption, values:values.map((value) => ({ value:value.id, preview:value.name })) })),
+      ...dictionaries.map(([field, values]) => ({ name:field.name, key:field.name === "EM_TYPE" ? "category" : field.name, param:`${field.name}_IDS`, dict:field.dict, label:t(serverSectionLabels[field.name]) || field.caption, values:values.map((value) => ({ value:value.id, preview:value.name })) })),
       { name:"masks", key:"masks", param:"masks", label:t("signs"), values:maskFeatures.map(({ value, preview }) => ({ value, preview })) },
       { name:"intervals", key:"intervals", param:"intervals", label:t("quantity"), values:intervalFields },
     ]);
@@ -1153,7 +1209,7 @@ if (matchMedia("(max-width: 800px)").matches) setFiltersCollapsed(true);
 $("#professional-toggle").addEventListener("click", openAdvanced);
 $("#region-search").addEventListener("input", drawRegionSuggest);
 $("#region-search").addEventListener("focus", drawRegionSuggest);
-$("#lock-button").addEventListener("click", () => { if (!state.territory) return; state.territory = null; updateTerritoryCard(); loadMapData(); });
+$("#lock-button").addEventListener("click", () => { if (!state.territory) return; state.territory = null; updateTerritoryCard(); refreshCascade(); loadMapData(); });
 document.addEventListener("click", (event) => {
   const target = event.target as Element;
   if (!target.closest(".region-search")) $("#region-suggest").hidden = true;
