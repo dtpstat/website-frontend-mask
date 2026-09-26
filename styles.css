@@ -213,3 +213,10 @@ body .advanced-interval-field:has(input:not(:placeholder-shown)) { background:va
 .chart-side button { border-radius:4px; }
 .chart-side button:hover:not(:disabled) { background:#f2f4f6; }
 .chart-side button.active { color:var(--navy); background:#ececec; }
+/* Мобильные: в интервальных рядах про-фильтров подпись может переноситься,
+   поля «от–до» сжимаются (иначе на экранах ≤375px выезжают за границу панели).
+   Специфичность как у базовых правил body .advanced-interval…, иначе они сильнее */
+@media (max-width:800px) {
+  body .advanced-interval > span:first-child { flex:1 1 auto; min-width:0; }
+  body .advanced-interval .advanced-interval-field { flex:1 1 56px; width:auto; min-width:56px; max-width:118px; }
+}
