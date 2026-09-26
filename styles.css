@@ -61,9 +61,9 @@ body .statistics .download-button:hover { background:#d1dde5; }
 body .statistics #chart-button { display:grid; place-items:center; flex:none; width:44px; height:44px; margin-left:0; padding:0; border-radius:10px; background:#dee7ed; }
 body .statistics #chart-button svg { width:20px; height:20px; }
 .lock-button { display:grid; flex:none; width:32px; height:32px; place-items:center; border:0; border-radius:50%; color:var(--navy); background:var(--pale); }
-.lock-button svg { width:18px; height:18px; }
+.lock-button svg { width:18px; height:20px; }
 .lock-button .lock-closed { display:none; }
-.lock-button.locked { color:#fff; background:var(--navy); }
+/* Оба новых замка рассчитаны на светлый круг: состояние показывает сама иконка (открытая #4E6E87 / закрытая #18334A) */
 .lock-button.locked .lock-open { display:none; }
 .lock-button.locked .lock-closed { display:block; }
 * { box-sizing:border-box; } [hidden] { display:none !important; } body { margin:0; color:var(--navy); background:var(--pale); } button, input { font:inherit; } button { cursor:pointer; }
