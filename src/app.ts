@@ -1058,8 +1058,12 @@ function openLinkedPopup() {
   if (!popupId) return true;
   if (state.mapClient === "leaflet") {
     const marker = markers.get(popupId);
-    if (!marker) return false;
-    marker.openPopup();
+    if (marker) { marker.openPopup(); return true; }
+    // Маркеров на отдалении нет (точки прячет тепло) — открываем попап по координатам
+    // записи, иначе deep-link ?popup= молча не срабатывал до входа в зум точек
+    const item = lastRender.visible.find((candidate) => candidate.id === popupId) || state.rawItems.find((candidate) => candidate.id === popupId);
+    if (!item) return false;
+    map.openPopup(L.popup().setLatLng([item.point.latitude, item.point.longitude]).setContent(markerPopup(item)));
     return true;
   }
   const item = lastRender.visible.find((candidate) => candidate.id === popupId);
