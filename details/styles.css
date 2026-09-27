@@ -5,8 +5,11 @@
 .loading, .error { display:grid; min-height:60vh; place-items:center; padding:24px; color:var(--muted); }
 
 /* Карта и плавающие кнопки: ряд кнопок перекрывает нижний край карты (как на
-   старом сайте: .map-buttons { margin-top:-74px }), схема — верхний край */
-.map-stage { position:relative; }
+   старом сайте: .map-buttons { margin-top:-74px }), схема — верхний край.
+   z-index:0 делает map-stage стековым контекстом: тайловые панели Яндекса/Leaflet
+   со своими z-index не вылезают наружу, и карточка схемы (z-index:1 ниже) ложится
+   поверх карты, а не под неё */
+.map-stage { position:relative; z-index:0; }
 .detail-map { height:280px; background:var(--pale); }
 .detail-map [class*="ground-pane"] ymaps:first-child { filter:grayscale(.8); }
 .detail-map [class*="route-panel"], .detail-map [class*="route-button"], .detail-map [class*="taxi"], .detail-map [class*="gotoymaps"] { display:none !important; }
@@ -23,7 +26,7 @@
 .head-grid.no-scheme { grid-template-columns:minmax(0, 1fr); }
 /* Схема ДТП — квадратная карточка 240×240 внахлёст над картой (старый сайт:
    .scheme-wrap { width:240px; height:240px; margin:-80px auto 0; border-radius:8px }) */
-.scheme { margin:-80px auto 0; padding:5px; width:240px; height:240px; border-radius:8px; background:#fff; box-shadow:0 0 2.4px rgba(9,42,70,.04), 0 0 6.8px rgba(9,42,70,.06), 0 0 16.3px rgba(9,42,70,.07), 0 0 54px rgba(9,42,70,.11); }
+.scheme { position:relative; z-index:1; margin:-80px auto 0; padding:5px; width:240px; height:240px; border-radius:8px; background:#fff; box-shadow:0 0 2.4px rgba(9,42,70,.04), 0 0 6.8px rgba(9,42,70,.06), 0 0 16.3px rgba(9,42,70,.07), 0 0 54px rgba(9,42,70,.11); }
 .scheme img { display:block; width:100%; height:100%; object-fit:contain; border-radius:6px; }
 .scheme figcaption { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
 .meta { margin:0; color:var(--navy); font-size:15px; }
@@ -126,4 +129,10 @@
   .person-cards { flex-wrap:wrap; }
   .person { width:100%; }
   .map-tools { left:12px; right:12px; padding:0; }
+}
+/* «Показать ДТП рядом» — в колонке текста, правее свисающей карточки схемы
+   (как на старом сайте: кнопки в col-md рядом с col-auto схемы); иначе карточка,
+   теперь лежащая поверх карты, перекрывает кнопку. 298px = 264px колонки схемы + 34px gap */
+@media (min-width:861px) {
+  .map-tools { padding-left: calc(max((100% - 1120px) / 2, 20px) + 298px); }
 }
