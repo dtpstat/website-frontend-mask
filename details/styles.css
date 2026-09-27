@@ -5,7 +5,8 @@
 .loading, .error { display:grid; min-height:60vh; place-items:center; padding:24px; color:var(--muted); }
 
 /* Карта и плавающие кнопки: ряд кнопок перекрывает нижний край карты (как на
-   старом сайте: .map-buttons { margin-top:-74px }), схема — верхний край */
+   старом сайте: .map-buttons { margin-top:-74px }); карточка схемы — выше карты,
+   в потоке (на старом сайте она висела на нижнем крае карты) */
 .map-stage { position:relative; }
 .detail-map { height:280px; background:var(--pale); }
 .detail-map [class*="ground-pane"] ymaps:first-child { filter:grayscale(.8); }
@@ -19,11 +20,9 @@
 .map-tools .pill-group button:disabled { color:#9cabb5; }
 
 .content { width:min(1120px, calc(100% - 40px)); margin:0 auto; padding:0 0 58px; }
-.head-grid { display:grid; grid-template-columns:264px minmax(0, 1fr); gap:34px; align-items:start; }
-.head-grid.no-scheme { grid-template-columns:minmax(0, 1fr); }
-/* Схема ДТП — квадратная карточка 240×240 внахлёст над картой (старый сайт:
-   .scheme-wrap { width:240px; height:240px; margin:-80px auto 0; border-radius:8px }) */
-.scheme { margin:-80px auto 0; padding:5px; width:240px; height:240px; border-radius:8px; background:#fff; box-shadow:0 0 2.4px rgba(9,42,70,.04), 0 0 6.8px rgba(9,42,70,.06), 0 0 16.3px rgba(9,42,70,.07), 0 0 54px rgba(9,42,70,.11); }
+/* Схема ДТП — квадратная карточка 240×240 над картой/панорамой, по центру
+   (габариты и тень — со старого сайта: .scheme-wrap { width:240px; height:240px }) */
+.scheme { margin:24px auto; padding:5px; width:240px; height:240px; border-radius:8px; background:#fff; box-shadow:0 0 2.4px rgba(9,42,70,.04), 0 0 6.8px rgba(9,42,70,.06), 0 0 16.3px rgba(9,42,70,.07), 0 0 54px rgba(9,42,70,.11); }
 .scheme img { display:block; width:100%; height:100%; object-fit:contain; border-radius:6px; }
 .scheme figcaption { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
 .meta { margin:0; color:var(--navy); font-size:15px; }
@@ -114,9 +113,6 @@
   .fund-strip { flex-direction:column; align-items:stretch; }
   .footer-bottom { flex-wrap:wrap; }
   .footer-socials { margin-left:0; width:100%; justify-content:flex-start; }
-  /* на узких экранах схема встаёт в поток (старый сайт: margin:10px auto 0) */
-  .scheme { margin:10px auto 0; }
-  .head-grid, .head-grid.no-scheme { grid-template-columns:1fr; gap:20px; }
 }
 @media (max-width:800px) {
   .content h1 { font-size:26px; line-height:34px; }
