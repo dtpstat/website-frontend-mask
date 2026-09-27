@@ -2,6 +2,9 @@
 const api = ["localhost", "127.0.0.1"].includes(location.hostname) ? "/api" : "https://dtpstat-backend.7190805.xyz/api";
 const root = document.querySelector("#detail") as HTMLElement;
 const query = new URLSearchParams(location.search), id = query.get("id") || "", language = query.get("lang") === "en" ? "en" : localStorage.getItem("language") === "en" ? "en" : "ru";
+// Страница деталей живёт и во встраивании (WP-сайт: кросс-доменный iframe) —
+// там адресную строку обновляет страница-родитель, дублируем ей открытое ДТП
+if (id && window.parent !== window) { try { window.parent.postMessage({ source: "dtpstat-map", popup: id }, "*"); } catch {} }
 const text = language === "en" ? { title:"Accident details", missing:"Accident was not found.", nearby:"Show accident nearby", map:"Map", panorama:"Panorama", transport:"Vehicles", users:"Road users", injured:"Injured", dead:"Deaths", official:"Official traffic police data", address:"Address unknown", scheme:"Crash scheme", noViolations:"No violations", violations:"Traffic violations" } : { title:"Подробности ДТП", missing:"ДТП не найдено.", nearby:"Показать ДТП рядом", map:"Карта", panorama:"Панорама", transport:"Транспорт", users:"Участники", injured:"Пострадали", dead:"Погибли", official:"Официальные данные ГИБДД", address:"Адрес неизвестен", scheme:"Схема ДТП", noViolations:"Нет нарушений", violations:"Нарушения ПДД" };
 const escape = (value: unknown) => String(value ?? "").replace(/[&<>\"]/g, (character) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '\"':"&quot;" } as Record<string, string>)[character]);
 const list = (value: unknown) => Array.isArray(value) ? value.filter(Boolean).map(String) : value ? [String(value)] : [];
