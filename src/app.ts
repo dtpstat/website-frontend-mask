@@ -20,20 +20,23 @@ Object.assign(copy.ru, { heatIntensity:"Интенсивность", heatMapOpac
 Object.assign(copy.en, { heatIntensity:"Intensity", heatMapOpacity:"Opacity" });
 const participantTranslations = { "Все участники":"All users", "Пешеходы":"Pedestrians", "Велосипедисты":"Cyclists", "Мотоциклисты":"Motorcyclists", "Общ. транспорт":"Public transport", "Дети":"Children", "Без участника":"No road user" };
 // Иконка и приближение по виду ДТП для каждой кнопки участников (значения как на dtp-stat.ru).
-// emTypes — клиентский фильтр по em_type_id точек; mask — серверный признак /dtp/points.
+// emTypes — клиентский фильтр по em_type_id точек; mask — серверный признак /dtp/points;
+// prodTypes — серверный фильтр по типам ТС из vehicles (PROD_TYPE_IDS, словарь prod_types).
 // В открытых точках мотоциклисты/общ. транспорт не различаются (PART_TYPE знает только
-// водитель/пешеход/пассажир/велосипедист): их плитка выбирается, но честно сообщает об отсутствии данных.
-const participantConfig: Record<number, { icon: string; emTypes?: number[]; mask?: { param: string; value: number } }> = {
+// водитель/пешеход/пассажир/велосипедист), но различимы по ТС в базе — плитка уходит
+// параметром PROD_TYPE_IDS. Списки — без экзотики: мотоблоки (88), мотоколяски (96),
+// мотонарты (109); школьные (76) и детские (97) перевозки — не маршрутный общественный транспорт.
+const participantConfig: Record<number, { icon: string; emTypes?: number[]; mask?: { param: string; value: number }; prodTypes?: number[] }> = {
   1: { icon:"all" },
   2: { icon:"pedestrian", emTypes:[1] },
   3: { icon:"cyclist", emTypes:[8] },
-  4: { icon:"motorcycle" },
-  5: { icon:"public_transport" },
+  4: { icon:"motorcycle", prodTypes:[7,33,34,35,36,39,41,75,78,85] },
+  5: { icon:"public_transport", prodTypes:[63,95,99,106,107,108,21,30,42,51,67] },
   // «С детьми до 16 лет» — маска CHILDREN_ATTR=3 в /dtp/filter_fields
   6: { icon:"kids", mask:{ param:"UNDER_16", value:3 } },
 };
-// Выбор у всех плиток доступен; данные после выбора меняют только emTypes и маски
-function participantHasData(participant) { return participant.value === 1 || Boolean(participantConfig[participant.value]?.emTypes || participantConfig[participant.value]?.mask); }
+// Выбор у всех плиток доступен; данные после выбора меняют emTypes, маски и типы ТС
+function participantHasData(participant) { return participant.value === 1 || Boolean(participantConfig[participant.value]?.emTypes || participantConfig[participant.value]?.mask || participantConfig[participant.value]?.prodTypes); }
 // Секции проф-фильтра, которые уходят параметрами на сервер в /dtp/points.
 // Серверные секции проф-фильтра уходят параметрами `${name}_IDS` в /dtp/points.
 // 2026-09-26: бэкенд поддержал все kind 'array' (скалярные *_IDS-колонки в DTP_VIEW)
@@ -891,6 +894,12 @@ function serverQuery() {
   const selected = selectedParticipants();
   if (selected.length && !selected.includes(1) && selected.every((value) => participantConfig[value]?.mask))
     for (const value of selected) { const mask = participantConfig[value]?.mask; if (mask) params.append(mask.param, String(mask.value)); }
+  // Участники «Мотоциклисты»/«Общ. транспорт» → типы ТС параметром PROD_TYPE_IDS
+  // (kind 'arrays', условие && на бэкенде — ИЛИ внутри списка, мото+общ.транспорт объединяются).
+  // Шлётся только когда выбраны ТОЛЬКО участники этого механизма: вместе с маской/видами ДТП
+  // серверное И дало бы пересечение вместо объединения — смешанный выбор остаётся клиентским
+  const participantProdTypeList = participantProdTypeIds();
+  if (participantProdTypeList) params.append("PROD_TYPE_IDS", participantProdTypeList.join(","));
   for (const [name, values] of Object.entries(state.selectedFilters)) {
     if (!values.length) continue;
     if (name === "masks") for (const value of values) { const feature = maskFeatures.find((item) => item.value === value); if (feature) params.append(feature.param, String(feature.value)); }
@@ -905,8 +914,9 @@ function serverQuery() {
 // Выбранные участники → набор видов ДТП (приближение по em_type_id); null — без клиентского фильтра.
 // Мультивыбор участников объединяется по ИЛИ: виды всех выбранных собираются в Set —
 // «Пешеходы»+«Велосипедисты» = ДТП вида 1 ИЛИ 8. «Все участники» и пустой выбор
-// ограничения не накладывают. Участники без emTypes (например «Дети») фильтруются
-// маской в serverQuery — но только если выбраны без клиентов-участников
+// ограничения не накладывают. Участники без emTypes («Дети», «Мотоциклисты»,
+// «Общ. транспорт») фильтруются серверно в serverQuery — маской или типами ТС,
+// но только если выбраны без клиентов-участников
 function participantEmTypes() {
   const selected = selectedParticipants();
   if (!selected.length || selected.includes(1)) return null;
@@ -914,12 +924,26 @@ function participantEmTypes() {
   for (const value of selected) for (const em of participantConfig[value]?.emTypes || []) set.add(em);
   return set.size ? [...set] : null;
 }
-// Ключ эффективной выборки участников: emTypes + серверные маски. Выбор участников без
-// признака в API (мото, общ. транспорт) ключ не меняет — перезагрузка точек не нужна
+// Выбранные участники → объединённый список типов ТС («Мотоциклисты»/«Общ. транспорт»);
+// null — серверный параметр не шлём. Как и у emTypes: «Все участники», пустой выбор
+// или примесь участников других механизмов (маска «Дети», клиентские виды ДТП) отключают его —
+// И разных механизмов на бэкенде невыразимо в ИЛИ
+function participantProdTypeIds() {
+  const selected = selectedParticipants();
+  if (!selected.length || selected.includes(1)) return null;
+  const set = new Set();
+  for (const value of selected) {
+    if (participantConfig[value]?.emTypes || participantConfig[value]?.mask) return null;
+    for (const id of participantConfig[value]?.prodTypes || []) set.add(id);
+  }
+  return set.size ? [...set] : null;
+}
+// Ключ эффективной выборки участников: emTypes + серверные маски + серверные типы ТС.
+// Изменение любого слагаемого меняет серверный запрос — точки надо перезагрузить
 function participantFilterKey() {
   const masks = [];
   for (const item of state.participants) { const mask = item.selected && participantConfig[item.value]?.mask; if (mask) masks.push(mask.param); }
-  return JSON.stringify([participantEmTypes(), masks]);
+  return JSON.stringify([participantEmTypes(), masks, participantProdTypeIds()]);
 }
 const regionShapes = fetch("assets/regions.geojson").then((response) => response.ok ? response.json() : Promise.reject(new Error("Region boundaries unavailable")));
 function inRing(point, ring) { let inside = false; for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index++) { const [x, y] = ring[index], [px, py] = ring[previous]; if ((y > point[1]) !== (py > point[1]) && point[0] < (px - x) * (point[1] - y) / (py - y) + x) inside = !inside; } return inside; }
