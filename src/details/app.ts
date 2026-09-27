@@ -85,8 +85,8 @@ async function load() {
   // Индикаторы старого сайта: иконки media/all|participants|injured|dead.svg,
   // значения «Пострадали»/«Погибли» в фирменных жёлтом/красном
   const counter = (icon: string, label: string, value: any, tone = "") => `<div class="${tone}"><img src="../assets/icons/${icon}.svg" alt=""><span>${label}<strong>${escape(value ?? 0)}</strong></span></div>`;
-  // Участники: сначала люди вне транспорта, затем по ТС — единый горизонтальный
-  // скролл, заголовки ТС sticky слева (как .participants__inner на старом сайте)
+  // Участники: сначала люди вне транспорта, затем по ТС; карточки переносятся
+  // на новые строки
   const groups = `<div class="person-scroll"><div class="person-group">${detail.people.length ? `<div class="person-cards">${detail.people.map(personCard).join("")}</div>` : ""}</div>${detail.vehicles.map((vehicle: any) => {
     const title = [vehicle.MARK, vehicle.COLOR, vehicle.YEAR].filter(Boolean).join(", ");
     return `<div class="person-group">${title ? `<h3>${escape(title)}</h3>` : ""}<div class="person-cards">${objects(vehicle.PERSONS).map(personCard).join("")}</div></div>`;

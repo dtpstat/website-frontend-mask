@@ -45,13 +45,11 @@
 .chips { display:flex; flex-wrap:wrap; gap:8px 0; margin:20px -8px 0 0; padding:0; }
 .chips span { margin:0 8px 0 0; padding:5px 8px; border-radius:4px; color:var(--navy); background:var(--pale); font-size:14px; font-weight:500; line-height:20px; letter-spacing:.15px; }
 
-/* Участники: горизонтальный скролл ряда (старый .participants__inner),
-   заголовки ТС sticky слева; карточки погибших/пострадавших подсвечены */
-.participants { margin-top:14px; overflow:hidden; }
+/* Участники: карточки переносятся на новые строки; погибшие/пострадавшие подсвечены */
+.participants { margin-top:14px; }
 .participants h2 { margin:0 0 16px; font-size:24px; }
-.person-scroll { overflow-x:auto; padding-bottom:25px; }
-.person-group h3 { position:sticky; left:0; margin:10px 0; font-size:20px; line-height:28px; }
-.person-cards { display:flex; flex-wrap:nowrap; gap:12px; }
+.person-group h3 { margin:10px 0; font-size:20px; line-height:28px; }
+.person-cards { display:flex; flex-wrap:wrap; gap:12px; }
 .person { flex:none; width:300px; padding:12px 16px; border:1px solid #ebedf0; border-radius:20px; background:#fff; }
 .person-head { display:flex; align-items:center; gap:10px; margin-bottom:4px; }
 .person-icon { flex:none; display:grid; place-items:center; width:32px; height:32px; border-radius:44%; background:rgba(24,51,74,.5); }
@@ -126,7 +124,6 @@
   .counters { gap:14px 26px; }
 }
 @media (max-width:768px) {
-  .person-cards { flex-wrap:wrap; }
   .person { width:100%; }
   .map-tools { left:12px; right:12px; padding:0; }
 }
