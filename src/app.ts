@@ -386,11 +386,15 @@ const mapQuery = new URLSearchParams(location.search), initialCenter = (mapQuery
 // preferCanvas: десятки тысяч точек рисуются на одном canvas — SVG-рендер на этом вешает вкладку.
 // Кнопки +/− не показываем ни на одном клиенте (масштаб колесом/щипком)
 const map = L.map("leaflet-map", { zoomControl: false, minZoom: 4, preferCanvas: true }).setView(initialCenter.length === 2 && initialCenter.every(Number.isFinite) ? initialCenter : [55.76, 37.64], Number.isFinite(initialZoom) ? initialZoom : 11);
+map.on("popupopen", (event: any) => { const item = popupItems.get(event.popup); if (item) syncPopupUrl(item.id, item.point.latitude, item.point.longitude, map.getZoom()); });
+map.on("popupclose", clearPopupUrl);
 // Префикс атрибуции по умолчанию содержит флаг (svg) перед «Leaflet» — оставляем просто ссылку
 map.attributionControl.setPrefix('<a href="https://leafletjs.com" title="A JavaScript library for interactive maps">Leaflet</a>');
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap contributors" }).addTo(map);
 const accidents = L.layerGroup().addTo(map);
 const markers = new Map<string, any>();
+// Попап → точка: по нему popupopen узнаёт, какое ДТП открыто (для адресной строки)
+const popupItems = new WeakMap<object, any>();
 const heatSettings = { radius: 6, blur: 9, minOpacity: .05 };
 const heatGradient = { 0: "rgba(126, 171, 85, 0)", .2: "rgba(126, 171, 85, 0.6)", .4: "rgba(255, 254, 85, 0.7)", .6: "rgba(245, 193, 66, 0.8)", .8: "rgba(223, 130, 68, 0.9)", 1: "rgba(176, 36, 24, 1)" };
 const heat = L.heatLayer([], { ...heatSettings, maxZoom: 12, gradient: heatGradient }).addTo(map);
@@ -442,7 +446,11 @@ function renderMarkers(markersVisible) {
   const alive = new Set(visible.map((item) => item.id));
   for (const [id, marker] of markers) if (!alive.has(id)) { marker.remove(); markers.delete(id); }
   // Плоские точки без обводки — как на dtp-stat.ru
-  for (const item of visible) if (!markers.has(item.id)) markers.set(item.id, L.circleMarker([item.point.latitude, item.point.longitude], { radius: 5, weight: 0, fillColor: markerColor(item), fillOpacity: 1 }).bindPopup(markerPopup(item)).addTo(accidents));
+  for (const item of visible) if (!markers.has(item.id)) {
+    const marker = L.circleMarker([item.point.latitude, item.point.longitude], { radius: 5, weight: 0, fillColor: markerColor(item), fillOpacity: 1 }).bindPopup(markerPopup(item)).addTo(accidents);
+    popupItems.set(marker.getPopup(), item);
+    markers.set(item.id, marker);
+  }
 }
 function renderLeaflet(visible, heatPoints, heatVisible) {
   renderMarkers(heatVisible ? [] : visible);
@@ -580,7 +588,7 @@ function renderYandex(allVisible, heatPoints, heatVisible) {
       properties: {},
     }, { fillColor: markerColor(item), outline: false, balloonOffset: [yandexPointRadiusPx - 2, 0] });
     // Балун строим только по клику: на зуме добавляются сотни точек разом
-    placemark.events.add("click", (event) => { event.stopPropagation(); yandex.map.balloon.open(event.get("coords"), { content: markerPopup(item) }, { autoPan: false }); });
+    placemark.events.add("click", (event) => { event.stopPropagation(); yandex.map.balloon.open(event.get("coords"), { content: markerPopup(item) }, { autoPan: false }); syncPopupUrl(item.id, item.point.latitude, item.point.longitude, yandex.map.getZoom()); });
     yandexMarkers.set(item.id, { placemark, latitude: item.point.latitude });
     yandex.points.add(placemark);
   }
@@ -592,7 +600,7 @@ function renderMapbox(visible, heatPoints, heatVisible) {
   // на сами источники: данные можно заливать, как только они созданы
   if (!map || !map.getSource("dtp-heat") || !map.getSource("dtp-points")) return;
   map.getSource("dtp-heat")?.setData({ type:"FeatureCollection", features: heatVisible ? heatFeatures(heatPoints) : [] });
-  map.getSource("dtp-points")?.setData({ type:"FeatureCollection", features: heatVisible ? [] : visible.map((item) => ({ type:"Feature", geometry:{ type:"Point", coordinates:[item.point.longitude, item.point.latitude] }, properties:{ severity:item.severity, popup:markerPopup(item) } })) });
+  map.getSource("dtp-points")?.setData({ type:"FeatureCollection", features: heatVisible ? [] : visible.map((item) => ({ type:"Feature", geometry:{ type:"Point", coordinates:[item.point.longitude, item.point.latitude] }, properties:{ severity:item.severity, popup:markerPopup(item), id:item.id } })) });
   const paint = mapboxHeatPaint();
   map.setPaintProperty("dtp-heat", "heatmap-radius", paint.radius); map.setPaintProperty("dtp-heat", "heatmap-intensity", paint.intensity); map.setPaintProperty("dtp-heat", "heatmap-opacity", paint.opacity);
 }
@@ -617,6 +625,9 @@ async function ensureYandex(view) {
   yandex.heatCtx = canvas.getContext("2d", { willReadFrequently: true });
   renderYandex(lastRender.visible, lastRender.heatPoints, lastRender.heatVisible);
   yandex.map.events.add("boundschange", () => { if (state.mapClient === "yandex") scheduleMapLoad(); });
+  // Закрытие балуна (крестик/клик мимо) убирает ?popup= из адреса; при открытии
+  // другого ДТП балун сперва закрывается, потом syncPopupUrl пишет новый id
+  yandex.map.balloon.events.add("balloonclose", clearPopupUrl);
   // Тепло едет вместе с картой: в жесте полотно догоняет вид transform-сдвигом,
   // перерисовка — по завершении жеста. Живые центр и зум берём из тика события
   // actiontick (публичные tick.globalPixelCenter/tick.zoom): map.getCenter() в ходе
@@ -655,7 +666,11 @@ async function ensureMapbox(view) {
     const paint = mapboxHeatPaint();
     map.addLayer({ id:"dtp-heat", type:"heatmap", source:"dtp-heat", paint:{ "heatmap-weight":["get", "weight"], "heatmap-intensity":paint.intensity, "heatmap-radius":paint.radius, "heatmap-opacity":paint.opacity, "heatmap-color":["interpolate", ["linear"], ["heatmap-density"], 0,"rgba(126, 171, 85, 0)", .2,"rgba(126, 171, 85, .6)", .4,"rgba(255, 254, 85, .7)", .6,"rgba(245, 193, 66, .8)", .8,"rgba(223, 130, 68, .9)", 1,"rgba(176, 36, 24, 1)"] } });
     map.addLayer({ id:"dtp-points", type:"circle", source:"dtp-points", paint:{ "circle-radius":5, "circle-color":["match", ["get", "severity"], 4,"#FF001A", 3,"#FF7F24", 1,"#FFB81F", "rgba(24, 51, 74, 0.5)"], "circle-stroke-width":0, "circle-opacity":1 } });
-    map.on("click", "dtp-points", (event) => new mapboxgl.Popup().setLngLat(event.features[0].geometry.coordinates).setHTML(event.features[0].properties.popup).addTo(map));
+    map.on("click", "dtp-points", (event) => {
+      const feature = event.features[0], popup = new mapboxgl.Popup().setLngLat(feature.geometry.coordinates).setHTML(feature.properties.popup).addTo(map);
+      popup.on("close", clearPopupUrl);
+      syncPopupUrl(feature.properties.id, feature.geometry.coordinates[1], feature.geometry.coordinates[0], map.getZoom());
+    });
     renderMapbox(lastRender.visible, lastRender.heatPoints, lastRender.heatVisible);
   };
   mapbox.map.on("style.load", setup);
@@ -1049,6 +1064,23 @@ function drawRegionSuggest() {
   }));
   if (!matches.length) { const empty = document.createElement("p"); empty.className = "region-suggest-empty"; empty.textContent = t("noMatches"); suggest.append(empty); }
 }
+// Открытый попап ДТП отражается в адресной строке: ?popup=<em_number> плюс центр
+// и зум на момент открытия — по такой ссылке карта откроется в том же месте.
+// Закрытие попапа параметр убирает. replaceState, а не pushState: клики по точкам
+// не должны засорять историю браузера
+function syncPopupUrl(id, latitude: number, longitude: number, zoom: number) {
+  const query = new URLSearchParams(location.search);
+  query.set("popup", String(id));
+  query.set("center", `${latitude}:${longitude}`);
+  query.set("zoom", String(Math.round(zoom * 10) / 10));
+  history.replaceState(null, "", `?${query}`);
+}
+function clearPopupUrl() {
+  const query = new URLSearchParams(location.search);
+  if (!query.has("popup")) return;
+  query.delete("popup");
+  history.replaceState(null, "", query.size ? `?${query}` : location.pathname);
+}
 // Прямая ссылка на конкретное ДТП открывает его попап (?popup=<em_number>).
 // Единожды: при первом рендере, где точка уже загружена — иначе попап
 // пересоздавался бы на каждый сдвиг карты
@@ -1070,10 +1102,13 @@ function openLinkedPopup() {
   if (!item) return false;
   if (state.mapClient === "yandex" && yandex.map) {
     yandex.map.balloon.open([item.point.longitude, item.point.latitude], { content: markerPopup(item) }, { autoPan: false });
+    syncPopupUrl(item.id, item.point.latitude, item.point.longitude, yandex.map.getZoom());
     return true;
   }
   if (state.mapClient === "mapbox" && mapbox.map && (window as any).mapboxgl) {
-    new (window as any).mapboxgl.Popup().setLngLat([item.point.longitude, item.point.latitude]).setHTML(markerPopup(item)).addTo(mapbox.map);
+    const popup = new (window as any).mapboxgl.Popup().setLngLat([item.point.longitude, item.point.latitude]).setHTML(markerPopup(item)).addTo(mapbox.map);
+    popup.on("close", clearPopupUrl);
+    syncPopupUrl(item.id, item.point.latitude, item.point.longitude, mapbox.map.getZoom());
     return true;
   }
   return false;
