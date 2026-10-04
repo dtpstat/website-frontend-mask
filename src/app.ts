@@ -11,8 +11,8 @@ const state: MapState = { language: new URLSearchParams(location.search).get("la
 // Новые наборы докачиваются по одному, уже скачанные не запрашиваются повторно.
 const regionCache = new Map<string, Map<string, any[]>>();
 const copy = {
-  ru: { brandAria:"Карта ДТП — главная", mapAria:"Интерактивная карта ДТП", map:"Карта", blog:"Блог и исследования", data:"Скачать данные", about:"О проекте", team:"Команда", support:"Поддержать проект", statistics:"Статистика", filters:"Фильтры", analytics:"Аналитика", cancel:"Отмена", backToBasic:"Назад к стандартным фильтрам", allTime:"За всё время", basicFilter:"Базовый фильтр", professionalFilter:"Профессиональные фильтры", search:"Поиск", dataPeriod:"Период данных", accidentsInRussia:"ДТП в России", region:"Регион", allRegions:"Все регионы", from:"С", to:"По", participants:"Участники ДТП", injurySeverity:"Вред здоровью", light:"Лёгкий", serious:"Тяжёлый", fatal:"С погибшими", accidentTypes:"Типы ДТП", weather:"Погода", heatRadius:"Радиус", heatBlur:"Размытие", heatOpacity:"Мин. непрозрачность", loading:"Загружаем данные…", loadingMap:"Обновляем карту…", unavailable:"Не удалось получить данные. Попробуйте позднее.", officialData:"Официальные данные", accidents:"ДТП", injured:"Пострадали", dead:"Погибли", distribution:"Распределение ДТП", selectedPeriod:"За выбранный период", byDays:"По дням", byHours:"По часам", byTypes:"По типам ДТП", chartNote:"Диаграмма построена по ДТП в видимой области.", chartNoDates:"В открытом API у точек ДТП нет даты и времени — временные разрезы недоступны", chartRangeTooLong:"Период в фильтре слишком длинный для этого разреза", forPeriod:"За период", activeFilters:"Активные фильтры", hide:"Скрыть", timeIntervals:"Временные интервалы", accidentProperties:"Свойства ДТП", accidentsCount:"Количество ДТП", deathsLegend:"Погибшие", byMonths:"По месяцам", byYears:"По годам", chartTitleDays:"Распределение по дням", chartTitleHours:"Распределение по часам", chartTitleMonths:"Распределение по месяцам", chartTitleYears:"Распределение по годам", chartTitleTypes:"Распределение по типам", accidentsInArea:"ДТП в видимой области", people:"чел.", deaths:"погибших", roadConditions:"УДС на месте ДТП", roadConditionsNear:"УДС поблизости", roadFactors:"Факторы, влияющие на движение", roadDefects:"Повреждения УДС", lighting:"Освещение", roadSurface:"Состояние проезжей части", movementChange:"Изменение движения", participantType:"Вид участника", seatBelt:"Ремень безопасности", sex:"Пол", harmSeverity:"Тяжесть вреда здоровью", ruleViolations:"Нарушения ПДД", attendantViolations:"Дополнительные нарушения ПДД", vehicleEscape:"Скрылось с места ДТП (ТС)", participantEscape:"Скрылся с места ДТП (участник)", childRestraint:"Детские удерживающие устройства", damageDisposition:"Места повреждений ТС", techFailure:"Технические неисправности", places:"Место ДТП", roads:"Дорога", streets:"Улица", nps:"Населённый пункт", marks:"Марка ТС", models:"Модель ТС", pickRegion:"Сначала выберите регион", pickPlace:"Сначала выберите место ДТП", pickMark:"Сначала выберите марку ТС", signs:"Признаки ДТП", quantity:"Количество" },
-  en: { brandAria:"Road accident map — home", mapAria:"Interactive road accident map", map:"Map", blog:"Blog & research", data:"Download data", about:"About the project", team:"Team", support:"Support the project", statistics:"Statistics", filters:"Filters", analytics:"Analytics", cancel:"Cancel", backToBasic:"Back to standard filters", allTime:"All time", basicFilter:"Basic filter", professionalFilter:"Professional filters", search:"Search", dataPeriod:"Data period", accidentsInRussia:"Road accidents in Russia", region:"Region", allRegions:"All regions", from:"From", to:"To", participants:"Road users", injurySeverity:"Injury severity", light:"Minor", serious:"Serious", fatal:"Fatal", accidentTypes:"Accident types", weather:"Weather", heatRadius:"Radius", heatBlur:"Blur", heatOpacity:"Min. opacity", loading:"Loading data…", loadingMap:"Updating map…", unavailable:"Could not load data. Please try again later.", officialData:"Official data", accidents:"Accidents", injured:"Injured", dead:"Deaths", distribution:"Distribution", selectedPeriod:"Selected period", byDays:"By day", byHours:"By hour", byTypes:"By type", chartNote:"The chart is based on accidents in the visible area.", chartNoDates:"The open API has no date or time for accident points — time breakdowns are unavailable", chartRangeTooLong:"The selected period is too long for this breakdown", forPeriod:"For the period", activeFilters:"Active filters", hide:"Hide", timeIntervals:"Time intervals", accidentProperties:"Accident properties", accidentsCount:"Accident count", deathsLegend:"Deaths", byMonths:"By month", byYears:"By year", chartTitleDays:"Distribution by day", chartTitleHours:"Distribution by hour", chartTitleMonths:"Distribution by month", chartTitleYears:"Distribution by year", chartTitleTypes:"Distribution by type", accidentsInArea:"Accidents in area", people:"people", deaths:"deaths", roadConditions:"Road conditions on site", roadConditionsNear:"Road conditions nearby", roadFactors:"Factors affecting traffic", roadDefects:"Road defects", lighting:"Lighting", roadSurface:"Road surface", movementChange:"Traffic disruption", participantType:"Participant type", seatBelt:"Seat belt", sex:"Sex", harmSeverity:"Injury outcome", ruleViolations:"Traffic violations", attendantViolations:"Additional traffic violations", vehicleEscape:"Fled the scene (vehicle)", participantEscape:"Fled the scene (participant)", childRestraint:"Child restraints", damageDisposition:"Vehicle damage areas", techFailure:"Technical failures", places:"Location", roads:"Road", streets:"Street", nps:"Locality", marks:"Vehicle make", models:"Vehicle model", pickRegion:"Select a region first", pickPlace:"Select locations first", pickMark:"Select vehicle makes first", signs:"Accident features", quantity:"Counts" },
+  ru: { brandAria:"Карта ДТП — главная", mapAria:"Интерактивная карта ДТП", map:"Карта", blog:"Блог и исследования", data:"Скачать данные", about:"О проекте", team:"Команда", support:"Поддержать проект", statistics:"Статистика", filters:"Фильтры", analytics:"Аналитика", cancel:"Отмена", backToBasic:"Назад к стандартным фильтрам", allTime:"За всё время", basicFilter:"Базовый фильтр", professionalFilter:"Профессиональные фильтры", search:"Поиск", dataPeriod:"Период данных", dateDD:"ДД", dateMM:"ММ", dateYYYY:"ГГГГ", startDay:"День начала", startMonth:"Месяц начала", startYear:"Год начала", endDay:"День конца", endMonth:"Месяц конца", endYear:"Год конца", accidentsInRussia:"ДТП в России", region:"Регион", allRegions:"Все регионы", from:"С", to:"По", participants:"Участники ДТП", injurySeverity:"Вред здоровью", light:"Лёгкий", serious:"Тяжёлый", fatal:"С погибшими", accidentTypes:"Типы ДТП", weather:"Погода", heatRadius:"Радиус", heatBlur:"Размытие", heatOpacity:"Мин. непрозрачность", loading:"Загружаем данные…", loadingMap:"Обновляем карту…", unavailable:"Не удалось получить данные. Попробуйте позднее.", officialData:"Официальные данные", accidents:"ДТП", injured:"Пострадали", dead:"Погибли", distribution:"Распределение ДТП", selectedPeriod:"За выбранный период", byDays:"По дням", byHours:"По часам", byTypes:"По типам ДТП", chartNote:"Диаграмма построена по ДТП в видимой области.", chartNoDates:"В открытом API у точек ДТП нет даты и времени — временные разрезы недоступны", chartRangeTooLong:"Период в фильтре слишком длинный для этого разреза", forPeriod:"За период", activeFilters:"Активные фильтры", hide:"Скрыть", timeIntervals:"Временные интервалы", accidentProperties:"Свойства ДТП", accidentsCount:"Количество ДТП", deathsLegend:"Погибшие", byMonths:"По месяцам", byYears:"По годам", chartTitleDays:"Распределение по дням", chartTitleHours:"Распределение по часам", chartTitleMonths:"Распределение по месяцам", chartTitleYears:"Распределение по годам", chartTitleTypes:"Распределение по типам", accidentsInArea:"ДТП в видимой области", people:"чел.", deaths:"погибших", roadConditions:"УДС на месте ДТП", roadConditionsNear:"УДС поблизости", roadFactors:"Факторы, влияющие на движение", roadDefects:"Повреждения УДС", lighting:"Освещение", roadSurface:"Состояние проезжей части", movementChange:"Изменение движения", participantType:"Вид участника", seatBelt:"Ремень безопасности", sex:"Пол", harmSeverity:"Тяжесть вреда здоровью", ruleViolations:"Нарушения ПДД", attendantViolations:"Дополнительные нарушения ПДД", vehicleEscape:"Скрылось с места ДТП (ТС)", participantEscape:"Скрылся с места ДТП (участник)", childRestraint:"Детские удерживающие устройства", damageDisposition:"Места повреждений ТС", techFailure:"Технические неисправности", places:"Место ДТП", roads:"Дорога", streets:"Улица", nps:"Населённый пункт", marks:"Марка ТС", models:"Модель ТС", pickRegion:"Сначала выберите регион", pickPlace:"Сначала выберите место ДТП", pickMark:"Сначала выберите марку ТС", signs:"Признаки ДТП", quantity:"Количество" },
+  en: { brandAria:"Road accident map — home", mapAria:"Interactive road accident map", map:"Map", blog:"Blog & research", data:"Download data", about:"About the project", team:"Team", support:"Support the project", statistics:"Statistics", filters:"Filters", analytics:"Analytics", cancel:"Cancel", backToBasic:"Back to standard filters", allTime:"All time", basicFilter:"Basic filter", professionalFilter:"Professional filters", search:"Search", dataPeriod:"Data period", dateDD:"DD", dateMM:"MM", dateYYYY:"YYYY", startDay:"Start day", startMonth:"Start month", startYear:"Start year", endDay:"End day", endMonth:"End month", endYear:"End year", accidentsInRussia:"Road accidents in Russia", region:"Region", allRegions:"All regions", from:"From", to:"To", participants:"Road users", injurySeverity:"Injury severity", light:"Minor", serious:"Serious", fatal:"Fatal", accidentTypes:"Accident types", weather:"Weather", heatRadius:"Radius", heatBlur:"Blur", heatOpacity:"Min. opacity", loading:"Loading data…", loadingMap:"Updating map…", unavailable:"Could not load data. Please try again later.", officialData:"Official data", accidents:"Accidents", injured:"Injured", dead:"Deaths", distribution:"Distribution", selectedPeriod:"Selected period", byDays:"By day", byHours:"By hour", byTypes:"By type", chartNote:"The chart is based on accidents in the visible area.", chartNoDates:"The open API has no date or time for accident points — time breakdowns are unavailable", chartRangeTooLong:"The selected period is too long for this breakdown", forPeriod:"For the period", activeFilters:"Active filters", hide:"Hide", timeIntervals:"Time intervals", accidentProperties:"Accident properties", accidentsCount:"Accident count", deathsLegend:"Deaths", byMonths:"By month", byYears:"By year", chartTitleDays:"Distribution by day", chartTitleHours:"Distribution by hour", chartTitleMonths:"Distribution by month", chartTitleYears:"Distribution by year", chartTitleTypes:"Distribution by type", accidentsInArea:"Accidents in area", people:"people", deaths:"deaths", roadConditions:"Road conditions on site", roadConditionsNear:"Road conditions nearby", roadFactors:"Factors affecting traffic", roadDefects:"Road defects", lighting:"Lighting", roadSurface:"Road surface", movementChange:"Traffic disruption", participantType:"Participant type", seatBelt:"Seat belt", sex:"Sex", harmSeverity:"Injury outcome", ruleViolations:"Traffic violations", attendantViolations:"Additional traffic violations", vehicleEscape:"Fled the scene (vehicle)", participantEscape:"Fled the scene (participant)", childRestraint:"Child restraints", damageDisposition:"Vehicle damage areas", techFailure:"Technical failures", places:"Location", roads:"Road", streets:"Street", nps:"Locality", marks:"Vehicle make", models:"Vehicle model", pickRegion:"Select a region first", pickPlace:"Select locations first", pickMark:"Select vehicle makes first", signs:"Accident features", quantity:"Counts" },
 };
 Object.assign(copy.ru, { regionSearch:"Введите адрес или регион", noInjured:"Без пострадавших (нет данных)", accidentKind:"Вид ДТП", show:"Показать", lockPin:"Данные закреплены по территории", unlock:"Открепить данные", lockHint:"Сначала открепите территорию", participantNoData:"По этим участникам в открытом API нет данных", noMatches:"Ничего не найдено" });
 Object.assign(copy.en, { regionSearch:"Enter address or region", noInjured:"No injuries (no data)", accidentKind:"Accident type", show:"Show", lockPin:"Data is pinned to the territory", unlock:"Unpin data", lockHint:"Unpin the territory first", participantNoData:"No open API data for these road users", noMatches:"Nothing found" });
@@ -97,13 +97,18 @@ function selectedParticipants() { return state.participants.filter((participant)
 function setStatus(message) { $("#filter-status").textContent = message; }
 function monthEndValue(value) { const [year, month] = value.split("-").map(Number); return `${year}-${String(month).padStart(2, "0")}-${new Date(year, month, 0).getDate()}`; }
 
-// Период данных: поле «ДД.ММ.ГГГГ - ДД.ММ.ГГГГ» + дропдаун пресетов (как на dtp-stat.ru):
-// последний месяц с данными, предыдущий, годы и «За всё время»
+// Период данных: шесть полей-сегментов «ДД ММ ГГГГ» начала и конца фиксированной
+// ширины (правка одного сегмента не двигает строку) + дропдаун пресетов (как на
+// dtp-stat.ru): последний месяц с данными, предыдущий, годы и «За всё время»
 function formatDate(value) { const [year, month, day] = value.split("-"); return `${day}.${month}.${year}`; }
 
 function renderDateFields() {
-  const value = `${formatDate($("#start-date").value)} - ${formatDate($("#end-date").value)}`;
-  document.querySelectorAll("#date-range-value, #advanced-date-range-value").forEach((node) => { if (node !== document.activeElement) (node as HTMLInputElement).value = value; });
+  const [sy, sm, sd] = $("#start-date").value.split("-"), [ey, em, ed] = $("#end-date").value.split("-");
+  const values = { sd, sm, sy, ed, em, ey };
+  document.querySelectorAll("[data-date-seg]").forEach((node) => {
+    const input = node as HTMLInputElement;
+    if (input !== document.activeElement) input.value = values[input.dataset.dateSeg];
+  });
   document.querySelectorAll("#date-range-button, #advanced-date-range-button").forEach((node) => node.setAttribute("aria-expanded", String(!$("#date-menu").hidden)));
 }
 
@@ -124,39 +129,37 @@ function dateMenuPresets() {
   return presets;
 }
 
-// ДД.ММ.ГГГГ → YYYY-MM-DD, иначе null (ручной ввод периода)
-function parseManualDate(value) {
-  const match = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(value.trim());
-  if (!match) return null;
-  const iso = `${match[3]}-${match[2]}-${match[1]}`;
+// Сегменты «ДД ММ ГГГГ» → YYYY-MM-DD, иначе null (неполные или несуществующие даты применения не получают)
+function segISO(d, m, y) {
+  if (!/^\d{2}$/.test(d) || !/^\d{2}$/.test(m) || !/^\d{4}$/.test(y)) return null;
+  const iso = `${y}-${m}-${d}`;
   const date = new Date(`${iso}T00:00:00`);
-  return date.getDate() === Number(match[1]) && date.getMonth() + 1 === Number(match[2]) ? iso : null;
+  return date.getDate() === Number(d) && date.getMonth() + 1 === Number(m) ? iso : null;
 }
 
-// Маска поля периода: 16 цифр → «ДД.ММ.ГГГГ - ДД.ММ.ГГГГ»
-function maskRangeDigits(digits) {
-  let out = digits.slice(0, 2);
-  if (digits.length > 2) out += `.${digits.slice(2, 4)}`;
-  if (digits.length > 4) out += `.${digits.slice(4, 8)}`;
-  if (digits.length > 8) out += ` - ${digits.slice(8, 10)}`;
-  if (digits.length > 10) out += `.${digits.slice(10, 12)}`;
-  if (digits.length > 12) out += `.${digits.slice(12, 16)}`;
-  return out;
-}
-
-// Применение отредактированного периода (Enter/потеря фокуса): при ошибке — откат, иначе swap перепутанных дат и клэмп к диапазону данных
-function applyRangeInput(input) {
-  const [rawStart, rawEnd] = input.value.split(" - ");
-  const start = parseManualDate(rawStart || ""), end = parseManualDate(rawEnd || "");
-  if (!start || !end) { renderDateFields(); return; }
+// Применение набранного периода из панели root (вызывается при завершении правки):
+// обе даты полные и корректные → swap перепутанных дат и клэмп к диапазону данных
+// (как раньше), запись скрытых полей и перезагрузка карты, если период изменился.
+// Иначе — false: blur-обработчик откатит поля к действующему периоду
+function commitDateRange(root: ParentNode) {
+  const seg = (name: string) => { const input = root.querySelector(`[data-date-seg="${name}"]`) as HTMLInputElement | null; return input ? input.value.trim() : ""; };
+  const start = segISO(seg("sd"), seg("sm"), seg("sy")), end = segISO(seg("ed"), seg("em"), seg("ey"));
+  if (!start || !end) return false;
   let [from, till] = start <= end ? [start, end] : [end, start];
   const now = new Date(), todayValue = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   if (from < dataRange.min) from = dataRange.min;
   if (till > todayValue) till = todayValue;
   if (from > till) from = till;
-  if ($("#start-date").value === from && $("#end-date").value === till) { renderDateFields(); return; }
-  $("#start-date").value = from; $("#end-date").value = till;
-  renderDateFields(); loadMapData();
+  if ($("#start-date").value !== from || $("#end-date").value !== till) { $("#start-date").value = from; $("#end-date").value = till; loadMapData(); }
+  renderDateFields(); // нормализуем отображение (swap/клэмп) в обеих панелях, печатающее поле не трогаем
+  return true;
+}
+
+// Уход фокуса из панели периода: одиночные день/месяц дополняем нулём («3» → «03»),
+// после чего период без корректных дат откатывается к действующему
+function blurDateRange(root: ParentNode) {
+  (root.querySelectorAll("[data-date-seg]") as NodeListOf<HTMLInputElement>).forEach((input) => { if (input.maxLength === 2 && input.value.length === 1) input.value = `0${input.value}`; });
+  if (!commitDateRange(root)) renderDateFields();
 }
 
 function renderDateMenu() {
@@ -317,7 +320,7 @@ function renderChart() {
   $("#chart-injured-count").textContent = $("#injured").textContent;
   $("#chart-dead-count").textContent = $("#dead").textContent;
   $("#chart-title").textContent = chartTitle();
-  $("#chart-period").textContent = `${t("forPeriod")}: ${($("#date-range-value") as HTMLInputElement).value}`;
+  $("#chart-period").textContent = `${t("forPeriod")}: ${formatDate($("#start-date").value)} - ${formatDate($("#end-date").value)}`;
   $("#chart-filters").textContent = `${t("activeFilters")}: ${activeFiltersSummary()}`;
   // Нет дат у точек или период слишком длинный — честное пояснение вместо пустой области графика
   if (state.chartMode !== "types" && !chartDatesAvailable()) {
@@ -1260,12 +1263,31 @@ $("#start-date").addEventListener("change", reload);
 $("#end-date").addEventListener("change", reload);
 $("#date-range-button").addEventListener("click", (event) => openDateMenu(event.currentTarget as Element));
 $("#advanced-date-range-button").addEventListener("click", (event) => openDateMenu(event.currentTarget as Element));
-// Поле периода: текст редактируется напрямую (маска + применение по Enter/потере фокуса), дропдаун пресетов — только по стрелке
-document.querySelectorAll("#date-range-value, #advanced-date-range-value").forEach((node) => {
-  const input = node as HTMLInputElement;
-  input.addEventListener("input", () => { input.value = maskRangeDigits(input.value.replace(/\D/g, "").slice(0, 16)); });
-  input.addEventListener("blur", () => applyRangeInput(input));
-  input.addEventListener("keydown", (event) => { if (event.key === "Enter") input.blur(); });
+// Поля периода: 6 сегментов на панель. Ввод только цифры, автопереход вперёд по
+// заполнении, Backspace на пустом — к предыдущему, стрелки — соседний сегмент,
+// фокус выделяет содержимое целиком (печатать можно сразу поверх). Период применяется
+// при завершении правки (Enter/уход из панели) — как раньше; дропдаун пресетов — по стрелке
+document.querySelectorAll(".date-range").forEach((node) => {
+  const range = node as HTMLElement;
+  const inputs = [...range.querySelectorAll<HTMLInputElement>("[data-date-seg]")];
+  inputs.forEach((input, index) => {
+    // Клик по пустому сегменту: гасим расстановку курсора (она схлопывает выделение) и выделяем всё
+    input.addEventListener("mousedown", (event) => { if (document.activeElement !== input) event.preventDefault(); input.focus(); });
+    input.addEventListener("focus", () => input.select());
+    input.addEventListener("input", () => {
+      input.value = input.value.replace(/\D/g, "").slice(0, input.maxLength);
+      if (input.value.length === input.maxLength && index < inputs.length - 1) inputs[index + 1].focus();
+    });
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") { input.blur(); return; }
+      const back = event.key === "Backspace" && !input.value, prev = event.key === "ArrowLeft", next = event.key === "ArrowRight";
+      if (!back && !prev && !next) return;
+      event.preventDefault();
+      const target = back || prev ? index - 1 : index + 1;
+      if (target >= 0 && target < inputs.length) inputs[target].focus();
+    });
+  });
+  range.addEventListener("focusout", (event) => { if (!range.contains((event as FocusEvent).relatedTarget as Node)) blurDateRange(range); });
 });
 // Регион про-панели: подсказки на ввод, Enter — выбор первого совпадения, пустой ввод — сброс (DTP-25)
 $("#advanced-region").addEventListener("input", drawAdvancedRegionSuggest);
