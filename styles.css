@@ -211,7 +211,7 @@ body .advanced-interval-field:has(input:not(:placeholder-shown)) { background:va
 .chart-hide::after { content:"✕"; margin-left:10px; font-size:13px; }
 .chart-legend { font-weight:600; }
 .chart-legend i { width:10px; height:10px; border-radius:50%; }
-.legend-crashes { background:rgba(24,51,74,.5); }
+.legend-crashes { background:#cdd5dc; }
 .bars-horizontal { gap:10px; }
 .hrow { gap:12px 14px; }
 .htrack { height:24px; background:none; }

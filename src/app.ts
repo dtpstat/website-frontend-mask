@@ -382,27 +382,27 @@ function renderChart() {
   const width = Math.max(bars.clientWidth || 900, 320), height = 300, padL = 46, padR = 46, padT = 14, padB = 24, plotW = width - padL - padR, plotH = height - padT - padB;
   const slot = plotW / values.length;
   const x = (index) => padL + slot * (index + 0.5);
-  const colW = Math.max(8, Math.min(30, Math.round(slot * 0.52)));
+  const colW = Math.max(8, Math.min(36, Math.round(slot * 0.7)));
   const yCount = (value) => padT + plotH * (1 - value / maxCount), yDead = (value) => padT + plotH * (1 - value / maxDead);
   const tick = (value) => number().format(value);
   const axis = (max, scale, side) => {
     const lines = [], steps = 5;
     for (let step = 0; step <= steps; step++) {
       const value = max / steps * step, y = scale(value);
-      lines.push(`<line x1="${side === "l" ? padL : padL + plotW}" y1="${y}" x2="${side === "l" ? padL + plotW : padL + plotW}" y2="${y}" stroke="#e3e9ed"></line>`);
+      lines.push(`<line x1="${side === "l" ? padL : padL + plotW}" y1="${y}" x2="${side === "l" ? padL + plotW : padL + plotW}" y2="${y}" stroke="#e7ebee" stroke-dasharray="4 4"></line>`);
       lines.push(`<text x="${side === "l" ? padL - 8 : padL + plotW + 8}" y="${y + 4}" text-anchor="${side === "l" ? "end" : "start"}" font-size="11" fill="#8296a5">${tick(value)}</text>`);
     }
     return lines.join("");
   };
-  // Столбец: основа (низ) прямая, верхние углы скруглены сильно — как в макете
+  // Столбец-«пилюля»: полукруглые шапка и основание (как в макете); у коротких радиус меньше полширины
   const column = (cx: number, top: number, bottom: number) => {
-    const radius = Math.min(7, colW / 2, Math.max(2, bottom - top));
-    return `M${cx - colW / 2},${bottom} V${top + radius} Q${cx - colW / 2},${top} ${cx - colW / 2 + radius},${top} H${cx + colW / 2 - radius} Q${cx + colW / 2},${top} ${cx + colW / 2},${top + radius} V${bottom} Z`;
+    const radius = Math.min(colW / 2, Math.max(1, (bottom - top) / 2)), left = cx - colW / 2, right = cx + colW / 2;
+    return `M${left},${top + radius} A${radius},${radius} 0 0 1 ${right},${top + radius} L${right},${bottom - radius} A${radius},${radius} 0 0 1 ${left},${bottom - radius} Z`;
   };
-  const columns = values.map(([, bucket], index) => `<path d="${column(x(index), yCount(bucket.count), padT + plotH)}" fill="rgba(24,51,74,.5)"></path>`).join("");
+  const columns = values.map(([, bucket], index) => `<path d="${column(x(index), yCount(bucket.count), padT + plotH)}" fill="#cdd5dc"></path>`).join("");
   const deadPoints = values.map(([, bucket], index) => [x(index), yDead(bucket.dead)] as const);
-  // Линия погибших — пунктир со сглаживанием (Catmull-Rom → кубические Безье, без изломов),
-  // маркеры — с белой обводкой поверх линии
+  // Линия погибших — сплошная бледно-розовая со сглаживанием (Catmull-Rom → кубические Безье),
+  // маркеры — красные точки поверх линии
   const smoothPath = (points: ReadonlyArray<readonly [number, number]>) => {
     if (points.length < 2) return "";
     let d = `M${points[0][0]},${points[0][1]}`;
@@ -412,11 +412,15 @@ function renderChart() {
     }
     return d;
   };
-  const line = `<path d="${smoothPath(deadPoints)}" fill="none" stroke="#FF001A" stroke-width="1.5" stroke-dasharray="7 5"></path>`;
-  const markers = deadPoints.map(([cx, cy]) => `<circle cx="${cx}" cy="${cy}" r="4" fill="#FF001A" stroke="#fff" stroke-width="2"></circle>`).join("");
-  // Подписи оси X: даты дня — ДД.ММ, месяца — ММ.ГГГГ, часы/годы — как есть.
+  const line = `<path d="${smoothPath(deadPoints)}" fill="none" stroke="#f6c4c2" stroke-width="1.5"></path>`;
+  const markers = deadPoints.map(([cx, cy]) => `<circle cx="${cx}" cy="${cy}" r="5" fill="#FF001A"></circle>`).join("");
+  // Подписи оси X: по дням — число, на первом числе месяца — имя месяца; месяца — ММ.ГГГГ, часы/годы — как есть.
   // Крайние подписи всегда, промежуточные — с шагом, при котором соседние не сливаются
-  const axisLabel = (key) => state.chartMode === "days" ? `${key.slice(8, 10)}.${key.slice(5, 7)}` : state.chartMode === "months" ? `${key.slice(5, 7)}.${key.slice(0, 4)}` : key;
+  const monthName = (key: string) => {
+    const name = new Date(Number(key.slice(0, 4)), Number(key.slice(5, 7)) - 1, 1).toLocaleDateString(state.language === "ru" ? "ru-RU" : "en-US", { month: "long" });
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  };
+  const axisLabel = (key) => state.chartMode === "days" ? (key.slice(8, 10) === "01" ? monthName(key) : key.slice(8, 10)) : state.chartMode === "months" ? `${key.slice(5, 7)}.${key.slice(0, 4)}` : key;
   const labelWidth = (text: string) => text.length * 6 + 6;
   const shown: boolean[] = values.map(() => false);
   const fits = (a: number, b: number, gap: number) => x(b) - x(a) >= (labelWidth(axisLabel(String(values[a][0]))) + labelWidth(axisLabel(String(values[b][0])))) / 2 + gap;
