@@ -358,14 +358,17 @@ function renderChart() {
       const name = document.createElement("span"); name.className = "hlabel"; name.textContent = label; name.title = label;
       const count = document.createElement("span"); count.className = "hcount"; count.textContent = number().format(bucket.count);
       const crashTrack = document.createElement("span"); crashTrack.className = "htrack crash";
-      const crashBar = document.createElement("i"); crashBar.style.width = `${Math.max(2, Math.round(bucket.count / countMax * 100))}%`;
+      const crashBar = document.createElement("i"); crashBar.style.width = `${Math.round(bucket.count / countMax * 100)}%`;
       const crashPct = document.createElement("span"); crashPct.className = "hpct"; crashPct.textContent = pct(countSum ? bucket.count / countSum : 0);
-      crashBar.append(crashPct); crashTrack.append(crashBar);
+      // Подпись внутри бара, только когда тот достаточно широк; иначе (в т.ч. 0) — снаружи, за кончиком бара
+      if (bucket.count / countMax >= 0.15) { crashBar.append(crashPct); crashTrack.append(crashBar); }
+      else { crashPct.classList.add("hpct-out"); crashPct.style.left = `calc(${crashBar.style.width} + 8px)`; crashTrack.append(crashBar, crashPct); }
       const dead = document.createElement("span"); dead.className = "hcount"; dead.textContent = number().format(bucket.dead);
       const deadTrack = document.createElement("span"); deadTrack.className = "htrack dead";
-      const deadBar = document.createElement("i"); deadBar.style.width = `${Math.max(2, Math.round(bucket.dead / deadMax * 100))}%`;
+      const deadBar = document.createElement("i"); deadBar.style.width = `${Math.round(bucket.dead / deadMax * 100)}%`;
       const deadPct = document.createElement("span"); deadPct.className = "hpct"; deadPct.textContent = pct(deadSum ? bucket.dead / deadSum : 0);
-      deadBar.append(deadPct); deadTrack.append(deadBar);
+      if (bucket.dead / deadMax >= 0.15) { deadBar.append(deadPct); deadTrack.append(deadBar); }
+      else { deadPct.classList.add("hpct-out"); deadPct.style.left = `calc(${deadBar.style.width} + 8px)`; deadTrack.append(deadBar, deadPct); }
       row.append(name, count, crashTrack, dead, deadTrack);
       return row;
     }));
@@ -398,8 +401,18 @@ function renderChart() {
   };
   const columns = values.map(([, bucket], index) => `<path d="${column(x(index), yCount(bucket.count), padT + plotH)}" fill="rgba(24,51,74,.5)"></path>`).join("");
   const deadPoints = values.map(([, bucket], index) => [x(index), yDead(bucket.dead)] as const);
-  // Линия погибших — пунктир, маркеры — с белой обводкой поверх линии
-  const line = `<polyline points="${deadPoints.map(([cx, cy]) => `${cx},${cy}`).join(" ")}" fill="none" stroke="#FF001A" stroke-width="2" stroke-dasharray="7 5"></polyline>`;
+  // Линия погибших — пунктир со сглаживанием (Catmull-Rom → кубические Безье, без изломов),
+  // маркеры — с белой обводкой поверх линии
+  const smoothPath = (points: ReadonlyArray<readonly [number, number]>) => {
+    if (points.length < 2) return "";
+    let d = `M${points[0][0]},${points[0][1]}`;
+    for (let index = 0; index < points.length - 1; index++) {
+      const p0 = points[Math.max(0, index - 1)], p1 = points[index], p2 = points[index + 1], p3 = points[Math.min(points.length - 1, index + 2)];
+      d += ` C${p1[0] + (p2[0] - p0[0]) / 6},${p1[1] + (p2[1] - p0[1]) / 6} ${p2[0] - (p3[0] - p1[0]) / 6},${p2[1] - (p3[1] - p1[1]) / 6} ${p2[0]},${p2[1]}`;
+    }
+    return d;
+  };
+  const line = `<path d="${smoothPath(deadPoints)}" fill="none" stroke="#FF001A" stroke-width="1.5" stroke-dasharray="7 5"></path>`;
   const markers = deadPoints.map(([cx, cy]) => `<circle cx="${cx}" cy="${cy}" r="4" fill="#FF001A" stroke="#fff" stroke-width="2"></circle>`).join("");
   // Подписи оси X: даты дня — ДД.ММ, месяца — ММ.ГГГГ, часы/годы — как есть.
   // Крайние подписи всегда, промежуточные — с шагом, при котором соседние не сливаются

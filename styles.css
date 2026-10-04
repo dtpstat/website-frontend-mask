@@ -215,11 +215,12 @@ body .advanced-interval-field:has(input:not(:placeholder-shown)) { background:va
 .bars-horizontal { gap:10px; }
 .hrow { gap:12px 14px; }
 .htrack { height:24px; background:none; }
-.htrack i { border-radius:5px; display:flex; align-items:center; justify-content:flex-end; min-width:fit-content; }
+.htrack i { border-radius:5px; display:flex; align-items:center; justify-content:flex-end; }
 .htrack.crash i { background:#d9dee3; }
 .htrack.dead i { background:#ffc9cb; }
 .hpct { padding:0 10px; font-size:12px; color:#566773; white-space:nowrap; }
 .htrack.dead .hpct { color:var(--red); }
+.hpct-out { position:absolute; left:8px; top:50%; transform:translateY(-50%); }
 /* Заголовки «Количество ДТП» / «Количество погибших» — по сетке строк над своими группами баров */
 .chart-legend-columns { display:grid; grid-template-columns:minmax(120px,220px) 52px 1fr 52px 1fr; gap:12px 14px; }
 .chart-legend-columns i { display:none; }
