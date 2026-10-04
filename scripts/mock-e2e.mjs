@@ -8,7 +8,7 @@ import { join, extname, normalize } from "node:path";
 
 const port = Number(process.env.PORT) || 8124;
 const origin = "https://dtpstat-backend.7190805.xyz";
-const root = new URL("./dist/", import.meta.url).pathname;
+const root = new URL("../dist/", import.meta.url).pathname;
 
 const types = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".mjs": "text/javascript; charset=utf-8",

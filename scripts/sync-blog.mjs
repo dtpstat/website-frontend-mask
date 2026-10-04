@@ -4,8 +4,8 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const origin = "https://dtp-stat.ru";
-const root = process.cwd();
-const assets = path.join(root, "blog", "assets");
+const root = new URL("..", import.meta.url).pathname;
+const assets = path.join(root, "pages", "blog", "assets");
 const clean = (value: string) => value.replace(/<[^>]*>/g, "").replace(/&quot;/g, '"').replace(/&amp;/g, "&").trim();
 const local = new Map<string, string>();
 

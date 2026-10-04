@@ -1,0 +1,19 @@
+<!doctype html><meta charset="utf-8"><style>html,body{margin:0;height:100%;overflow:hidden}iframe{border:0;width:100vw;height:100vh}</style>
+<iframe id="f" src="/"></iframe><script>
+const f = document.getElementById("f");
+f.onload = () => {
+  const w = f.contentWindow, d = w.document, t0 = Date.now();
+  const tick = () => {
+    const count = d.querySelector("#count");
+    if (!count || !/\d/.test(count.textContent)) return setTimeout(tick, 300);
+    d.getElementById("start-date").value = "2026-03-01";
+    d.getElementById("end-date").value = "2026-04-30";
+    d.getElementById("start-date").dispatchEvent(new w.Event("change"));
+    d.getElementById("end-date").dispatchEvent(new w.Event("change"));
+    setTimeout(() => { d.getElementById("chart-button").click();
+      setTimeout(() => { d.querySelector("#chart-side button[data-mode=days]").click(); }, 2500);
+    }, 500);
+  };
+  tick();
+};
+</script>
