@@ -394,20 +394,24 @@ function renderChart() {
     }
     return lines.join("");
   };
-  // Столбец-«пилюля»: полукруглые шапка и основание (как в макете); у коротких радиус меньше полширины
+  // Столбец: скруглена только шапка (радиус ≤ 7, у низких — меньше), основание прямое
   const column = (cx: number, top: number, bottom: number) => {
-    const radius = Math.min(colW / 2, Math.max(1, (bottom - top) / 2)), left = cx - colW / 2, right = cx + colW / 2;
-    return `M${left},${top + radius} A${radius},${radius} 0 0 1 ${right},${top + radius} L${right},${bottom - radius} A${radius},${radius} 0 0 1 ${left},${bottom - radius} Z`;
+    const radius = Math.min(7, colW / 2, Math.max(1, bottom - top)), left = cx - colW / 2, right = cx + colW / 2;
+    return `M${left},${top + radius} A${radius},${radius} 0 0 1 ${right},${top + radius} L${right},${bottom} L${left},${bottom} Z`;
   };
   const columns = values.map(([, bucket], index) => `<path d="${column(x(index), yCount(bucket.count), padT + plotH)}" fill="#cdd5dc"></path>`).join("");
   const deadPoints = values.map(([, bucket], index) => [x(index), yDead(bucket.dead)] as const);
   // Линия погибших — сплошная бледно-розовая со сглаживанием (Catmull-Rom → кубические Безье),
-  // маркеры — красные точки поверх линии
+  // маркеры — красные точки поверх линии; сглаженная кривая зажата снизу базой графика,
+  // иначе на чередовании нулей и значений она «ныряет» ниже оси (кривая Безье не покидает
+  // выпуклую оболочку опорных точек, поэтому достаточно зажать их ординаты)
+  const base = padT + plotH;
   const smoothPath = (points: ReadonlyArray<readonly [number, number]>) => {
     if (points.length < 2) return "";
-    let d = `M${points[0][0]},${points[0][1]}`;
-    for (let index = 0; index < points.length - 1; index++) {
-      const p0 = points[Math.max(0, index - 1)], p1 = points[index], p2 = points[index + 1], p3 = points[Math.min(points.length - 1, index + 2)];
+    const pts = points.map(([px, py]) => [px, Math.min(py, base)] as const);
+    let d = `M${pts[0][0]},${pts[0][1]}`;
+    for (let index = 0; index < pts.length - 1; index++) {
+      const p0 = pts[Math.max(0, index - 1)], p1 = pts[index], p2 = pts[index + 1], p3 = pts[Math.min(pts.length - 1, index + 2)];
       d += ` C${p1[0] + (p2[0] - p0[0]) / 6},${p1[1] + (p2[1] - p0[1]) / 6} ${p2[0] - (p3[0] - p1[0]) / 6},${p2[1] - (p3[1] - p1[1]) / 6} ${p2[0]},${p2[1]}`;
     }
     return d;
