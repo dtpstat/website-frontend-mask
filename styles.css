@@ -215,7 +215,7 @@ body .advanced-interval-field:has(input:not(:placeholder-shown)) { background:va
 .hrow { gap:12px 14px; }
 .htrack { height:22px; background:none; }
 .htrack.crash i { border-radius:0 5px 5px 0; background:rgba(24,51,74,.5); }
-.htrack.dead i { top:50%; width:5px; height:5px; border:2px solid #fff; border-radius:50%; background:var(--red); transform:translate(-50%,-50%); }
+.htrack.dead i { top:50%; width:7px; height:7px; border-radius:50%; background:var(--red); box-shadow:0 0 0 2px #fff; transform:translate(-50%,-50%); }
 .chart-side-title { color:var(--muted); font-size:13px; font-weight:400; }
 .chart-side button { border-radius:4px; }
 .chart-side button:hover:not(:disabled) { background:#f2f4f6; }

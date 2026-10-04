@@ -384,19 +384,20 @@ function renderChart() {
   const deadPoints = values.map(([, bucket], index) => [x(index), yDead(bucket.dead)] as const);
   // Линия погибших — пунктир, маркеры — с белой обводкой поверх линии
   const line = `<polyline points="${deadPoints.map(([cx, cy]) => `${cx},${cy}`).join(" ")}" fill="none" stroke="#FF001A" stroke-width="2" stroke-dasharray="7 5"></polyline>`;
-  const markers = deadPoints.map(([cx, cy]) => `<circle cx="${cx}" cy="${cy}" r="3" fill="#FF001A" stroke="#fff" stroke-width="2"></circle>`).join("");
+  const markers = deadPoints.map(([cx, cy]) => `<circle cx="${cx}" cy="${cy}" r="4" fill="#FF001A" stroke="#fff" stroke-width="2"></circle>`).join("");
   // Подписи оси X: даты дня — ДД.ММ, месяца — ММ.ГГГГ, часы/годы — как есть.
   // Крайние подписи всегда, промежуточные — с шагом, при котором соседние не сливаются
   const axisLabel = (key) => state.chartMode === "days" ? `${key.slice(8, 10)}.${key.slice(5, 7)}` : state.chartMode === "months" ? `${key.slice(5, 7)}.${key.slice(0, 4)}` : key;
-  const labelWidth = (text: string) => text.length * 7 + 6;
+  const labelWidth = (text: string) => text.length * 6 + 6;
   const shown: boolean[] = values.map(() => false);
-  const fits = (a: number, b: number) => x(b) - x(a) >= (labelWidth(axisLabel(String(values[a][0]))) + labelWidth(axisLabel(String(values[b][0])))) / 2 + 10;
+  const fits = (a: number, b: number, gap: number) => x(b) - x(a) >= (labelWidth(axisLabel(String(values[a][0]))) + labelWidth(axisLabel(String(values[b][0])))) / 2 + gap;
   shown[values.length - 1] = true;
   let previous = values.length - 1;
   for (let index = values.length - 2; index >= 1; index--) {
-    if (fits(index, previous)) { shown[index] = true; previous = index; }
+    if (fits(index, previous, 10)) { shown[index] = true; previous = index; }
   }
-  if (values.length > 1) shown[0] = fits(0, previous);
+  // Крайняя левая подпись — пограничная: показываем всегда, когда она не перекрывает соседнюю
+  if (values.length > 1) shown[0] = fits(0, previous, 2);
   const labels = values.map(([label], index) => shown[index] ? `<text x="${x(index)}" y="${height - 6}" text-anchor="middle" font-size="11" fill="#8296a5">${axisLabel(String(label)).replace(/&/g, "&amp;").replace(/</g, "&lt;")}</text>` : "").join("");
   bars.replaceChildren(Object.assign(document.createElement("div"), { innerHTML: `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${axis(maxCount, yCount, "l")}${axis(maxDead, yDead, "r")}<line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="#d1dee4"></line>${columns}${line}${markers}${labels}</svg>` }));
 }
