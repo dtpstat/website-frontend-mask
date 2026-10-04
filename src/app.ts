@@ -359,11 +359,12 @@ function renderChart() {
   // Разрезы по времени: комбо — полупрозрачные navy-столбцы (основа прямая, верх сильно
   // скруглён) по левой оси и пунктирная красная линия погибших с белой обводкой маркеров по правой
   bars.className = "bars bars-combo";
-  // Ось помещается в панель: шаг колонок 18–52px, сама колонка — примерно половина шага
-  const slot = Math.max(18, Math.min(52, Math.floor(((bars.clientWidth || 900) - 92) / values.length)));
-  const width = values.length * slot + 92, height = 300, padL = 46, padR = 46, padT = 14, padB = 24, plotW = width - padL - padR, plotH = height - padT - padB;
+  // График занимает всю ширину панели без пустоты справа: ширина = ширина контейнера,
+  // шаг колонок — точная доля плота (столбец — примерно половина шага, но не шире 30px)
+  const width = Math.max(bars.clientWidth || 900, 320), height = 300, padL = 46, padR = 46, padT = 14, padB = 24, plotW = width - padL - padR, plotH = height - padT - padB;
+  const slot = plotW / values.length;
   const x = (index) => padL + slot * (index + 0.5);
-  const colW = Math.max(8, Math.round(slot * 0.52));
+  const colW = Math.max(8, Math.min(30, Math.round(slot * 0.52)));
   const yCount = (value) => padT + plotH * (1 - value / maxCount), yDead = (value) => padT + plotH * (1 - value / maxDead);
   const tick = (value) => number().format(value);
   const axis = (max, scale, side) => {
