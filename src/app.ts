@@ -356,8 +356,8 @@ function renderChart() {
     }));
     return;
   }
-  // Разрезы по времени (когда появятся даты): комбо как на старом сайте — светло-серые
-  // скруглённые столбцы по левой оси и красная линия погибших с круглыми маркерами по правой
+  // Разрезы по времени: комбо — полупрозрачные navy-столбцы (основа прямая, верх сильно
+  // скруглён) по левой оси и пунктирная красная линия погибших с белой обводкой маркеров по правой
   bars.className = "bars bars-combo";
   // Ось помещается в панель: шаг колонок 18–52px, сама колонка — примерно половина шага
   const slot = Math.max(18, Math.min(52, Math.floor(((bars.clientWidth || 900) - 92) / values.length)));
@@ -375,14 +375,30 @@ function renderChart() {
     }
     return lines.join("");
   };
-  const columns = values.map(([, bucket], index) => `<rect x="${x(index) - colW / 2}" y="${yCount(bucket.count)}" width="${colW}" height="${Math.max(2, padT + plotH - yCount(bucket.count))}" rx="4" fill="#e2e6ea"></rect>`).join("");
-  const markers = values.map(([, bucket], index) => `<circle cx="${x(index)}" cy="${yDead(bucket.dead)}" r="4.5" fill="#FF001A"></circle>`).join("");
-  // Подписи оси X: даты дня — ДД.ММ, месяца — ММ.ГГГГ, часы/годы — как есть;
-  // каждая — когда влезает (шаг ≥22px), иначе через одну/через пять, но крайние всегда
+  // Столбец: основа (низ) прямая, верхние углы скруглены сильно — как в макете
+  const column = (cx: number, top: number, bottom: number) => {
+    const radius = Math.min(7, colW / 2, Math.max(2, bottom - top));
+    return `M${cx - colW / 2},${bottom} V${top + radius} Q${cx - colW / 2},${top} ${cx - colW / 2 + radius},${top} H${cx + colW / 2 - radius} Q${cx + colW / 2},${top} ${cx + colW / 2},${top + radius} V${bottom} Z`;
+  };
+  const columns = values.map(([, bucket], index) => `<path d="${column(x(index), yCount(bucket.count), padT + plotH)}" fill="rgba(24,51,74,.5)"></path>`).join("");
+  const deadPoints = values.map(([, bucket], index) => [x(index), yDead(bucket.dead)] as const);
+  // Линия погибших — пунктир, маркеры — с белой обводкой поверх линии
+  const line = `<polyline points="${deadPoints.map(([cx, cy]) => `${cx},${cy}`).join(" ")}" fill="none" stroke="#FF001A" stroke-width="2" stroke-dasharray="7 5"></polyline>`;
+  const markers = deadPoints.map(([cx, cy]) => `<circle cx="${cx}" cy="${cy}" r="3" fill="#FF001A" stroke="#fff" stroke-width="2"></circle>`).join("");
+  // Подписи оси X: даты дня — ДД.ММ, месяца — ММ.ГГГГ, часы/годы — как есть.
+  // Крайние подписи всегда, промежуточные — с шагом, при котором соседние не сливаются
   const axisLabel = (key) => state.chartMode === "days" ? `${key.slice(8, 10)}.${key.slice(5, 7)}` : state.chartMode === "months" ? `${key.slice(5, 7)}.${key.slice(0, 4)}` : key;
-  const every = slot >= 22 ? 1 : slot >= 11 ? 2 : 5;
-  const labels = values.map(([label], index) => index % every === 0 || index === values.length - 1 ? `<text x="${x(index)}" y="${height - 6}" text-anchor="middle" font-size="11" fill="#8296a5">${axisLabel(String(label)).replace(/&/g, "&amp;").replace(/</g, "&lt;")}</text>` : "").join("");
-  bars.replaceChildren(Object.assign(document.createElement("div"), { innerHTML: `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${axis(maxCount, yCount, "l")}${axis(maxDead, yDead, "r")}<line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="#d1dee4"></line>${columns}${markers}${labels}</svg>` }));
+  const labelWidth = (text: string) => text.length * 7 + 6;
+  const shown: boolean[] = values.map(() => false);
+  const fits = (a: number, b: number) => x(b) - x(a) >= (labelWidth(axisLabel(String(values[a][0]))) + labelWidth(axisLabel(String(values[b][0])))) / 2 + 10;
+  shown[values.length - 1] = true;
+  let previous = values.length - 1;
+  for (let index = values.length - 2; index >= 1; index--) {
+    if (fits(index, previous)) { shown[index] = true; previous = index; }
+  }
+  if (values.length > 1) shown[0] = fits(0, previous);
+  const labels = values.map(([label], index) => shown[index] ? `<text x="${x(index)}" y="${height - 6}" text-anchor="middle" font-size="11" fill="#8296a5">${axisLabel(String(label)).replace(/&/g, "&amp;").replace(/</g, "&lt;")}</text>` : "").join("");
+  bars.replaceChildren(Object.assign(document.createElement("div"), { innerHTML: `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${axis(maxCount, yCount, "l")}${axis(maxDead, yDead, "r")}<line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="#d1dee4"></line>${columns}${line}${markers}${labels}</svg>` }));
 }
 
 const mapQuery = new URLSearchParams(location.search), initialCenter = (mapQuery.get("center") || "").split(":").map(Number), zoomQuery = mapQuery.get("zoom"), initialZoom = zoomQuery === null ? NaN : Number(zoomQuery);
