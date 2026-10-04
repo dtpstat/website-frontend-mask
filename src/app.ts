@@ -2,6 +2,16 @@
 // иначе — напрямую на бэкенд через cloudflare-туннель (там валидный сертификат, CORS открыт)
 const api = ["localhost", "127.0.0.1"].includes(location.hostname) ? "/api" : "https://dtpstat-backend.7190805.xyz/api";
 const $ = (selector) => document.querySelector(selector);
+// Полоска загрузки в верхней строке — как на dtp-stat.ru: серые штрихи ползут, пока идёт
+// хотя бы один запрос к бэкенду (статику не считаем). dtp-stat.ru держит счётчик loadingCount
+// в сторе и вешает класс visible на .loader — здесь то же самое числом незакрытых запросов
+let loadingJobs = 0;
+const apiFetch = (input: string, init?: RequestInit) => {
+  if (++loadingJobs === 1) $("#loader").classList.add("visible");
+  return fetch(input, init).finally(() => {
+    if (--loadingJobs === 0) $("#loader").classList.remove("visible");
+  });
+};
 const dataRange = { min:"2015-01-01", max:"2026-08-31" };
 type MapState = { language: string; mapClient: "leaflet" | "yandex" | "mapbox"; participants: any[]; filters: any[]; selectedFilters: Record<string, any[]>; selectedIntervals: Record<string, { from: string; to: string }>; territory: { id: number; name: string } | null; abort: AbortController | null; items: any[]; rawItems: any[]; rawItemsKey: string; dataLoadId: number; chartMode: string; minDate: string; maxDate: string; bboxSupported: boolean };
 type Bounds = { west: number; south: number; east: number; north: number };
@@ -809,7 +819,7 @@ async function loadLazyDicts() {
   for (const filter of state.filters) {
     if (!filter.dict || filter.loaded || filter.values.length || sectionParents[filter.name]) continue;
     filter.loaded = true; filter.loading = true;
-    jobs.push(fetch(`${api}/dict/${filter.dict}`).then((response) => response.ok ? response.json() : []).then((rows) => {
+    jobs.push(apiFetch(`${api}/dict/${filter.dict}`).then((response) => response.ok ? response.json() : []).then((rows) => {
       filter.loading = false;
       filter.values = (rows || []).map((row) => ({ value:Number(row.id), preview:String(row.name) }));
     }).catch(() => { filter.loading = false; filter.loaded = false; }));
@@ -830,7 +840,7 @@ async function refreshCascade() {
     const ids = cascadeParentIds(sectionParents[name]);
     filter.parentSel = signature; filter.values = []; filter.loading = Boolean(ids.length);
     if (!ids.length) continue;
-    jobs.push(fetch(`${api}/dict/${filter.dict}?parent_id=${ids.join(",")}`).then((response) => response.ok ? response.json() : []).then((rows) => {
+    jobs.push(apiFetch(`${api}/dict/${filter.dict}?parent_id=${ids.join(",")}`).then((response) => response.ok ? response.json() : []).then((rows) => {
       if (filter.parentSel !== signature) return; // пока грузили, родитель снова сменился — придёт следующий refreshCascade
       filter.loading = false;
       filter.values = (rows || []).map((row) => ({ value:Number(row.id), preview:String(row.name) }));
@@ -1242,7 +1252,7 @@ async function loadMapData() {
       } else { bucket.set(cacheKey, []); } // видимая область вне регионов РФ
       if (!bucket.has(cacheKey)) {
         server.forEach((value, key) => query.append(key, value));
-        const response = await fetch(`${api}/dtp/points?${query}`, { signal: controller.signal });
+        const response = await apiFetch(`${api}/dtp/points?${query}`, { signal: controller.signal });
         if (!response.ok) throw new Error("API unavailable");
         bucket.set(cacheKey, pointItems(await response.json()));
       }
@@ -1264,7 +1274,7 @@ async function loadMapData() {
 
 async function loadFilters() {
   try {
-    const fieldsResponse = await fetch(`${api}/dtp/filter_fields`);
+    const fieldsResponse = await apiFetch(`${api}/dtp/filter_fields`);
     if (!fieldsResponse.ok) throw new Error("API unavailable");
     // Секции проф-фильтра: EM_TYPE фильтруется на клиенте (поле em_type_id есть в точках),
     // серверные секции (serverSections) уходят параметрами в /dtp/points
@@ -1276,7 +1286,7 @@ async function loadFilters() {
       // каскадные (PLACE/ROAD/STREET/NP/MODEL) — по выбору родителя (refreshCascade).
       // Исключение — EM_TYPE: его имена нужны сразу для попапов и категорий
       if (field.name !== "EM_TYPE") return [field, []];
-      const response = await fetch(`${api}/dict/${field.dict}`);
+      const response = await apiFetch(`${api}/dict/${field.dict}`);
       return [field, response.ok ? await response.json() : []];
     }));
     // В emTypeNames идут только виды ДТП: id других словарей пересекаются и сломают попапы
@@ -1298,7 +1308,7 @@ async function loadFilters() {
       { name:"intervals", key:"intervals", param:"intervals", label:t("quantity"), values:intervalFields },
     ]);
     state.participants = (state.filters.find((filter) => filter.name === "participant_categories")?.values || []).map((participant) => ({ ...participant, selected: Boolean(participant.default) }));
-    fetch(`${api}/dict/regions`).then((response) => response.ok ? response.json() : []).then((rows) => {
+    apiFetch(`${api}/dict/regions`).then((response) => response.ok ? response.json() : []).then((rows) => {
       for (const row of rows || []) if (row?.name && row.id !== 1) regionIndex.push({ id:Number(row.id), name:String(row.name), lower:String(row.name).toLowerCase() });
       // Прямая ссылка на территорию (?region=<id>) — закрепляем её и центрируем карту
       const regionId = Number(mapQuery.get("region"));
