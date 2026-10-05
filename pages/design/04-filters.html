@@ -1,73 +1,62 @@
-<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>04 · Участники, severity, теги</title>
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>04 · Панель «Фильтры» (старая фигма)</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=PT+Root+UI:wght@400;500;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <link href="css/components.css" rel="stylesheet"></head><body>
 <div class="wrap">
 
-<div class="sec"><h2>Чипы участников · 2×3, 98×60, gap 2px (в фигме почти вплотную) · иконки currentColor (маски)</h2>
-  <div class="row">
-    <div class="demo">
-      <div class="chips">
-        <button class="chip active" style="--m:url(icons/all.svg)"><i class="ico"></i>Все участники</button>
-        <button class="chip" style="--m:url(icons/pedestrian.svg)"><i class="ico"></i>Пешеходы</button>
-        <button class="chip" style="--m:url(icons/cyclist.svg)"><i class="ico"></i>Велосипедисты</button>
-        <button class="chip" style="--m:url(icons/motorcycle.svg)"><i class="ico"></i>Мотоциклисты</button>
-        <button class="chip" style="--m:url(icons/public_transport.svg)"><i class="ico"></i>Общ. транспорт</button>
-        <button class="chip" style="--m:url(icons/kids.svg)"><i class="ico"></i>Дети</button>
-      </div>
-      <small>«Все участники» выбран (navy/белый); ховер остальных — вживую</small>
-    </div>
-    <div class="demo">
-      <div class="chips">
-        <button class="chip active" style="--m:url(icons/all.svg)"><i class="ico"></i>Все участники</button>
-        <button class="chip active" style="--m:url(icons/pedestrian.svg)"><i class="ico"></i>Пешеходы</button>
-        <button class="chip active" style="--m:url(icons/cyclist.svg)"><i class="ico"></i>Велосипедисты</button>
-        <button class="chip active" style="--m:url(icons/motorcycle.svg)"><i class="ico"></i>Мотоциклисты</button>
-        <button class="chip active" style="--m:url(icons/public_transport.svg)"><i class="ico"></i>Общ. транспорт</button>
-        <button class="chip active" style="--m:url(icons/kids.svg)"><i class="ico"></i>Дети</button>
-      </div>
-      <small>все выбранные — как колонка «при наведении» в UI-kit</small>
-    </div>
-  </div>
-</div>
+<div class="sec"><h2>Панель «Фильтры» · СТАРАЯ фигма dtp-old.fig («v3 / C - Фильтры» 0:2, панель 0:11) · шрифт PT Root UI</h2>
+  <div class="onmap">
+    <div class="ofil">
+      <h3>Фильтры</h3>
 
-<div class="sec"><h2>Чекбоксы severity · 20×20 r3, белая галочка; покой = бледный фон, ховер и checked — палитра</h2>
-  <div class="row">
-    <div class="demo">
-      <div class="sev-list">
-        <label class="sev sn"><input type="checkbox" checked>Без пострадавших (есть данные)</label>
-        <label class="sev s1"><input type="checkbox" checked>Лёгкий</label>
-        <label class="sev s3"><input type="checkbox" checked>Тяжёлый</label>
-        <label class="sev s4"><input type="checkbox" checked>С погибшими</label>
+      <h4>Период данных</h4>
+      <div class="ofil-field">
+        <span>Март 2015 — Дек 2018</span>
+        <svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="12" rx="1.5" stroke="#18334a" stroke-width="1.4"/><path d="M1.5 6h13" stroke="#18334a" stroke-width="1.4"/><path d="M5 1v3M11 1v3" stroke="#18334a" stroke-width="1.4" stroke-linecap="round"/></svg>
       </div>
-      <small>отмеченные · ховер вживую светлеет</small>
-    </div>
-    <div class="demo">
-      <div class="sev-list">
-        <label class="sev sn"><input type="checkbox">Без пострадавших</label>
-        <label class="sev s1"><input type="checkbox">Лёгкий</label>
-        <label class="sev s3"><input type="checkbox">Тяжёлый</label>
-        <label class="sev s4"><input type="checkbox">С погибшими</label>
-      </div>
-      <small>неотмеченные «в покое» — бледные фоны, как в UI-kit</small>
-    </div>
-    <div class="demo">
-      <div class="sev-list">
-        <label class="sev sn" style="color:var(--muted)"><input type="checkbox" disabled checked>Без пострадавших (нет данных)</label>
-        <label class="sev disabled"><input type="checkbox" disabled>Недоступный</label>
-      </div>
-      <small>disabled</small>
-    </div>
-  </div>
-</div>
 
-<div class="sec"><h2>Теги активных фильтров · navy r4, крестик сбрасывает</h2>
-  <div class="row">
-    <div class="demo"><div class="row" style="gap:7px">
-      <span class="tag">Типы <button aria-label="убрать"><svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m1 1 8 8M9 1 1 9"/></svg></button></span>
-      <span class="tag">Погода <button aria-label="убрать"><svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m1 1 8 8M9 1 1 9"/></svg></button></span>
-      <span class="tag">Теги <button aria-label="убрать"><svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m1 1 8 8M9 1 1 9"/></svg></button></span>
-    </div></div>
+      <h4>Пострадавшие</h4>
+      <div class="ofil-legend">
+        <label><input type="checkbox" checked><i style="background:#ffcc66"></i>Автомобилисты</label>
+        <label><input type="checkbox" checked><i style="background:#99ccff"></i>Пешеходы</label>
+        <label><input type="checkbox" checked><i style="background:#99cc99"></i>Велосипедисты</label>
+        <label><input type="checkbox"><i class="ghost"></i>Только смертельные</label>
+      </div>
+
+      <h4>Зона</h4>
+      <div class="ofil-field"><span class="ph">Введите улицу</span></div>
+      <div class="ofil-links">
+        <button type="button"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 10V2m0 0L5 5m3-3 3 3" stroke="#31c3ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 10.5V13a1.5 1.5 0 0 0 1.5 1.5h9A1.5 1.5 0 0 0 14 13v-2.5" stroke="#31c3ff" stroke-width="1.6" stroke-linecap="round"/></svg>Загрузить геометрию</button>
+        <button type="button"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m9.5 3.5 3 3L5 14H2v-3z" stroke="#31c3ff" stroke-width="1.6" stroke-linejoin="round"/><path d="m8 5 3 3" stroke="#31c3ff" stroke-width="1.6"/></svg>Выделить территорию</button>
+      </div>
+
+      <div class="ofil-cap">
+        <h4>Тип ДТП</h4>
+        <button type="button" class="ofil-clear">Очистить</button>
+      </div>
+      <div class="ofil-drop">
+        <div class="ofil-chips">
+          <span>Столкновение<button type="button" aria-label="убрать"><svg width="8" height="8" viewBox="0 0 8 8" stroke="#18334a" stroke-width="1.3" stroke-linecap="round"><path d="m1 1 6 6M7 1 1 7"/></svg></button></span>
+          <span>Опрокидывание<button type="button" aria-label="убрать"><svg width="8" height="8" viewBox="0 0 8 8" stroke="#18334a" stroke-width="1.3" stroke-linecap="round"><path d="m1 1 6 6M7 1 1 7"/></svg></button></span>
+          <span class="wide">Наезд на внезапно возникшее препятствие<button type="button" aria-label="развернуть"><svg width="8" height="5" viewBox="0 0 8 5" fill="none" stroke="#18334a" stroke-width="1.3" stroke-linecap="round"><path d="m1 1 3 3 3-3"/></svg></button></span>
+        </div>
+        <div class="ph">Введите тип ДТП...</div>
+      </div>
+
+      <h4>Объекты поблизости</h4>
+      <div class="ofil-field">
+        <span class="ph">Выберите объекты...</span>
+        <svg class="ic" width="8" height="5" viewBox="0 0 8 5" fill="none" aria-hidden="true"><path d="m1 1 3 3 3-3" stroke="#18334a" stroke-width="1.4" stroke-linecap="round"/></svg>
+      </div>
+
+      <h4>Условия</h4>
+      <div class="ofil-legend plain">
+        <label><input type="checkbox" checked>День</label>
+        <label><input type="checkbox" checked>Ночь</label>
+      </div>
+
+      <button type="button" class="ofil-apply"><svg width="10" height="7" viewBox="0 0 10 7" fill="none" aria-hidden="true"><path d="m1 3.5 2.7 2.5L9 1" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Применить фильтры</button>
+    </div>
   </div>
 </div>
 
