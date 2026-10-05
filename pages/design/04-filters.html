@@ -1,0 +1,74 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>04 · Участники, severity, теги</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="css/components.css" rel="stylesheet"></head><body>
+<div class="wrap">
+
+<div class="sec"><h2>Чипы участников · 2×3, 98×60, gap 2px (в фигме почти вплотную) · иконки currentColor (маски)</h2>
+  <div class="row">
+    <div class="demo">
+      <div class="chips">
+        <button class="chip active" style="--m:url(icons/all.svg)"><i class="ico"></i>Все участники</button>
+        <button class="chip" style="--m:url(icons/pedestrian.svg)"><i class="ico"></i>Пешеходы</button>
+        <button class="chip" style="--m:url(icons/cyclist.svg)"><i class="ico"></i>Велосипедисты</button>
+        <button class="chip" style="--m:url(icons/motorcycle.svg)"><i class="ico"></i>Мотоциклисты</button>
+        <button class="chip" style="--m:url(icons/public_transport.svg)"><i class="ico"></i>Общ. транспорт</button>
+        <button class="chip" style="--m:url(icons/kids.svg)"><i class="ico"></i>Дети</button>
+      </div>
+      <small>«Все участники» выбран (navy/белый); ховер остальных — вживую</small>
+    </div>
+    <div class="demo">
+      <div class="chips">
+        <button class="chip active" style="--m:url(icons/all.svg)"><i class="ico"></i>Все участники</button>
+        <button class="chip active" style="--m:url(icons/pedestrian.svg)"><i class="ico"></i>Пешеходы</button>
+        <button class="chip active" style="--m:url(icons/cyclist.svg)"><i class="ico"></i>Велосипедисты</button>
+        <button class="chip active" style="--m:url(icons/motorcycle.svg)"><i class="ico"></i>Мотоциклисты</button>
+        <button class="chip active" style="--m:url(icons/public_transport.svg)"><i class="ico"></i>Общ. транспорт</button>
+        <button class="chip active" style="--m:url(icons/kids.svg)"><i class="ico"></i>Дети</button>
+      </div>
+      <small>все выбранные — как колонка «при наведении» в UI-kit</small>
+    </div>
+  </div>
+</div>
+
+<div class="sec"><h2>Чекбоксы severity · 20×20 r3, белая галочка; покой = бледный фон, ховер и checked — палитра</h2>
+  <div class="row">
+    <div class="demo">
+      <div class="sev-list">
+        <label class="sev sn"><input type="checkbox" checked>Без пострадавших (есть данные)</label>
+        <label class="sev s1"><input type="checkbox" checked>Лёгкий</label>
+        <label class="sev s3"><input type="checkbox" checked>Тяжёлый</label>
+        <label class="sev s4"><input type="checkbox" checked>С погибшими</label>
+      </div>
+      <small>отмеченные · ховер вживую светлеет</small>
+    </div>
+    <div class="demo">
+      <div class="sev-list">
+        <label class="sev sn"><input type="checkbox">Без пострадавших</label>
+        <label class="sev s1"><input type="checkbox">Лёгкий</label>
+        <label class="sev s3"><input type="checkbox">Тяжёлый</label>
+        <label class="sev s4"><input type="checkbox">С погибшими</label>
+      </div>
+      <small>неотмеченные «в покое» — бледные фоны, как в UI-kit</small>
+    </div>
+    <div class="demo">
+      <div class="sev-list">
+        <label class="sev sn" style="color:var(--muted)"><input type="checkbox" disabled checked>Без пострадавших (нет данных)</label>
+        <label class="sev disabled"><input type="checkbox" disabled>Недоступный</label>
+      </div>
+      <small>disabled</small>
+    </div>
+  </div>
+</div>
+
+<div class="sec"><h2>Теги активных фильтров · navy r4, крестик сбрасывает</h2>
+  <div class="row">
+    <div class="demo"><div class="row" style="gap:7px">
+      <span class="tag">Типы <button aria-label="убрать"><svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m1 1 8 8M9 1 1 9"/></svg></button></span>
+      <span class="tag">Погода <button aria-label="убрать"><svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m1 1 8 8M9 1 1 9"/></svg></button></span>
+      <span class="tag">Теги <button aria-label="убрать"><svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m1 1 8 8M9 1 1 9"/></svg></button></span>
+    </div></div>
+  </div>
+</div>
+
+</div></body></html>

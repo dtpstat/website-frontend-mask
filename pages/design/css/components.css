@@ -1,0 +1,244 @@
+/* dtpstat design system — компоненты по фигме.
+   Источник: design/style-registry.md (замеры 05.10.2026).
+   Токены §1, компоненты §3. Подключать: <link href="css/components.css"> */
+
+:root {
+  color-scheme: light;
+  --navy: #18334a;
+  --muted: #4e6e87;
+  --line: #d4dadd;
+  --pale: #f4f8fa;
+  --hover: #e2f1f8;             /* ховер полей/строк/пунктов */
+  --yellow: #ffb81f;  --yellow-hover: #ffe09e;  --yellow-pale: #fff6e2;
+  --orange: #ff7f24;  --orange-hover: #ffb480;  --orange-pale: #ffecdf;
+  --red:    #ff001a;  --red-hover:    #ff8491;  --red-pale:    #ffe2e5;
+  --yellow-text: #e9b32a;       /* жёлтый текст на белом (контраст) */
+  --shadow-pop: 0 2px 8px rgba(24, 51, 74, .14);
+  --shadow-card: 0 4px 16px rgba(24, 51, 74, .14);
+  --font: 'Roboto', Arial, sans-serif;   /* во всём design.fig — Roboto (Regular/Medium/Bold), не Inter */
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; padding: 32px 40px 90px; font: 15px/1.5 var(--font); color: var(--navy); background: #fff; }
+a { color: inherit; }
+
+/* --- каркас галереи --- */
+.wrap { max-width: 1140px; margin: 0 auto; display: grid; gap: 48px; }
+.sec h2 { margin: 0 0 18px; padding-bottom: 8px; border-bottom: 1px solid #e5ebee;
+  font-size: 15px; font-weight: 600; color: var(--muted); letter-spacing: .02em; }
+.row { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+.demo { display: grid; gap: 8px; justify-items: start; align-content: start; }
+.demo > small { color: var(--muted); font-size: 12px; }
+.onmap { padding: 18px; border-radius: 12px; background: #e9eff1; }  /* подложка «карты» для белых/светлых элементов */
+
+/* =============================================================
+   § Токены и типографика — 01-tokens.html
+   ============================================================= */
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+.swatch { display: grid; gap: 6px; font-size: 12px; color: var(--muted); }
+.swatch i { height: 44px; border-radius: 8px; border: 1px solid rgba(24, 51, 74, .08); }
+.swatch b { color: var(--navy); font-weight: 600; }
+
+.type-scale { display: grid; gap: 14px; }
+.type-scale > div { display: flex; align-items: baseline; gap: 18px; }
+.type-scale small { flex: none; width: 210px; color: var(--muted); font-size: 12px; }
+
+.t-place   { font-size: 20px; font-weight: 700; line-height: 28px; }         /* заголовок места (Bold 20/28) */
+.t-count   { font-size: 20px; font-weight: 700; line-height: 28px; }         /* счётчики дэшборда (Bold 20/28) */
+.t-stat    { font-size: 20px; font-weight: 700; line-height: 28px; }         /* числа статы-карточки (Bold 20/28) */
+.t-h2      { font-size: 20px; font-weight: 700; line-height: 28px; }         /* «Распределение по дням» (Bold 20/28) */
+.t-cardttl { font-size: 20px; font-weight: 500; line-height: 28px; }         /* заголовок статы-карточки (Medium 20/28) */
+.t-pill    { font-size: 14px; font-weight: 500; }                            /* «Фильтры (N активных)» Medium 14/20 */
+.t-body    { font-size: 14px; }                                              /* поля, дропдаун (Regular 14/20) */
+.t-check   { font-size: 16px; }                                              /* чекбоксы (Regular 16/24) */
+.t-menu    { font-size: 14px; }
+.t-chip    { font-size: 12px; font-weight: 500; }                            /* чипы (Medium 12/16) */
+.t-cap     { font-size: 12px; color: var(--muted); }                         /* подписи-«брови» */
+
+/* =============================================================
+   § Кнопки — 02-buttons.html
+   ============================================================= */
+.btn-primary { position: relative; display: inline-flex; align-items: center; justify-content: center;
+  min-height: 37px; padding: 0 20px; border: 0; border-radius: 9px; cursor: pointer;
+  background: var(--navy); color: #fff; font: 500 16px/24px var(--font); text-decoration: none; }
+.btn-primary:hover { background: var(--muted); }
+.btn-primary.rainbow::after { content: ""; position: absolute; left: 15px; right: 15px; bottom: -4px; height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--red) 0%, var(--orange) 35%, var(--yellow) 62%, #86c440 100%); }
+
+.btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 36px; padding: 0 16px; border: 0; border-radius: 8px; cursor: pointer;
+  background: #dbe7ee; color: var(--navy); font: 500 14px/20px var(--font); text-decoration: none; }
+.btn-secondary:hover { background: #cddde6; }
+.btn-secondary svg { flex: none; }
+
+.pill { display: inline-flex; align-items: center; gap: 12px; height: 40px; padding: 0 16px 0 20px;
+  border: 0; border-radius: 20px; cursor: pointer;
+  background: #fff; box-shadow: var(--shadow-pop); color: var(--navy); font: 500 14px/20px var(--font); }
+.pill svg { flex: none; }
+
+.round { display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 50%;
+  cursor: pointer; background: #fff; box-shadow: var(--shadow-pop); color: var(--navy); }
+
+/* =============================================================
+   § Поля поиска/даты, дропдаун — 03-fields.html
+   ============================================================= */
+.field { display: flex; align-items: center; gap: 12px; width: 300px; min-height: 38px; padding: 0 12px;
+  border-radius: 7px; background: var(--pale); color: var(--navy); font: 400 14px/20px var(--font); cursor: text; }
+.field:hover { background: var(--hover); }
+.field .ph { color: var(--muted); }
+.field svg { margin-left: auto; flex: none; }
+
+.dropdown { width: 300px; padding: 6px 0; border-radius: 8px; background: #fff; box-shadow: var(--shadow-card); }
+.dropdown a { display: block; padding: 10px 16px; color: var(--navy); font: 400 14px/20px var(--font); text-decoration: none; }   /* шаг строк в фигме 40px */
+.dropdown a:hover { background: var(--hover); }
+
+/* =============================================================
+   § Чипы участников — 04-filters.html
+   ============================================================= */
+.chips { display: grid; grid-template-columns: repeat(3, 98px); gap: 2px; }
+.chip { display: grid; place-items: center; gap: 6px; min-height: 60px; padding: 7px 4px; border: 0;
+  border-radius: 8px; cursor: pointer; background: var(--pale); color: var(--navy);
+  font: 500 12px/16px var(--font); }
+.chip:hover:not(.active) { background: var(--hover); }
+.chip .ico { display: block; width: 24px; height: 20px; background: currentColor;
+  -webkit-mask: var(--m) center/contain no-repeat; mask: var(--m) center/contain no-repeat; }
+.chip.active { background: var(--navy); color: #fff; }
+
+/* =============================================================
+   § Чекбоксы severity — 04-filters.html
+   ============================================================= */
+.sev-list { display: grid; gap: 12px; }
+.sev { display: flex; align-items: center; gap: 10px; font: 400 16px/24px var(--font); color: var(--navy); }
+.sev input { width: 20px; height: 20px; margin: 0; border: 0; border-radius: 3px;
+  appearance: none; -webkit-appearance: none; flex: none; cursor: pointer; }
+.sev input:checked { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6.5 4.8 9.2 10 3.5' stroke='white' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-position: center; background-repeat: no-repeat; background-size: 12px; }
+.sev.sn input { background-color: var(--pale); }        .sev.sn input:hover { background-color: var(--hover); }
+.sev.sn input:checked { background-color: var(--navy); } .sev.sn input:checked:hover { background-color: var(--muted); }
+.sev.s1 input { background-color: var(--yellow-pale); } .sev.s1 input:checked { background-color: var(--yellow); }
+.sev.s1 input:hover { background-color: var(--yellow-hover); }
+.sev.s3 input { background-color: var(--orange-pale); } .sev.s3 input:checked { background-color: var(--orange); }
+.sev.s3 input:hover { background-color: var(--orange-hover); }
+.sev.s4 input { background-color: var(--red-pale); }    .sev.s4 input:checked { background-color: var(--red); }
+.sev.s4 input:hover { background-color: var(--red-hover); }
+.sev.disabled { color: #b8c4cc; }
+.sev.disabled input, .sev.disabled input:hover { background-color: var(--pale); cursor: default; }
+
+/* =============================================================
+   § Теги активных фильтров — 04-filters.html
+   ============================================================= */
+.tag { display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border: 0; border-radius: 4px;
+  background: var(--navy); color: #fff; font: 400 13px/1.2 var(--font); }
+.tag button { display: grid; place-items: center; width: 14px; height: 14px; padding: 0; border: 0;
+  background: none; color: #fff; opacity: .8; cursor: pointer; }
+.tag button:hover { opacity: 1; }
+
+/* =============================================================
+   § Карточка статистики + свитчер карты — 05-stats-card.html
+   ============================================================= */
+.stats-card { width: 280px; padding: 16px; border-radius: 12px; background: #fff;
+  box-shadow: var(--shadow-card); display: grid; gap: 12px; }
+.stats-card .head { display: grid; gap: 2px; }
+.stats-card .head div { display: flex; align-items: flex-start; gap: 8px; }
+.stats-card .head strong { font-size: 20px; font-weight: 500; line-height: 28px; }   /* figma: Medium 20/28, не Bold */
+.stats-card .head span { font-size: 14px; line-height: 20px; color: var(--muted); }
+.stats-card .head svg { margin-left: auto; flex: none; color: var(--navy); }
+.stats-cols { display: flex; gap: 16px; }
+.stats-cols > div { display: grid; gap: 2px; }
+.stats-cols span { font-size: 14px; font-weight: 500; line-height: 20px; color: var(--muted); }   /* figma: Medium 14/20 */
+.stats-cols strong { font-size: 20px; font-weight: 700; line-height: 28px; font-variant-numeric: tabular-nums; white-space: nowrap; }   /* figma: Bold 20/28 */
+.stats-cols .c1 strong { color: var(--navy); }
+.stats-cols .c2 strong { color: var(--yellow-text); }   /* в фигме #ffb81f; на белом оставляем затемнённый */
+.stats-cols .c3 strong { color: var(--red); }
+
+.switcher { display: flex; gap: 14px; }
+.sw { display: grid; gap: 5px; justify-items: center; cursor: pointer; }
+.sw .tile { width: 87px; height: 57px; border-radius: 6px; border: 2px solid transparent;
+  background: #fff center/cover no-repeat; }
+.sw span { font-size: 11px; color: var(--muted); }
+.sw.active .tile { border-color: var(--navy); }
+
+/* =============================================================
+   § Панель «Статистика» — СТАРАЯ фигма (dtp-old.fig, «v3 / C - Статистика» 12:92) — 06-dashboard.html
+   Шрифт старого макета — PT Root UI (Regular/Medium/Bold). Координаты — из document.raw.json.
+   ============================================================= */
+.ostat { position: relative; width: 800px; max-width: 100%; padding: 20px 20px 40px; border-radius: 8px;
+  background: #fff; box-shadow: var(--shadow-card); color: #18334a;
+  font-family: 'PT Root UI', Roboto, Arial, sans-serif; }
+.ostat-head { display: flex; align-items: center; gap: 30px; }
+.ostat-head strong { font-size: 20px; font-weight: 700; line-height: 24px; }            /* Bold 20/24 */
+.ostat-check { display: inline-flex; align-items: center; gap: 10px; font-size: 16px; line-height: 24px; cursor: pointer; }
+.ostat-check input { width: 18px; height: 18px; margin: 0; border: 2px solid #d1dee3; border-radius: 3px;
+  appearance: none; -webkit-appearance: none; background: #fff; cursor: pointer; flex: none; }
+.ostat-check input:checked { border-color: #2f80ed; background-color: #2f80ed;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 8'%3E%3Cpath d='M1 4.2 3.6 6.8 9 1.2' stroke='white' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-position: center; background-repeat: no-repeat; background-size: 10px; }
+.ostat-close { position: absolute; top: 25px; right: 25px; width: 14px; height: 14px; padding: 0; border: 0;
+  cursor: pointer; background: #4c6779;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M2 2l10 10M12 2L2 12' stroke='black' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M2 2l10 10M12 2L2 12' stroke='black' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") center/contain no-repeat; }
+.ostat h3 { margin: 0; font-size: 14px; font-weight: 700; line-height: 24px; }          /* Bold 14/24 */
+.ostat-hr { height: 1px; margin: 20px 0; border: 0; background: #f4f8fa; }
+
+/* — блок 1: месячные бары + инфоплашка — */
+.ostat-b1 { display: grid; grid-template-columns: 1fr 108px; column-gap: 20px; margin-top: 20px; }
+.ostat-type { display: flex; gap: 10px; margin-top: 3px; font-size: 10px; font-weight: 500; line-height: 12px; color: #979ea1; }
+.ostat-type span { display: inline-flex; align-items: center; gap: 6px; }
+.ostat-type i { width: 8px; height: 8px; border-radius: 50%; }
+.ostat-chart { position: relative; height: 112px; margin-top: 9px; }
+.ostat-bars { position: absolute; inset: auto 0 24px 4px; height: 85px; display: flex; align-items: flex-end; gap: 1px; }
+.ostat-bars i { flex: none; width: 12px; border-radius: 6px;
+  background: linear-gradient(180deg, rgba(47, 128, 237, .45) 0%, #2f80ed 100%); }  /* градиент из дампа, стопы потеряны */
+.ostat-months { position: absolute; inset: auto 0 0 0; display: flex; justify-content: space-between;
+  font-size: 10px; font-weight: 500; line-height: 12px; color: #979ea1; }
+.ostat-months span { width: 38px; white-space: normal; }   /* в макете метки 38×24 — месяц над годом */
+.ostat-hdl { position: absolute; top: 0; width: 8px; height: 91px; border: 1px solid #18334a; border-radius: 4px;
+  background: #fff; box-shadow: 0 2px 6px rgba(24, 51, 74, .2); }
+.ostat-hdl::after { content: ""; position: absolute; left: 2px; top: 50%; width: 2px; height: 10px; transform: translateY(-50%);
+  background: repeating-linear-gradient(180deg, #18334a 0 2px, transparent 2px 4px); }
+.ostat-plate { display: flex; flex-direction: column; justify-content: center; gap: 4px; width: 108px; height: 160px;
+  padding: 10px 6px; border-radius: 8px; background: #f4f8fa; }
+.ostat-plate > div { display: grid; }
+.ostat-plate b { font-size: 16px; font-weight: 700; line-height: 20px; }               /* Bold 16/20 */
+.ostat-plate span { font-size: 14px; font-weight: 700; line-height: 24px; }            /* Bold 14/24 */
+.ostat-plate .inj b { color: #ffc107; }
+.ostat-plate .dth b { color: #dc3545; }
+
+/* — блок 2: линии по годам — */
+.ostat-b2 { display: grid; grid-template-columns: 1fr 108px; column-gap: 25px; margin-top: 20px; }
+.ostat-b2head { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.ostat-tabs { display: flex; gap: 10px; }
+.ostat-tabs span { padding: 3px 5px; border: 1px solid #d1dee3; border-radius: 4px;
+  font-size: 10px; font-weight: 700; line-height: 12px; color: #18334a; }              /* Bold 10/12 */
+.ostat-graph { display: grid; grid-template-columns: 22px 1fr; gap: 5px; margin-top: 6px; }
+.ostat-gy { display: flex; flex-direction: column; justify-content: space-between; height: 211px;
+  font-size: 10px; font-weight: 500; line-height: 12px; color: #979ea1; text-align: right; }
+.ostat-gx { display: flex; justify-content: space-around; margin-top: 6px;
+  font-size: 10px; font-weight: 500; line-height: 12px; color: #979ea1; }
+.ostat-years { display: flex; flex-direction: column; gap: 4px; width: 108px; height: 125px; padding: 10px 8px;
+  border-radius: 8px; background: #f4f8fa; }
+.ostat-years label { display: flex; align-items: center; gap: 6px; font-size: 16px; line-height: 24px; cursor: pointer; }
+.ostat-years input { width: 20px; height: 20px; margin: 0 2px 0 0; border: 0; border-radius: 3px;
+  appearance: none; -webkit-appearance: none; background-color: var(--pale); cursor: pointer; flex: none; }
+.ostat-years input:checked { background-color: #2f80ed;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 8'%3E%3Cpath d='M1 4.2 3.6 6.8 9 1.2' stroke='white' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-position: center; background-repeat: no-repeat; background-size: 10px; }
+.ostat-years i { width: 12px; height: 12px; border-radius: 6px; flex: none; }
+
+/* =============================================================
+   § Шапка и футер — 07-header-footer.html
+   ============================================================= */
+.hd { display: flex; align-items: center; gap: 36px; height: 64px; padding: 0 24px;
+  border-bottom: 1px solid var(--pale); }
+.logo { display: flex; align-items: center; gap: 9px; font-size: 20px; font-weight: 800; letter-spacing: -.01em; }
+.logo::before { content: ""; width: 11px; height: 11px; border-radius: 50%; background: var(--red); }
+.menu { display: flex; gap: 24px; }
+.menu a { font-size: 14px; color: var(--navy); text-decoration: none; }
+.menu a:hover { color: var(--muted); }
+
+.donate { width: 300px; display: grid; gap: 8px; }
+.donate .bar { height: 6px; border-radius: 3px; background: var(--pale); overflow: hidden; }
+.donate .bar i { display: block; height: 100%; width: 31%; border-radius: 3px; background: var(--yellow); }
+.donate .nums { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); }
+.donate .nums b { color: var(--navy); font-weight: 600; }

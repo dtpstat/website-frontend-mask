@@ -12,7 +12,7 @@ function formatDate(value) { const [year, month, day] = value.split("-"); return
 
 function chartBuckets() {
   const groups = new Map();
-  for (const item of state.items) {
+  for (const item of chartSource()) {
     // Разрезы по времени доступны только для точек с датой (сейчас в открытом API её нет)
     if (state.chartMode !== "types" && !item.datetime) continue;
     // Часы 0–23 → колонки 1–24 («1-й час» = 00:00–01:00 … «24-й» = 23:00–24:00)
@@ -52,6 +52,9 @@ function chartAxis(mode: string) {
 // Дни/часы требуют дату точки: в открытом API её нет — табы отключаем с пояснением.
 // Если даты появились (мок e2e, будущий бэкенд с рамкой) — включаются сами
 const chartDatesAvailable = () => state.items.some((item) => item.datetime);
+// Чекбокс «С учётом фильтров»: включён — график и плашка по отфильтрованным точкам,
+// выключен — по сырым (период и регион остаются, клиентские фильтры нет)
+const chartSource = () => ($("#chart-filtered") as HTMLInputElement)?.checked === false ? state.rawItems : state.items;
 function setChartMode(mode: string) { state.chartMode = mode; document.querySelectorAll("#chart-side button[data-mode]").forEach((item) => item.classList.toggle("active", item.dataset.mode === mode)); }
 function updateChartTabs() {
   const dates = chartDatesAvailable();
@@ -84,14 +87,17 @@ function activeFiltersSummary() {
 function renderChart() {
   const bars = $("#bars"), empty = $("#chart-empty");
   updateChartTabs();
-  // Шапка дэшборда дублирует карточку статистики — значения из одного источника
+  // Плашка итогов считается из того же набора, что и график (галочка «С учётом фильтров»):
+  // включена — совпадает с карточкой статистики, выключена — по сырым точкам
+  const rows = chartSource();
   $("#chart-region").textContent = state.territory ? state.territory.name : t("allRegions");
-  $("#chart-count").textContent = $("#count").textContent;
-  $("#chart-injured-count").textContent = $("#injured").textContent;
-  $("#chart-dead-count").textContent = $("#dead").textContent;
+  $("#chart-count").textContent = number().format(rows.length);
+  $("#chart-injured-count").textContent = number().format(rows.reduce((sum, item) => sum + Number(item.injured || 0), 0));
+  $("#chart-dead-count").textContent = number().format(rows.reduce((sum, item) => sum + Number(item.dead || 0), 0));
   $("#chart-title").textContent = chartTitle();
   $("#chart-period").textContent = `${t("forPeriod")}: ${formatDate($("#start-date").value)} - ${formatDate($("#end-date").value)}`;
-  $("#chart-filters").textContent = `${t("activeFilters")}: ${activeFiltersSummary()}`;
+  const filtered = ($("#chart-filtered") as HTMLInputElement).checked;
+  $("#chart-filters").textContent = `${t("activeFilters")}${filtered ? "" : ` (${t("notApplied")})`}: ${activeFiltersSummary()}`;
   // Легенда по умолчанию — точки; в разрезе по типам превратится в заголовки колонок (модификатор ниже)
   $(".chart-legend").className = "chart-legend";
   $("#legend-label-deaths").textContent = t("deathsLegend");
@@ -158,8 +164,8 @@ function renderChart() {
     const lines = [], steps = 5;
     for (let step = 0; step <= steps; step++) {
       const value = max / steps * step, y = scale(value);
-      lines.push(`<line x1="${side === "l" ? padL : padL + plotW}" y1="${y}" x2="${side === "l" ? padL + plotW : padL + plotW}" y2="${y}" stroke="#e7ebee" stroke-dasharray="4 4"></line>`);
-      lines.push(`<text x="${side === "l" ? padL - 8 : padL + plotW + 8}" y="${y + 4}" text-anchor="${side === "l" ? "end" : "start"}" font-size="11" fill="#8296a5">${tick(value)}</text>`);
+      lines.push(`<line x1="${side === "l" ? padL : padL + plotW}" y1="${y}" x2="${side === "l" ? padL + plotW : padL + plotW}" y2="${y}" stroke="#e6e6e6"></line>`);
+      lines.push(`<text x="${side === "l" ? padL - 8 : padL + plotW + 8}" y="${y + 4}" text-anchor="${side === "l" ? "end" : "start"}" font-size="10" font-weight="500" fill="#979ea1">${tick(value)}</text>`);
     }
     return lines.join("");
   };
@@ -168,7 +174,10 @@ function renderChart() {
     const radius = Math.min(7, colW / 2, Math.max(1, bottom - top)), left = cx - colW / 2, right = cx + colW / 2;
     return `M${left},${top + radius} A${radius},${radius} 0 0 1 ${right},${top + radius} L${right},${bottom} L${left},${bottom} Z`;
   };
-  const columns = values.map(([, bucket], index) => `<path d="${column(x(index), yCount(bucket.count), padT + plotH)}" fill="#cdd5dc"></path>`).join("");
+  // Пилюли-столбцы — градиент из старой фигмы (стопы GRADIENT_LINEAR потеряны при распаковке,
+  // реконструкция rgba(47,128,237,.45)→#2f80ed); градиент один на весь svg
+  const defs = `<defs><linearGradient id="chart-col" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2f80ed" stop-opacity=".45"/><stop offset="1" stop-color="#2f80ed"/></linearGradient></defs>`;
+  const columns = values.map(([, bucket], index) => `<path d="${column(x(index), yCount(bucket.count), padT + plotH)}" fill="url(#chart-col)"></path>`).join("");
   const deadPoints = values.map(([, bucket], index) => [x(index), yDead(bucket.dead)] as const);
   // Линия погибших — сплошная бледно-розовая со сглаживанием (Catmull-Rom → кубические Безье),
   // маркеры — красные точки поверх линии; сглаженная кривая зажата снизу базой графика,
@@ -185,8 +194,8 @@ function renderChart() {
     }
     return d;
   };
-  const line = `<path d="${smoothPath(deadPoints)}" fill="none" stroke="#f6c4c2" stroke-width="1.5"></path>`;
-  const markers = deadPoints.map(([cx, cy]) => `<circle cx="${cx}" cy="${cy}" r="5" fill="#FF001A"></circle>`).join("");
+  const line = `<path d="${smoothPath(deadPoints)}" fill="none" stroke="#dc3545" stroke-width="2"></path>`;
+  const markers = deadPoints.map(([cx, cy]) => `<circle cx="${cx}" cy="${cy}" r="4" fill="#dc3545" stroke="#fff" stroke-width="1.5"></circle>`).join("");
   // Подписи оси X: по дням — число, на первом числе месяца — имя месяца; месяца — ММ.ГГГГ, часы/годы — как есть.
   // Крайние подписи всегда, промежуточные — с шагом, при котором соседние не сливаются
   const monthName = (key: string) => {
@@ -204,8 +213,8 @@ function renderChart() {
   }
   // Крайняя левая подпись — пограничная: показываем всегда, когда она не перекрывает соседнюю
   if (values.length > 1) shown[0] = fits(0, previous, 2);
-  const labels = values.map(([label], index) => shown[index] ? `<text x="${x(index)}" y="${height - 6}" text-anchor="middle" font-size="11" fill="#8296a5">${axisLabel(String(label)).replace(/&/g, "&amp;").replace(/</g, "&lt;")}</text>` : "").join("");
-  bars.replaceChildren(Object.assign(document.createElement("div"), { innerHTML: `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${axis(maxCount, yCount, "l")}${axis(maxDead, yDead, "r")}<line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="#d1dee4"></line>${columns}${line}${markers}${labels}</svg>` }));
+  const labels = values.map(([label], index) => shown[index] ? `<text x="${x(index)}" y="${height - 6}" text-anchor="middle" font-size="10" font-weight="500" fill="#979ea1">${axisLabel(String(label)).replace(/&/g, "&amp;").replace(/</g, "&lt;")}</text>` : "").join("");
+  bars.replaceChildren(Object.assign(document.createElement("div"), { innerHTML: `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${defs}${axis(maxCount, yCount, "l")}${axis(maxDead, yDead, "r")}<line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="#e6e6e6"></line>${columns}${line}${markers}${labels}</svg>` }));
 }
 
 

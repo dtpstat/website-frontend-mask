@@ -1,0 +1,46 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>05 · Карточка статистики, свитчер</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="css/components.css" rel="stylesheet"></head><body>
+<div class="wrap">
+
+<div class="sec"><h2>Карточка статистики региона · белая r12 на карте, замок = регион закреплён</h2>
+  <div class="row">
+    <div class="onmap">
+      <div class="stats-card">
+        <div class="head">
+          <div><strong>Восточное Измайлово</strong><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2.5" y="7" width="11" height="7.5" rx="1.5"/><path d="M5 7V5a3 3 0 0 1 6 0v2"/></svg></div>
+          <span>Москва</span>
+        </div>
+        <div class="stats-cols">
+          <div class="c1"><span>ДТП</span><strong>38 109</strong></div>
+          <div class="c2"><span>Пострадали</span><strong>28 566</strong></div>
+          <div class="c3"><span>Погибли</span><strong>13 936</strong></div>
+        </div>
+        <button class="btn-secondary" style="width:100%"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 1.5v7.5m0 0L4 6m3 3 3-3M2 12.5h10"/></svg>Скачать данные</button>
+      </div>
+    </div>
+    <div class="demo" style="gap:14px">
+      <div class="stats-cols">
+        <div class="c1"><span>ДТП</span><strong>38 109</strong></div>
+        <div class="c2"><span>Пострадали</span><strong style="color:var(--yellow)">28 566</strong></div>
+        <div class="c3"><span>Погибли</span><strong>13 936</strong></div>
+      </div>
+      <small>верх: «Пострадали» затемнён (#e9b32a) ради контраста на белом;<br>здесь — как в фигме (#ffb81f), контраст 1.9:1</small>
+    </div>
+  </div>
+</div>
+
+<div class="sec"><h2>Свитчер подложки · тайлы 87×57, активный с navy-рамкой 2px</h2>
+  <div class="row">
+    <div class="demo">
+      <div class="switcher">
+        <div class="sw active"><div class="tile" style="background-image:url(tiles/map-preview-leaflet.svg)"></div><span>Стандарт</span></div>
+        <div class="sw"><div class="tile" style="background-image:url(tiles/map-preview-mapbox.svg)"></div><span>OpenStreetMap</span></div>
+      </div>
+      <small>у нас три клиента — механика своя, рамка та же</small>
+    </div>
+  </div>
+</div>
+
+</div></body></html>

@@ -10,6 +10,9 @@ Object.assign(copy.ru, { regionSearch:"Введите адрес или реги
 Object.assign(copy.en, { regionSearch:"Enter address or region", noInjured:"No injuries (no data)", accidentKind:"Accident type", show:"Show", lockPin:"Data is pinned to the territory", unlock:"Unpin data", lockHint:"Unpin the territory first", participantNoData:"No open API data for these road users", noMatches:"Nothing found" });
 Object.assign(copy.ru, { heatIntensity:"Интенсивность", heatMapOpacity:"Непрозрачность" });
 Object.assign(copy.en, { heatIntensity:"Intensity", heatMapOpacity:"Opacity" });
+// Панель «Статистика» (старая фигма): чекбокс учёта фильтров, плашка итогов, крестик
+Object.assign(copy.ru, { withFilters:"С учётом фильтров", close:"Закрыть", notApplied:"не учтены", plateAccidents:"Всего ДТП", plateInjured:"Пострадавшие", plateDead:"Погибшие" });
+Object.assign(copy.en, { withFilters:"With filters", close:"Close", notApplied:"not applied", plateAccidents:"Total accidents", plateInjured:"Injured", plateDead:"Deaths" });
 const participantTranslations = { "Все участники":"All users", "Пешеходы":"Pedestrians", "Велосипедисты":"Cyclists", "Мотоциклисты":"Motorcyclists", "Общ. транспорт":"Public transport", "Дети":"Children", "Без участника":"No road user" };
 // Форматтеры Intl дорогие — создаём один раз на язык (в попапах их ждут тысячи точек)
 const intlCache = new Map<string, any>();

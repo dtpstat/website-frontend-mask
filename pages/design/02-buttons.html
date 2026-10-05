@@ -1,0 +1,31 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>02 · Кнопки</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="css/components.css" rel="stylesheet"></head><body>
+<div class="wrap">
+
+<div class="sec"><h2>Primary (navy) · 37px, r9, 14/500 · ховер --muted · радужное подчёркивание — декор из UI-kit</h2>
+  <div class="row">
+    <div class="demo"><button class="btn-primary rainbow">Кнопка в покое</button><small>:hover сработает вживую</small></div>
+    <div class="demo"><button class="btn-primary rainbow" style="background:var(--muted)">Кнопка при наведении</button></div>
+    <div class="demo"><button class="btn-primary">Без подчёркивания</button><small>radial-подчёркивание опционально (класс .rainbow)</small></div>
+  </div>
+</div>
+
+<div class="sec"><h2>Secondary («Скачать данные») · 36px, r8, заливка #dbe7ee, 13/500</h2>
+  <div class="row">
+    <div class="demo"><button class="btn-secondary"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 1.5v7.5m0 0L4 6m3 3 3-3M2 12.5h10"/></svg>Скачать данные</button></div>
+    <div class="demo" style="width:280px"><button class="btn-secondary" style="width:100%"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 1.5v7.5m0 0L4 6m3 3 3-3M2 12.5h10"/></svg>Скачать данные (full-width в карточке)</button></div>
+  </div>
+</div>
+
+<div class="sec"><h2>Pill «Фильтры» и круг «назад» · белые с тенью — на фоне карты</h2>
+  <div class="row">
+    <div class="onmap"><div class="row" style="gap:20px">
+      <button class="pill">Фильтры (15 активных) <svg width="9" height="14" viewBox="0 0 9 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m1.5 1.5 6 5.5-6 5.5"/></svg></button>
+      <button class="round"><svg width="9" height="14" viewBox="0 0 9 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 1.5 1.5 7l6 5.5"/></svg></button>
+    </div></div>
+  </div>
+</div>
+
+</div></body></html>

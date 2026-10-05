@@ -91,6 +91,8 @@ $("#chart-button").addEventListener("click", () => {
   $("#chart").hidden = false; renderChart();
 });
 $("#close-chart").addEventListener("click", () => { $("#chart").hidden = true; });
+// «С учётом фильтров»: снятая галочка — график и плашка по сырым точкам (без клиентских фильтров)
+$("#chart-filtered").addEventListener("change", renderChart);
 $("#download-button").addEventListener("click", downloadData);
 $("#chart-side").addEventListener("click", (event) => {
   const button = event.target.closest("button[data-mode]");
