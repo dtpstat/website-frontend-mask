@@ -28,8 +28,9 @@ function chartBuckets() {
   return axis ? axis.map((key) => [key, groups.get(key) || { count: 0, dead: 0 }]) : values;
 }
 
-// Полная ось X временных разрезов — весь период запроса: все дни (лимит 90), все месяцы (лимит 90),
-// годы диапазона, часы 1–24. null = разрез при таком периоде недоступен
+// Полная ось X временных разрезов — весь период запроса: все дни и все месяцы (лимиты 90 —
+// дальше ось не строится и разрез честно отказывает), годы диапазона, часы 1–24.
+// null = разрез при таком периоде недоступен
 function chartAxis(mode: string) {
   const { start, end } = period();
   const span = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, index) => String(from + index));
@@ -60,7 +61,9 @@ function updateChartTabs() {
   const dates = chartDatesAvailable();
   document.querySelectorAll("#chart-side button[data-mode]").forEach((button) => {
     const mode = button.dataset.mode;
-    const unavailable = mode !== "types" && (!dates || chartAxis(mode) === null);
+    // «По дням» доступна всегда (при наличии дат): дней больше 90 — по клику показываем
+    // ошибку вместо графика, а не мёртвую кнопку
+    const unavailable = mode !== "types" && (!dates || (mode !== "days" && chartAxis(mode) === null));
     button.disabled = unavailable;
     button.title = button.disabled ? (!dates ? t("chartNoDates") : t("chartRangeTooLong")) : "";
   });
@@ -108,7 +111,7 @@ function renderChart() {
     return;
   }
   if (state.chartMode !== "types" && chartAxis(state.chartMode) === null) {
-    empty.textContent = t("chartRangeTooLong");
+    empty.textContent = state.chartMode === "days" ? t("chartTooManyDays") : t("chartRangeTooLong");
     empty.hidden = false; bars.hidden = true;
     return;
   }
@@ -152,9 +155,12 @@ function renderChart() {
   // Разрезы по времени: комбо — полупрозрачные navy-столбцы (основа прямая, верх сильно
   // скруглён) по левой оси и пунктирная красная линия погибших с белой обводкой маркеров по правой
   bars.className = "bars bars-combo";
-  // График занимает всю ширину панели без пустоты справа: ширина = ширина контейнера,
-  // шаг колонок — точная доля плота (столбец — примерно половина шага, но не шире 30px)
-  const width = Math.max(bars.clientWidth || 900, 320), height = 300, padL = 46, padR = 46, padT = 14, padB = 24, plotW = width - padL - padR, plotH = height - padT - padB;
+  // График занимает всю ширину панели без пустоты справа; шаг колонок не сжимаем ниже 24px
+  // (в разрезе дней их до 90) — при нехватке ширины svg длиннее контейнера, .bars-combo
+  // даёт горизонтальный скролл, позиция которого сохраняется между перерисовками
+  const minSlot = 24, height = 300, padL = 46, padR = 46, padT = 14, padB = 24;
+  const width = Math.max(bars.clientWidth || 900, padL + padR + values.length * minSlot, 320);
+  const plotW = width - padL - padR, plotH = height - padT - padB;
   const slot = plotW / values.length;
   const x = (index) => padL + slot * (index + 0.5);
   const colW = Math.max(8, Math.min(36, Math.round(slot * 0.7)));
@@ -170,9 +176,10 @@ function renderChart() {
     }
     return lines.join("");
   };
-  // Столбец: скруглена только шапка (радиус 6 — как у баров типов Bar_1_x r=6 из raw-дампа, у низких — меньше), основание прямое
+  // Столбец: скруглена только шапка, радиус 3 (дамповый 6 смотрелся пузато — попросили меньше),
+  // у низких и узких — меньше, основание прямое
   const column = (cx: number, top: number, bottom: number) => {
-    const radius = Math.min(6, colW / 2, Math.max(1, bottom - top)), left = cx - colW / 2, right = cx + colW / 2;
+    const radius = Math.min(3, colW / 2, Math.max(1, bottom - top)), left = cx - colW / 2, right = cx + colW / 2;
     return `M${left},${top + radius} A${radius},${radius} 0 0 1 ${right},${top + radius} L${right},${bottom} L${left},${bottom} Z`;
   };
   // Столбцы — по «2 stats_by_days» 431:0: заливка #18334a @ .22 (union-вектор баров), без градиента
@@ -217,7 +224,9 @@ function renderChart() {
   // Крайняя левая подпись — пограничная: показываем всегда, когда она не перекрывает соседнюю
   if (values.length > 1) shown[0] = fits(0, previous, 2);
   const labels = values.map(([label], index) => shown[index] ? `<text x="${x(index)}" y="${height - 6}" text-anchor="middle" font-size="10" fill="#18334a" fill-opacity=".5">${axisLabel(String(label)).replace(/&/g, "&amp;").replace(/</g, "&lt;")}</text>` : "").join("");
+  const scrollLeft = bars.scrollLeft;
   bars.replaceChildren(Object.assign(document.createElement("div"), { innerHTML: `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${axis(maxCount, yCount, "l")}${axis(maxDead, yDead, "r")}<line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="#18334a" stroke-opacity=".1"></line>${columns}${line}${markers}${labels}</svg>` }));
+  bars.scrollLeft = scrollLeft;
 }
 
 
