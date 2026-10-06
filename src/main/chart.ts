@@ -170,9 +170,9 @@ function renderChart() {
     }
     return lines.join("");
   };
-  // Столбец: скруглена только шапка (радиус 4 по вектору баров из дампа, у низких — меньше), основание прямое
+  // Столбец: скруглена только шапка (радиус 6 — как у баров типов Bar_1_x r=6 из raw-дампа, у низких — меньше), основание прямое
   const column = (cx: number, top: number, bottom: number) => {
-    const radius = Math.min(4, colW / 2, Math.max(1, bottom - top)), left = cx - colW / 2, right = cx + colW / 2;
+    const radius = Math.min(6, colW / 2, Math.max(1, bottom - top)), left = cx - colW / 2, right = cx + colW / 2;
     return `M${left},${top + radius} A${radius},${radius} 0 0 1 ${right},${top + radius} L${right},${bottom} L${left},${bottom} Z`;
   };
   // Столбцы — по «2 stats_by_days» 431:0: заливка #18334a @ .22 (union-вектор баров), без градиента

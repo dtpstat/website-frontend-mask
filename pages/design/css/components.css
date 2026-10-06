@@ -166,7 +166,7 @@ a { color: inherit; }
    Потеряно в дампе и реконструировано: радиусы (панель ~12, бары ~4 сверху,
    чипы меню ~4, «Скрыть» ~6, скролл ~3), вес обводки линии (~2) и точек (~1.5).
    ============================================================= */
-.odas { width: 980px; max-width: 100%; border-radius: 12px; background: #fff;
+.odas { width: 980px; max-width: 100%; border-radius: 8px; background: #fff;
   box-shadow: var(--shadow-card); color: #18334a; font-family: Roboto, Arial, sans-serif; }
 .odas-head { position: relative; height: 76px; }
 .odas-place { position: absolute; left: 20px; top: 12px; }
@@ -178,14 +178,14 @@ a { color: inherit; }
 .odas-cnt b.inj { color: #fecc5c; }
 .odas-cnt b.dth { color: #e31a1c; }
 .odas-hide { position: absolute; top: 20px; display: inline-flex; align-items: center; gap: 8px;
-  height: 36px; padding: 0 12px; border: 0; border-radius: 6px; background: #ebeef0;
+  height: 36px; padding: 0 12px; border: 0; border-radius: 20px; background: #ebeef0;
   font-family: inherit; font-size: 16px; font-weight: 500; line-height: 24px; color: #18334a; cursor: pointer; }
 .odas-body { display: grid; grid-template-columns: 708px 204px; column-gap: 28px; padding: 8px 20px 20px; }
 .odas h3 { margin: 0; font-size: 20px; font-weight: 700; line-height: 28px; }
 .odas p { margin: 4px 0 0; font-size: 14px; line-height: 20px; opacity: .5; }
 .odas-legend { display: flex; justify-content: space-between; align-items: center; height: 16px; margin: 12px 0 0; }
 .odas-legend span { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 500; line-height: 16px; color: #000; }
-.odas-legend i { width: 12px; height: 12px; border-radius: 3px; background: rgba(24,51,74,.22); }
+.odas-legend i { width: 12px; height: 12px; border-radius: 6px; background: rgba(24,51,74,.22); }
 .odas-legend i.red { background: #e31a1c; }
 /* --- график «по дням» 708×356 ------------------------------------------ */
 .odas-plot { position: relative; height: 356px; margin-top: 16px; overflow: hidden; }
@@ -193,7 +193,7 @@ a { color: inherit; }
 .odas-plot > b { position: absolute; font-size: 10px; font-weight: 400; line-height: 8px; color: #18334a; opacity: .5; }
 .odas-plot > b.yl { left: 0; width: 20px; text-align: right; }
 .odas-plot > b.rl { left: 694px; width: 14px; }
-.odas-plot > i { position: absolute; bottom: 18.7px; width: 16.4px; border-radius: 4px 4px 0 0; background: rgba(24,51,74,.22); }
+.odas-plot > i { position: absolute; bottom: 18.7px; width: 16.4px; border-radius: 6px 6px 0 0; background: rgba(24,51,74,.22); }
 .odas-line { position: absolute; left: 39.7px; top: 45px; }
 .odas-line path { fill: none; stroke: #e31a1c; stroke-opacity: .1; stroke-width: 2.2; }
 .odas-plot em { position: absolute; width: 8px; height: 8px; border-radius: 50%; background: #e31a1c; box-shadow: 0 0 0 1.5px #fff; }
@@ -204,7 +204,7 @@ a { color: inherit; }
 .odas-grp + .odas-grp { margin-top: 20px; }
 .odas-side h4 { margin: 0 0 8px; padding-left: 12px; font-size: 14px; font-weight: 500; line-height: 20px; opacity: .5; }
 .odas-side ul { list-style: none; margin: 0; padding: 0; }
-.odas-side li { height: 32px; padding: 4px 12px; border-radius: 4px; font-size: 16px; line-height: 24px; }
+.odas-side li { height: 32px; padding: 4px 12px; border-radius: 8px; font-size: 16px; line-height: 24px; }
 .odas-side li.active { background: rgba(24,51,74,.1); font-weight: 500; }
 /* --- «по нарушениям ПДД»: две колонки горизонтальных баров --------------- */
 .otypes-legend { position: relative; justify-content: flex-start; }
@@ -218,7 +218,7 @@ a { color: inherit; }
 .hb { position: absolute; left: 0; height: 20px; }
 .hb em { position: absolute; left: 0; top: 5px; width: 104px; overflow: hidden; font-style: normal; font-size: 10px; line-height: 10px; color: #a3a3a3; white-space: nowrap; }
 .hb b { position: absolute; left: 112px; top: 2px; width: 32px; font-size: 10px; font-weight: 500; line-height: 16px; }
-.hb u { position: absolute; left: 152px; top: 0; height: 20px; border-radius: 4px; background: rgba(24,51,74,.22); text-decoration: none; }
+.hb u { position: absolute; left: 152px; top: 0; height: 20px; border-radius: 6px; background: rgba(24,51,74,.22); text-decoration: none; }
 .hb s { position: absolute; right: 8px; top: 2px; font-size: 10px; line-height: 16px; text-decoration: none; color: #18334a; }
 .c2 .hb b { left: 0; font-size: 12px; }
 .c2 .hb u { left: 40px; background: rgba(227,26,28,.22); }
@@ -227,16 +227,16 @@ a { color: inherit; }
 /* =============================================================
    § Панель «Фильтры» — СТАРАЯ фигма (dtp-old.fig, «Главная 2021», «filter» 431:157) — 04-filters.html
    Панель 400px #fff, padding 20; секции: label Medium 14/20 → 12 → контент (шаг 20 между секциями).
-   Потеряно в дампе (инстансы компонентов не раскрыты): внутренности кнопок участников и чекбоксов —
-   по конвенции галереи; радиусы (панель ~12, поля/кнопки/чипы ~8, чекбокс ~3, язычок ~8) — реконструкция.
+   Радиусы — из document.raw.json (панель r8, инпут r4, кнопки участников r8, свотчи r6=круг,
+   чипы r4, язычок r16, чекбокс 18×18 r3). Не раскрыты в дампе: внутренности инстансов участников.
    ============================================================= */
-.oflt { width: 400px; max-width: 100%; border-radius: 12px; background: #fff;
+.oflt { width: 400px; max-width: 100%; border-radius: 8px; background: #fff;
   box-shadow: var(--shadow-card); color: #18334a; font-family: Roboto, Arial, sans-serif; }
 .oflt-in { padding: 20px 20px 0; }
 .oflt h4 { margin: 0 0 12px; font-size: 14px; font-weight: 500; line-height: 20px; }
 .oflt h4 + * { margin-bottom: 20px; }
 .oflt-input { display: flex; align-items: center; justify-content: space-between; height: 39px; padding: 0 12px;
-  border-radius: 8px; background: #f4f8fa; font-size: 14px; }
+  border-radius: 4px; background: #f4f8fa; font-size: 14px; }
 .oflt-parts { display: grid; grid-template-columns: repeat(3, 112px); gap: 12px; }
 .oflt-parts button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
   width: 112px; height: 60px; padding: 0; border: 0; border-radius: 8px; background: #f4f8fa;
@@ -252,13 +252,13 @@ a { color: inherit; }
 .oflt-rows input:checked { border-color: #18334a; background-color: #18334a;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 8'%3E%3Cpath d='M1 4.2 3.6 6.8 9 1.2' stroke='white' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-position: center; background-repeat: no-repeat; background-size: 10px; }
-.oflt-rows i { width: 12px; height: 12px; margin: 0 8px 0 11px; border-radius: 3px; flex: none; }
+.oflt-rows i { width: 12px; height: 12px; margin: 0 8px 0 11px; border-radius: 6px; flex: none; }
 .oflt-chips { display: flex; flex-wrap: wrap; gap: 12px 8px; }
-.oflt-chips span { display: inline-flex; align-items: center; height: 32px; padding: 0 8px; border-radius: 8px;
+.oflt-chips span { display: inline-flex; align-items: center; height: 32px; padding: 0 8px; border-radius: 4px;
   background: #f4f8fa; font-size: 16px; line-height: 24px; }
 .oflt-chips span.edit { gap: 8px; padding-left: 8px; }
 .oflt-hide { display: flex; align-items: center; width: 108px; height: 32px; margin: 20px auto 0; padding: 0 12px;
-  border: 0; border-radius: 8px 8px 0 0; background: #ebeef0; cursor: pointer; }
+  border: 0; border-radius: 16px; background: #ebeef0; cursor: pointer; }
 
 /* =============================================================
    § Шапка и футер — 07-header-footer.html
