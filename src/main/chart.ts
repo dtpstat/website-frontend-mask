@@ -178,18 +178,20 @@ function renderChart() {
   // Столбцы — по «2 stats_by_days» 431:0: заливка #18334a @ .22 (union-вектор баров), без градиента
   const columns = values.map(([, bucket], index) => `<path d="${column(x(index), yCount(bucket.count), padT + plotH)}" fill="#18334a" fill-opacity=".22"></path>`).join("");
   const deadPoints = values.map(([, bucket], index) => [x(index), yDead(bucket.dead)] as const);
-  // Линия погибших — сплошная бледно-розовая со сглаживанием (Catmull-Rom → кубические Безье),
-  // маркеры — красные точки поверх линии; сглаженная кривая зажата снизу базой графика,
-  // иначе на чередовании нулей и значений она «ныряет» ниже оси (кривая Безье не покидает
-  // выпуклую оболочку опорных точек, поэтому достаточно зажать их ординаты)
+  // Линия погибших — сплошная бледно-розовая, сглажена как Line_1 в макете (вектор 5362 из
+  // dtp-old.fig): каждый пролёт — кубическая Безье с ГОРИЗОНТАЛЬНЫМИ контрольными точками
+  // «C x1+dx,y1 x2-dx,y2 x2,y2», dx = половина пролёта. Касательная в каждой точке нулевая —
+  // вокруг маркера линия всегда горизонтальна, а ордината кривой внутри пролёта — выпуклая
+  // смесь концов, поэтому на чередовании нулей и значений линия не «ныряет» ниже оси
+  // (Catmull-Rom здесь давал выброс под базу — потому и заменили)
   const base = padT + plotH;
   const smoothPath = (points: ReadonlyArray<readonly [number, number]>) => {
     if (points.length < 2) return "";
     const pts = points.map(([px, py]) => [px, Math.min(py, base)] as const);
     let d = `M${pts[0][0]},${pts[0][1]}`;
     for (let index = 0; index < pts.length - 1; index++) {
-      const p0 = pts[Math.max(0, index - 1)], p1 = pts[index], p2 = pts[index + 1], p3 = pts[Math.min(pts.length - 1, index + 2)];
-      d += ` C${p1[0] + (p2[0] - p0[0]) / 6},${p1[1] + (p2[1] - p0[1]) / 6} ${p2[0] - (p3[0] - p1[0]) / 6},${p2[1] - (p3[1] - p1[1]) / 6} ${p2[0]},${p2[1]}`;
+      const [x1, y1] = pts[index], [x2, y2] = pts[index + 1], dx = (x2 - x1) / 2;
+      d += ` C${x1 + dx},${y1} ${x2 - dx},${y2} ${x2},${y2}`;
     }
     return d;
   };
