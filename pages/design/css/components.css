@@ -193,7 +193,9 @@ a { color: inherit; }
               linear-gradient(#e6e6e6, #e6e6e6) 0 84px / 100% 1px no-repeat; }
 .ostat-bars { position: absolute; inset: auto 0 29px 4px; height: 85px; display: flex; align-items: flex-end; gap: 1px; }
 .ostat-bars i { flex: none; width: 12px; border-radius: 6px;
-  background: linear-gradient(180deg, rgba(47, 128, 237, .45) 0%, #2f80ed 100%); }  /* градиент из дампа, стопы потеряны */
+  /* реальные стопы из дампа (12:158, у всех 48 баров один градиент): сегменты по цветам легенды —
+     #ffcc66 0–63.4%, #99ccff 64–89.8%, #99cc99 90.3–100%; напр.ления в дампе нет (handles потеряны) — низ=жёлтый принят */
+  background: linear-gradient(0deg, #ffcc66 0 63.4%, #99ccff 64% 89.8%, #99cc99 90.3% 100%); }
 .ostat-bars i.dim { opacity: .5; }   /* вне диапазона слайдера бары полупрозрачны (op 0.5 в дампе) */
 .ostat-months { position: absolute; inset: auto 0 0 0; display: flex; justify-content: space-between;
   font-size: 10px; font-weight: 500; line-height: 12px; color: #979ea1; }
