@@ -48,6 +48,8 @@ function renderMapData(view) {
   else renderMapbox(visible, heatPoints, heatVisible);
   consumeLinkedPopup();
   const name = state.territory?.name ?? regionName(state.dataRegion);
+  // Заголовок карточки = тот же регион, что счётчики/статус: «Все регионы» не показываем никогда
+  $("#region-name").textContent = name || t("allRegions");
   setStatus(`${number().format(filtered.length)} ${t("accidents").toLowerCase()}${name ? ` — ${name}` : ""}`);
 }
 

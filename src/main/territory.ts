@@ -1,6 +1,6 @@
 // Территория: границы регионов, regionAtCenter, закрепление региона, поиск
 
-import { $, state, regionIndex, actions } from "./context.js";
+import { $, state, regionIndex, regionName, actions } from "./context.js";
 import { t } from "./i18n.js";
 import { refreshCascade } from "./filters.js";
 import { map, yandex, mapbox } from "./maps.js";
@@ -31,7 +31,9 @@ function featureBounds(feature) {
   return { west, south, east, north };
 }
 function updateTerritoryCard() {
-  $("#region-name").textContent = state.territory ? state.territory.name : t("allRegions");
+  // Без закрепления карточка живёт субъектом под центром — «Все регионы» остаётся
+  // только до первого набора данных (карточка вне субъектов РФ скрыта гейтом)
+  $("#region-name").textContent = state.territory ? state.territory.name : regionName(state.dataRegion) || t("allRegions");
   const locked = Boolean(state.territory);
   $("#lock-button").classList.toggle("locked", locked);
   $("#lock-button").setAttribute("aria-pressed", String(locked));
