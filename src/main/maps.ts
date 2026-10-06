@@ -22,7 +22,7 @@ const heatSettings = { radius: 6, blur: 9, minOpacity: .05 };
 const heatGradient = { 0: "rgba(126, 171, 85, 0)", .2: "rgba(126, 171, 85, 0.6)", .4: "rgba(255, 254, 85, 0.7)", .6: "rgba(245, 193, 66, 0.8)", .8: "rgba(223, 130, 68, 0.9)", 1: "rgba(176, 36, 24, 1)" };
 const heat = L.heatLayer([], { ...heatSettings, maxZoom: 12, gradient: heatGradient }).addTo(map);
 const yandexHeatSettings = { radius: 15, opacity: .5, intensityOfMidpoint: .5 };
-const yandex = { map: null as any, points: null as any, heatCanvas: null as HTMLCanvasElement | null, heatCtx: null as CanvasRenderingContext2D | null, loading: null as Promise<void> };
+const yandex = { map: null as any, points: null as any, mask: null as any, heatCanvas: null as HTMLCanvasElement | null, heatCtx: null as CanvasRenderingContext2D | null, loading: null as Promise<void> };
 const mapboxHeatSettings = { radius: 15, opacity: .5, intensity: .5 };
 const mapbox = { map: null as any, loading: null as Promise<void> };
 // Флаг зум-жеста: тепло Mapbox на время жеста скрыто (DTP-30)
@@ -232,6 +232,8 @@ async function ensureYandex(view) {
   await ymaps.ready();
   yandex.map = new ymaps.Map("yandex-map", { center: [view.center.longitude, view.center.latitude], zoom: view.zoom, controls: ["zoomControl"] }, { maxZoom: 20, minZoom: 1, avoidFractionalZoom: true, yandexMapDisablePoiInteractivity: true, suppressMapOpenBlock: true });
   yandex.points = new ymaps.GeoObjectCollection(); yandex.map.geoObjects.add(yandex.points);
+  // Коллекция маски «территория под центром» (src/main/geom.ts) — над точками, тепло (canvas z600) всё равно выше
+  yandex.mask = new ymaps.GeoObjectCollection(); yandex.map.geoObjects.add(yandex.mask);
   const canvas = document.createElement("canvas");
   canvas.className = "yandex-heat";
   $("#yandex-map").append(canvas);
@@ -259,7 +261,7 @@ async function ensureYandex(view) {
     const [cx, cy] = tick.globalPixelCenter;
     canvas.style.transform = `translate3d(${Math.round(anchor.x - cx)}px, ${Math.round(anchor.y - cy)}px, 0)`;
   });
-  yandex.map.events.add("actionend", () => { if (state.mapClient === "yandex") { yandexHeatZoomHold = false; actions.applyHeatMode(); scheduleYandexHeat(); updateYandexPointRadius(); } });
+  yandex.map.events.add("actionend", () => { if (state.mapClient === "yandex") { yandexHeatZoomHold = false; actions.applyHeatMode(); scheduleYandexHeat(); updateYandexPointRadius(); actions.applyRegionMask(); actions.scheduleRegionLookup(); } });
 }
 function loadMapboxScript() {
   const key = (window as any).MAPBOX_ACCESS_TOKEN;
@@ -280,16 +282,24 @@ async function ensureMapbox(view) {
     const paint = mapboxHeatPaint();
     map.addLayer({ id:"dtp-heat", type:"heatmap", source:"dtp-heat", paint:{ "heatmap-weight":["get", "weight"], "heatmap-intensity":paint.intensity, "heatmap-radius":paint.radius, "heatmap-opacity":paint.opacity, "heatmap-color":["interpolate", ["linear"], ["heatmap-density"], 0,"rgba(126, 171, 85, 0)", .2,"rgba(126, 171, 85, .6)", .4,"rgba(255, 254, 85, .7)", .6,"rgba(245, 193, 66, .8)", .8,"rgba(223, 130, 68, .9)", 1,"rgba(176, 36, 24, 1)"] } });
     map.addLayer({ id:"dtp-points", type:"circle", source:"dtp-points", paint:{ "circle-radius":5, "circle-color":["match", ["get", "severity"], 4,"#FF001A", 3,"#FF7F24", 1,"#FFB81F", "rgba(24, 51, 74, 0.5)"], "circle-stroke-width":0, "circle-opacity":1 } });
+    // Маска «территория под центром» (src/main/geom.ts): источник и слои — над данными; style.load
+    // может прийти после applyRegionMask, поэтому в хвосте setup() маска переприсовывается
+    if (!map.getSource("region-mask")) {
+      map.addSource("region-mask", { type:"geojson", data:{ type:"FeatureCollection", features:[] } });
+      map.addLayer({ id:"region-mask-fill", type:"fill", source:"region-mask", paint:{ "fill-color":"#AAAAAA", "fill-opacity":.5 } });
+      map.addLayer({ id:"region-mask-line", type:"line", source:"region-mask", paint:{ "line-color":"#FFFFFF", "line-opacity":.25, "line-width":1 } });
+    }
     map.on("click", "dtp-points", (event) => {
       const feature = event.features[0], popup = new mapboxgl.Popup().setLngLat(feature.geometry.coordinates).setHTML(feature.properties.popup).addTo(map);
       popup.on("close", clearPopupUrl);
       syncPopupUrl(feature.properties.id, feature.geometry.coordinates[1], feature.geometry.coordinates[0], map.getZoom());
     });
     renderMapbox(lastRender.visible, lastRender.heatPoints, lastRender.heatVisible);
+    actions.applyRegionMask();
   };
   mapbox.map.on("style.load", setup);
   mapbox.map.on("load", setup);
-  mapbox.map.on("moveend", () => { if (state.mapClient === "mapbox") actions.scheduleMapLoad(); });
+  mapbox.map.on("moveend", () => { if (state.mapClient === "mapbox") { actions.scheduleMapLoad(); actions.scheduleRegionLookup(); } });
   // На время зум-жеста тепло скрывается (DTP-30), точки остаются видимыми;
   // прозрачность возвращаем по значению слайдера, а не запомненную
   mapbox.map.on("zoomstart", () => { if (state.mapClient !== "mapbox" || mapboxHeatHold || !mapbox.map.getLayer("dtp-heat")) return; mapboxHeatHold = true; mapbox.map.setPaintProperty("dtp-heat", "heatmap-opacity", 0); });
@@ -300,11 +310,11 @@ async function switchMapClient(client) {
   if (client === state.mapClient) return;
   const view = currentView(); state.mapClient = client; localStorage.setItem("map-client", client); renderMapSwitcher(); renderHeatControls();
   $("#leaflet-map").hidden = client !== "leaflet"; $("#yandex-map").hidden = client !== "yandex"; $("#mapbox-map").hidden = client !== "mapbox";
-  if (client === "leaflet") { map.setView([view.center.latitude, view.center.longitude], view.zoom, { animate: false }); map.invalidateSize(); renderLeaflet(lastRender.visible, lastRender.heatPoints, lastRender.heatVisible); return; }
+  if (client === "leaflet") { map.setView([view.center.latitude, view.center.longitude], view.zoom, { animate: false }); map.invalidateSize(); renderLeaflet(lastRender.visible, lastRender.heatPoints, lastRender.heatVisible); actions.applyRegionMask(); return; }
   try {
-    if (client === "yandex") { await ensureYandex(view); renderYandex(lastRender.visible, lastRender.heatPoints, lastRender.heatVisible); }
-    else { await ensureMapbox(view); renderMapbox(lastRender.visible, lastRender.heatPoints, lastRender.heatVisible); mapbox.map.resize(); }
-  } catch { state.mapClient = "leaflet"; localStorage.setItem("map-client", "leaflet"); $("#yandex-map").hidden = true; $("#mapbox-map").hidden = true; $("#leaflet-map").hidden = false; renderMapSwitcher(); renderHeatControls(); setStatus(t("unavailable")); }
+    if (client === "yandex") { await ensureYandex(view); renderYandex(lastRender.visible, lastRender.heatPoints, lastRender.heatVisible); actions.applyRegionMask(); }
+    else { await ensureMapbox(view); renderMapbox(lastRender.visible, lastRender.heatPoints, lastRender.heatVisible); mapbox.map.resize(); actions.applyRegionMask(); }
+  } catch { state.mapClient = "leaflet"; localStorage.setItem("map-client", "leaflet"); $("#yandex-map").hidden = true; $("#mapbox-map").hidden = true; $("#leaflet-map").hidden = false; renderMapSwitcher(); renderHeatControls(); setStatus(t("unavailable")); actions.applyRegionMask(); }
 }
 
 function renderHeatControls() {

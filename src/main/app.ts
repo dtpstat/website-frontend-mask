@@ -9,10 +9,11 @@ import { map, renderMapSwitcher, switchMapClient, renderHeatControls, updateHeat
 import { updateTerritoryCard, drawRegionSuggest } from "./territory.js";
 import { renderChart, setChartMode, chartAxis, chartDatesAvailable } from "./chart.js";
 import { loadMapData, loadFilters, applyHeatMode } from "./pipeline.js";
+import { scheduleRegionLookup, applyRegionMask } from "./geom.js";
 
 // Реестр восходящих вызовов заполняется до boot: подписки ниже по файлу начинают
 // стрелять только после этого, так что колбэки ранних модулей всегда видят значения
-Object.assign(actions, { loadMapData, refreshCascade, applyLanguage, scheduleMapLoad, applyHeatMode });
+Object.assign(actions, { loadMapData, refreshCascade, applyLanguage, scheduleMapLoad, applyHeatMode, scheduleRegionLookup, applyRegionMask });
 
 function applyLanguage() {
   document.documentElement.lang = state.language;
@@ -116,7 +117,7 @@ function downloadData() {
 document.querySelectorAll("#heat-controls input").forEach((input) => input.addEventListener("input", updateHeatControls));
 let moveTimer;
 function scheduleMapLoad() { clearTimeout(moveTimer); state.abort?.abort(); state.dataLoadId++; moveTimer = setTimeout(loadMapData, 350); }
-map.on("moveend", () => { if (state.mapClient === "leaflet") scheduleMapLoad(); });
+map.on("moveend", () => { if (state.mapClient === "leaflet") { scheduleMapLoad(); scheduleRegionLookup(); } });
 // На время зум-жеста тепло скрывается классом heat-hold (DTP-30):
 // канвас листлета тянется трансформом панели и выглядит «плывущим»
 map.on("zoomstart", () => map.getContainer().classList.add("heat-hold"));
@@ -124,3 +125,4 @@ map.on("zoomend", () => { if (state.mapClient !== "leaflet") return; map.getCont
 applyLanguage();
 const savedMapClient = state.mapClient; state.mapClient = "leaflet"; renderMapSwitcher(); if (savedMapClient !== "leaflet") switchMapClient(savedMapClient);
 loadFilters();
+scheduleRegionLookup();

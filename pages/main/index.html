@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" />
-    <link rel="stylesheet" href="styles.css?v=70" />
+    <link rel="stylesheet" href="styles.css?v=71" />
     <link rel="stylesheet" href="mapbox.css" />
   </head>
   <body>
@@ -25,6 +25,7 @@
         <label class="heat-slider"><span id="heat-blur-label" data-i18n="heatBlur">Размытие</span><output id="heat-blur-value">9 px</output><input id="heat-blur" type="range" min="0" max="30" value="9"></label>
         <label class="heat-slider"><span id="heat-opacity-label" data-i18n="heatOpacity">Мин. непрозрачность</span><output id="heat-opacity-value">5%</output><input id="heat-opacity" type="range" min="0" max="50" value="5"></label>
       </section>
+      <div id="region-plate" class="region-plate" hidden data-i18n-aria="regionPlate"></div>
       <aside id="filters" class="filters" aria-label="Фильтры карты">
         <div class="filters-heading">
           <div>
@@ -165,6 +166,6 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <script src="maps-config.js"></script>
-    <script type="module" src="main/app.js?v=70"></script>
+    <script type="module" src="main/app.js?v=71"></script>
   </body>
 </html>
