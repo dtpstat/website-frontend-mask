@@ -1,82 +1,158 @@
-<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>06 · Панель «Статистика» (старая фигма)</title>
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>06 · Дэшборд «Статистика» (старая фигма)</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=PT+Root+UI:wght@400;500;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <link href="css/components.css" rel="stylesheet"></head><body>
 <div class="wrap">
 
-<div class="sec"><h2>Панель «Статистика» · СТАРАЯ фигма dtp-old.fig («v3 / C - Статистика» 12:92) · шрифт PT Root UI</h2>
+<div class="sec"><h2>Дэшборд «Статистика» · СТАРАЯ фигма dtp-old.fig («Главная 2021», «2 stats_by_days» 431:0) · Roboto</h2>
   <div class="onmap">
-    <div class="ostat">
-      <div class="ostat-head">
-        <strong>Статистика</strong>
-        <label class="ostat-check"><input type="checkbox">С учётом фильтров</label>
+    <div class="odas">
+      <div class="odas-head">
+        <div class="odas-place"><strong>Москва</strong><span>Восточное Измайлово</span></div>
+        <div class="odas-cnt" style="left:209px"><span>ДТП</span><b>38 109</b></div>
+        <div class="odas-cnt" style="left:318px"><span>Пострадали</span><b class="inj">28 566</b></div>
+        <div class="odas-cnt" style="left:438px"><span>Погибли</span><b class="dth">13 936</b></div>
+        <button class="odas-hide" style="left:846px" type="button">Скрыть<svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" stroke="#18334a" stroke-width="1.6" stroke-linecap="round"/></svg></button>
       </div>
-      <button class="ostat-close" aria-label="Закрыть"></button>
-
-      <div class="ostat-b1">
-        <div>
-          <h3>Количество ДТП с пострадавшими</h3>
-          <div class="ostat-type">
-            <span><i style="background:#ffcc66"></i>Автомобилисты</span>
-            <span><i style="background:#99ccff"></i>Пешеходы</span>
-            <span><i style="background:#99cc99"></i>Велосипедисты</span>
+      <div class="odas-body">
+        <div class="odas-main">
+          <h3>Распределение по дням</h3>
+          <p>За период: Март — Апрель 2020</p>
+          <p>Активные фильтры: Участники ДТП (Пешеходы, Велосипедисты), Вред здоровью (Все)</p>
+          <div class="odas-legend">
+            <span><i></i>Количество ДТП</span>
+            <span>Погибшие<i class="red"></i></span>
           </div>
-          <div class="ostat-chart">
-            <!-- вне диапазона слайдера бары в макете полупрозрачны (op 0.5): 33 до, 12 в диапазоне, 3 после -->
-            <div class="ostat-bars"><i class="dim" style="height:50px"></i><i class="dim" style="height:51.7px"></i><i class="dim" style="height:54.8px"></i><i class="dim" style="height:54.8px"></i><i class="dim" style="height:74.8px"></i><i class="dim" style="height:68.3px"></i><i class="dim" style="height:64.8px"></i><i class="dim" style="height:74.8px"></i><i class="dim" style="height:78.3px"></i><i class="dim" style="height:63px"></i><i class="dim" style="height:63px"></i><i class="dim" style="height:80px"></i><i class="dim" style="height:46.5px"></i><i class="dim" style="height:50px"></i><i class="dim" style="height:56.5px"></i><i class="dim" style="height:56.5px"></i><i class="dim" style="height:61.7px"></i><i class="dim" style="height:54.8px"></i><i class="dim" style="height:58.3px"></i><i class="dim" style="height:63px"></i><i class="dim" style="height:71.7px"></i><i class="dim" style="height:63px"></i><i class="dim" style="height:56.5px"></i><i class="dim" style="height:54.8px"></i><i class="dim" style="height:38.3px"></i><i class="dim" style="height:44.8px"></i><i class="dim" style="height:54.8px"></i><i class="dim" style="height:51.7px"></i><i class="dim" style="height:50px"></i><i class="dim" style="height:58.3px"></i><i class="dim" style="height:54.8px"></i><i class="dim" style="height:61.7px"></i><i class="dim" style="height:63px"></i><i style="height:61.7px"></i><i style="height:60px"></i><i style="height:63px"></i><i style="height:48.3px"></i><i style="height:36.5px"></i><i style="height:48.3px"></i><i style="height:53px"></i><i style="height:70px"></i><i style="height:61.7px"></i><i style="height:51.7px"></i><i style="height:73px"></i><i style="height:66.5px"></i><i class="dim" style="height:66.5px"></i><i class="dim" style="height:71.7px"></i><i class="dim" style="height:46.5px"></i></div>
-            <span class="ostat-hdl" style="left:428px"></span>
-            <span class="ostat-hdl" style="left:585px"></span>
-            <div class="ostat-months"><span>Апр 2015</span><span>Июль 2015</span><span>Окт 2015</span><span>Янв 2016</span><span>Апр 2016</span><span>Июль 2016</span><span>Окт 2016</span><span>Янв 2017</span><span>Апр 2017</span><span>Июль 2017</span><span>Окт 2017</span><span>Янв 2018</span><span>Апр 2018</span><span>Июль 2018</span><span>Окт 2018</span><span>Янв 2019</span></div>
+          <div class="odas-plot">
+<div class="odas-grid"><s style="top:4.7px"></s><s style="top:46.3px"></s><s style="top:87.8px"></s><s style="top:129.4px"></s><s style="top:171.0px"></s><s style="top:212.5px"></s><s style="top:254.1px"></s><s style="top:295.7px"></s><s style="top:337.3px"></s></div><b class="yl" style="top:0.7000000000000002px">800</b><b class="yl" style="top:42.3px">700</b><b class="yl" style="top:83.8px">600</b><b class="yl" style="top:125.4px">500</b><b class="yl" style="top:167px">400</b><b class="yl" style="top:208.5px">300</b><b class="yl" style="top:250.1px">200</b><b class="yl" style="top:291.7px">100</b><b class="yl" style="top:333.3px">0</b><b class="rl" style="top:0.7px">30</b><b class="rl" style="top:56.5px">25</b><b class="rl" style="top:112.4px">20</b><b class="rl" style="top:168.2px">15</b><b class="rl" style="top:224.0px">10</b><b class="rl" style="top:279.9px">5</b><b class="rl" style="top:335.7px">0</b><i style="left:32.0px;height:241.7px"></i><i style="left:60.0px;height:216.4px"></i><i style="left:113.8px;height:192.0px"></i><i style="left:168.7px;height:73.1px"></i><i style="left:223.6px;height:19.7px"></i><i style="left:277.5px;height:2.8px"></i><i style="left:332.4px;height:15.9px"></i><i style="left:387.2px;height:163.9px"></i><i style="left:441.1px;height:302.6px"></i><i style="left:496.0px;height:326.0px"></i><i style="left:550.9px;height:291.4px"></i><i style="left:604.8px;height:249.2px"></i><i style="left:659.7px;height:212.7px"></i><svg class="odas-line" width="628.67" height="291" viewBox="0 0 686 291" preserveAspectRatio="none"><path d="M 0.00 67.00 C 0.00 67.00 14.00 0.00 29.00 0.00 C 44.00 0.00 44.00 34.00 59.00 34.00 C 74.00 34.00 74.00 101.00 89.00 101.00 C 104.00 101.00 104.00 190.00 119.00 190.00 C 134.00 190.00 134.00 246.00 149.00 246.00 C 164.00 246.00 164.00 279.00 178.00 279.00 C 193.00 279.00 193.00 279.00 208.00 279.00 C 223.00 279.00 223.00 291.00 238.00 291.00 C 253.00 291.00 253.00 291.00 268.00 291.00 C 283.00 291.00 283.00 291.00 298.00 291.00 C 313.00 291.00 313.00 279.00 328.00 279.00 C 343.00 279.00 343.00 257.00 357.00 257.00 C 372.00 257.00 372.00 212.00 387.00 212.00 C 402.00 212.00 402.00 157.00 417.00 157.00 C 432.00 157.00 432.00 123.00 447.00 123.00 C 462.00 123.00 462.00 145.00 477.00 145.00 C 492.00 145.00 492.00 56.00 507.00 56.00 C 521.00 56.00 521.00 134.00 536.00 134.00 C 551.00 134.00 551.00 190.00 566.00 190.00 C 581.00 190.00 581.00 224.00 596.00 224.00 C 611.00 224.00 611.00 224.00 626.00 224.00 C 641.00 224.00 641.00 145.00 656.00 145.00 C 671.00 145.00 686.00 190.00 686.00 190.00"/></svg><em style="left:36.0px;top:108.0px"></em><em style="left:62.6px;top:41.0px"></em><em style="left:90.1px;top:75.0px"></em><em style="left:117.6px;top:142.0px"></em><em style="left:145.1px;top:231.0px"></em><em style="left:172.5px;top:287.0px"></em><em style="left:199.1px;top:320.0px"></em><em style="left:226.6px;top:320.0px"></em><em style="left:254.1px;top:332.0px"></em><em style="left:281.6px;top:332.0px"></em><em style="left:309.1px;top:332.0px"></em><em style="left:336.6px;top:320.0px"></em><em style="left:363.2px;top:298.0px"></em><em style="left:390.7px;top:253.0px"></em><em style="left:418.1px;top:198.0px"></em><em style="left:445.6px;top:164.0px"></em><em style="left:473.1px;top:186.0px"></em><em style="left:500.6px;top:97.0px"></em><em style="left:527.2px;top:175.0px"></em><em style="left:554.7px;top:231.0px"></em><em style="left:582.2px;top:265.0px"></em><em style="left:609.7px;top:265.0px"></em><em style="left:637.2px;top:186.0px"></em><em style="left:664.7px;top:231.0px"></em><div class="odas-xl"><span style="left:0px">Март</span><span style="left:109px">5</span><span style="left:245px">10</span><span style="left:382px">15</span><span style="left:519px">20</span></div>
           </div>
+          <div class="odas-scroll"><i></i></div>
         </div>
-        <aside class="ostat-plate">
-          <div><span>Всего ДТП</span><b>38 109</b></div>
-          <div class="inj"><span>Пострадавшие</span><b>28 566</b></div>
-          <div class="dth"><span>Погибшие</span><b>13 936</b></div>
+        <aside class="odas-side">
+          <div class="odas-grp">
+            <h4>Временные интервалы</h4>
+            <ul>
+              <li>По часам</li>
+              <li class="active">По дням</li>
+              <li>По месяцам</li>
+              <li>По годам</li>
+            </ul>
+          </div>
+          <div class="odas-grp">
+            <h4>Свойства ДТП</h4>
+            <ul>
+              <li>Типы ДТП</li>
+              <li>Нарушения ПДД</li>
+              <li>Теги</li>
+              <li>Улицы</li>
+              <li>Инфраструктура</li>
+              <li>Погода</li>
+              <li>Освещённость</li>
+            </ul>
+          </div>
         </aside>
       </div>
+    </div>
+  </div>
+</div>
 
-      <hr class="ostat-hr">
-
-      <div class="ostat-b2">
-        <div>
-          <div class="ostat-b2head">
-            <h3>Среднее количество ДТП за месяц</h3>
-            <div class="ostat-tabs"><span class="active">Все</span><span>Пострадавшие</span><span>Погибшие</span></div>
+<div class="sec"><h2>Тот же дэшборд, «2 stats_by_types» (440:30) — разрез по нарушениям ПДД</h2>
+  <div class="onmap">
+    <div class="odas">
+      <div class="odas-head">
+        <div class="odas-place"><strong>Москва</strong><span>Восточное Измайлово</span></div>
+        <div class="odas-cnt" style="left:209px"><span>ДТП</span><b>38 109</b></div>
+        <div class="odas-cnt" style="left:318px"><span>Пострадали</span><b class="inj">28 566</b></div>
+        <div class="odas-cnt" style="left:438px"><span>Погибли</span><b class="dth">13 936</b></div>
+        <button class="odas-hide" style="left:846px" type="button">Скрыть<svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" stroke="#18334a" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+      </div>
+      <div class="odas-body">
+        <div class="odas-main">
+          <h3>Распределение по нарушениям ПДД</h3>
+          <p>За период: Март — Апрель 2020</p>
+          <p>Активные фильтры: Участники ДТП (Пешеходы, Велосипедисты), Вред здоровью (Все)</p>
+          <div class="odas-legend otypes-legend">
+            <span class="c1"><i></i>Количество ДТП</span>
+            <span class="c2"><i class="red"></i>Количество погибших</span>
           </div>
-          <div class="ostat-graph">
-            <div class="ostat-gy"><span>1200</span><span>1000</span><span>800</span><span>600</span><span>400</span><span>200</span><span>0</span></div>
-            <div>
-              <svg width="600" height="211" viewBox="0 0 600 211" fill="none" aria-hidden="true">
-                <defs>
-                  <linearGradient id="ogBlue" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2f80ed" stop-opacity=".4"/><stop offset="1" stop-color="#2f80ed" stop-opacity="0"/></linearGradient>
-                  <linearGradient id="ogYellow" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f2c94c" stop-opacity=".4"/><stop offset="1" stop-color="#f2c94c" stop-opacity="0"/></linearGradient>
-                  <linearGradient id="ogPurple" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#bb6bd9" stop-opacity=".4"/><stop offset="1" stop-color="#bb6bd9" stop-opacity="0"/></linearGradient>
-                  <linearGradient id="ogGreen" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#27ae60" stop-opacity=".4"/><stop offset="1" stop-color="#27ae60" stop-opacity="0"/></linearGradient>
-                </defs>
-                <g stroke="#f4f8fa"><line x1="0" y1="0" x2="0" y2="211"/><line x1="50" y1="0" x2="50" y2="211"/><line x1="100" y1="0" x2="100" y2="211"/><line x1="150" y1="0" x2="150" y2="211"/><line x1="200" y1="0" x2="200" y2="211"/><line x1="250" y1="0" x2="250" y2="211"/><line x1="300" y1="0" x2="300" y2="211"/><line x1="350" y1="0" x2="350" y2="211"/><line x1="400" y1="0" x2="400" y2="211"/><line x1="450" y1="0" x2="450" y2="211"/><line x1="500" y1="0" x2="500" y2="211"/><line x1="550" y1="0" x2="550" y2="211"/><line x1="599.5" y1="0" x2="599.5" y2="211"/></g>
-                <g stroke="#e6e6e6"><line x1="0" y1="0.5" x2="600" y2="0.5"/><line x1="0" y1="35.5" x2="600" y2="35.5"/><line x1="0" y1="70.5" x2="600" y2="70.5"/><line x1="0" y1="105.5" x2="600" y2="105.5"/><line x1="0" y1="140.5" x2="600" y2="140.5"/><line x1="0" y1="175.5" x2="600" y2="175.5"/><line x1="0" y1="210.5" x2="600" y2="210.5"/></g>
-                <path fill="url(#ogBlue)" d="M25,140 C65,120 85,96 125,102 S185,158 225,152 S295,84 335,88 S405,148 445,142 S535,74 575,82 L575,211 L25,211 Z"/>
-                <path fill="url(#ogYellow)" d="M25,168 C90,150 120,112 180,120 S260,58 310,56 S390,108 440,116 S540,88 575,78 L575,211 L25,211 Z"/>
-                <path fill="url(#ogPurple)" d="M25,158 C80,142 110,150 160,136 S240,92 285,97 S365,138 415,142 S535,102 575,96 L575,211 L25,211 Z"/>
-                <path fill="url(#ogGreen)" d="M25,172 C100,164 140,132 200,140 S290,106 340,102 S430,150 490,154 S555,136 575,126 L575,211 L25,211 Z"/>
-                <path stroke="#2f80ed" stroke-width="2" d="M25,140 C65,120 85,96 125,102 S185,158 225,152 S295,84 335,88 S405,148 445,142 S535,74 575,82"/>
-                <path stroke="#f2c94c" stroke-width="2" d="M25,168 C90,150 120,112 180,120 S260,58 310,56 S390,108 440,116 S540,88 575,78"/>
-                <path stroke="#bb6bd9" stroke-width="2" d="M25,158 C80,142 110,150 160,136 S240,92 285,97 S365,138 415,142 S535,102 575,96"/>
-                <path stroke="#27ae60" stroke-width="2" d="M25,172 C100,164 140,132 200,140 S290,106 340,102 S430,150 490,154 S555,136 575,126"/>
-              </svg>
-              <div class="ostat-gx"><span>Январь</span><span>Февраль</span><span>Март</span><span>Апрель</span><span>Май</span><span>Июнь</span><span>Июль</span><span>Август</span><span>Сентябрь</span><span>Октябрь</span><span>Ноябрь</span><span>Декабрь</span></div>
+          <div class="otypes">
+            <div class="otypes-col c1">
+              <div class="hb" style="top:6px"><em>Столкновение</em><b>132</b><u style="width:224px"><s>20,56%</s></u></div><div class="hb" style="top:40px"><em>Наезд на пешехода</em><b>112</b><u style="width:191px"><s>17,45%</s></u></div><div class="hb" style="top:73px"><em>Опрокидывание</em><b>95</b><u style="width:169px"><s>14,80%</s></u></div><div class="hb" style="top:107px"><em>Text</em><b>76</b><u style="width:148px"><s>14,8%</s></u></div><div class="hb" style="top:141px"><em>Text</em><b>63</b><u style="width:130px"><s>9,81%</s></u></div><div class="hb" style="top:174px"><em>Text</em><b>54</b><u style="width:111px"><s>8,41%</s></u></div><div class="hb" style="top:208px"><em>Text</em><b>49</b><u style="width:90px"><s>7,63%</s></u></div><div class="hb" style="top:241px"><em>Text</em><b>32</b><u style="width:78px"><s>4,98%</s></u></div><div class="hb" style="top:275px"><em>Text</em><b>21</b><u style="width:53px"><s>3,27%</s></u></div><div class="hb" style="top:309px"><em>Text</em><b>8</b><u style="width:23px"><s>1,25%</s></u></div>
+            </div>
+            <div class="otypes-col c2">
+              <div class="hb" style="top:6px"><b>132</b><u style="width:224px"><s>20,56%</s></u></div><div class="hb" style="top:40px"><b>112</b><u style="width:191px"><s>17,45%</s></u></div><div class="hb" style="top:73px"><b>95</b><u style="width:169px"><s>14,80%</s></u></div><div class="hb" style="top:107px"><b>76</b><u style="width:148px"><s>14,8%</s></u></div><div class="hb" style="top:141px"><b>63</b><u style="width:130px"><s>9,81%</s></u></div><div class="hb" style="top:174px"><b>54</b><u style="width:111px"><s>8,41%</s></u></div><div class="hb" style="top:208px"><b>49</b><u style="width:90px"><s>7,63%</s></u></div><div class="hb" style="top:241px"><b>32</b><u style="width:78px"><s>4,98%</s></u></div><div class="hb" style="top:275px"><b>21</b><u style="width:53px"><s>3,27%</s></u></div><div class="hb" style="top:309px"><b>8</b><u style="width:23px"><s>1,25%</s></u></div>
             </div>
           </div>
         </div>
-        <aside class="ostat-years">
-          <label><input type="checkbox" checked><i style="background:#bb6bd9"></i>2015</label>
-          <label><input type="checkbox" checked><i style="background:#2f80ed"></i>2016</label>
-          <label><input type="checkbox" checked><i style="background:#27ae60"></i>2017</label>
-          <label><input type="checkbox" checked><i style="background:#f2c94c"></i>2018</label>
+        <aside class="odas-side">
+          <div class="odas-grp">
+            <h4>Временные интервалы</h4>
+            <ul>
+              <li>По часам</li>
+              <li>По дням</li>
+              <li>По месяцам</li>
+              <li>По годам</li>
+            </ul>
+          </div>
+          <div class="odas-grp">
+            <h4>Свойства ДТП</h4>
+            <ul>
+              <li class="active">Типы ДТП</li>
+              <li>Нарушения ПДД</li>
+              <li>Теги</li>
+              <li>Улицы</li>
+              <li>Инфраструктура</li>
+              <li>Погода</li>
+              <li>Освещённость</li>
+            </ul>
+          </div>
         </aside>
       </div>
+    </div>
+  </div>
+</div>
 
+<div class="sec"><h2>Тот же дэшборд, «2 stats_by_days_error» (438:23) — период больше 90 дней</h2>
+  <div class="onmap">
+    <div class="odas odas--err">
+      <div class="odas-head">
+        <div class="odas-place"><strong>Москва</strong><span>Восточное Измайлово</span></div>
+        <div class="odas-cnt" style="left:209px"><span>ДТП</span><b>38 109</b></div>
+        <div class="odas-cnt" style="left:318px"><span>Пострадали</span><b class="inj">28 566</b></div>
+        <div class="odas-cnt" style="left:438px"><span>Погибли</span><b class="dth">13 936</b></div>
+        <button class="odas-hide" style="left:846px" type="button">Скрыть<svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" stroke="#18334a" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+      </div>
+      <div class="odas-body">
+        <div class="odas-main">
+          <h3>Распределение по дням</h3>
+          <p>За период: Апрель 2019 — Апрель 2020</p>
+          <p>Активные фильтры: Участники ДТП (Пешеходы, Велосипедисты), Вред здоровью (Все)</p>
+          <div class="odas-err">Невозможно отобразить данные.<br>Выберите период максимум до 90 дней (3 месяца).</div>
+        </div>
+        <aside class="odas-side">
+          <div class="odas-grp">
+            <h4>Временные интервалы</h4>
+            <ul>
+              <li>По часам</li>
+              <li class="active">По дням</li>
+              <li>По месяцам</li>
+              <li>По годам</li>
+            </ul>
+          </div>
+          <div class="odas-grp">
+            <h4>Свойства ДТП</h4>
+            <ul>
+              <li>Типы ДТП</li>
+              <li>Нарушения ПДД</li>
+              <li>Теги</li>
+              <li>Улицы</li>
+              <li>Инфраструктура</li>
+              <li>Погода</li>
+              <li>Освещённость</li>
+            </ul>
+          </div>
+        </aside>
+      </div>
     </div>
   </div>
 </div>

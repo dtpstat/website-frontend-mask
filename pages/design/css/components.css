@@ -160,81 +160,71 @@ a { color: inherit; }
 .sw.active .tile { border-color: var(--navy); }
 
 /* =============================================================
-   § Панель «Статистика» — СТАРАЯ фигма (dtp-old.fig, «v3 / C - Статистика» 12:92) — 06-dashboard.html
-   Шрифт старого макета — PT Root UI (Regular/Medium/Bold). Координаты — из document.raw.json.
-   ============================================================= */
-.ostat { position: relative; width: 800px; max-width: 100%; padding: 20px 20px 40px; border-radius: 8px;
-  background: #fff; box-shadow: var(--shadow-card); color: #18334a;
-  font-family: 'PT Root UI', Roboto, Arial, sans-serif; }
-.ostat-head { display: flex; align-items: center; gap: 30px; }
-.ostat-head strong { font-size: 20px; font-weight: 700; line-height: 24px; }            /* Bold 20/24 */
-.ostat-check { display: inline-flex; align-items: center; gap: 10px; font-size: 16px; line-height: 24px; cursor: pointer; }
-.ostat-check input { width: 18px; height: 18px; margin: 0; border: 2px solid #d1dee3; border-radius: 3px;
-  appearance: none; -webkit-appearance: none; background: #fff; cursor: pointer; flex: none; }
-.ostat-check input:checked { border-color: #2f80ed; background-color: #2f80ed;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 8'%3E%3Cpath d='M1 4.2 3.6 6.8 9 1.2' stroke='white' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-position: center; background-repeat: no-repeat; background-size: 10px; }
-.ostat-close { position: absolute; top: 25px; right: 25px; width: 14px; height: 14px; padding: 0; border: 0;
-  cursor: pointer; background: #4c6779;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M2 2l10 10M12 2L2 12' stroke='black' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") center/contain no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M2 2l10 10M12 2L2 12' stroke='black' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") center/contain no-repeat; }
-.ostat h3 { margin: 0; font-size: 14px; font-weight: 700; line-height: 24px; }          /* Bold 14/24 */
-.ostat-hr { height: 1px; margin: 20px 0; border: 0; background: #f4f8fa; }
-
-/* — блок 1: месячные бары + инфоплашка — */
-.ostat-b1 { display: grid; grid-template-columns: 1fr 108px; column-gap: 20px; margin-top: 20px; }
-.ostat-type { display: flex; gap: 10px; margin-top: 3px; font-size: 10px; font-weight: 500; line-height: 12px; color: #979ea1; }
-.ostat-type span { display: inline-flex; align-items: center; gap: 6px; }
-.ostat-type i { width: 8px; height: 8px; border-radius: 50%; }
-.ostat-chart { position: relative; height: 112px; margin-top: 9px;
-  /* сетка из дампа: две линии (y=0, y=42) и база (y=84) на всю ширину */
-  background: linear-gradient(#e6e6e6, #e6e6e6) 0 0 / 100% 1px no-repeat,
-              linear-gradient(#e6e6e6, #e6e6e6) 0 42px / 100% 1px no-repeat,
-              linear-gradient(#e6e6e6, #e6e6e6) 0 84px / 100% 1px no-repeat; }
-.ostat-bars { position: absolute; inset: auto 0 29px 4px; height: 85px; display: flex; align-items: flex-end; gap: 1px; }
-.ostat-bars i { flex: none; width: 12px; border-radius: 6px;
-  /* реальные стопы из дампа (12:158, у всех 48 баров один градиент): сегменты по цветам легенды —
-     #ffcc66 0–63.4%, #99ccff 64–89.8%, #99cc99 90.3–100%; напр.ления в дампе нет (handles потеряны) — низ=жёлтый принят */
-  background: linear-gradient(0deg, #ffcc66 0 63.4%, #99ccff 64% 89.8%, #99cc99 90.3% 100%); }
-.ostat-bars i.dim { opacity: .5; }   /* вне диапазона слайдера бары полупрозрачны (op 0.5 в дампе) */
-.ostat-months { position: absolute; inset: auto 0 0 0; display: flex; justify-content: space-between;
-  font-size: 10px; font-weight: 500; line-height: 12px; color: #979ea1; }
-.ostat-months span { width: 38px; white-space: normal; }   /* в макете метки 38×24 — месяц над годом */
-.ostat-hdl { position: absolute; top: -3px; width: 8px; height: 91px; border: 1px solid #18334a; border-radius: 4px;
-  background: #fff; box-shadow: 0 2px 6px rgba(24, 51, 74, .2); }
-.ostat-hdl::after { content: ""; position: absolute; left: 2px; top: 50%; width: 2px; height: 10px; transform: translateY(-50%);
-  background: repeating-linear-gradient(180deg, #18334a 0 2px, transparent 2px 4px); }
-.ostat-plate { display: flex; flex-direction: column; justify-content: center; gap: 4px; width: 108px; height: 160px;
-  padding: 10px 6px; border-radius: 8px; background: #f4f8fa; }
-.ostat-plate > div { display: grid; }
-.ostat-plate b { font-size: 16px; font-weight: 700; line-height: 20px; }               /* Bold 16/20 */
-.ostat-plate span { font-size: 14px; font-weight: 700; line-height: 24px; }            /* Bold 14/24 */
-.ostat-plate .inj b { color: #ffc107; }
-.ostat-plate .dth b { color: #dc3545; }
-
-/* — блок 2: линии по годам — */
-.ostat-b2 { display: grid; grid-template-columns: 1fr 108px; column-gap: 25px; margin-top: 20px; }
-.ostat-b2head { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
-.ostat-tabs { display: flex; gap: 10px; }
-.ostat-tabs span { padding: 3px 5px; border: 1px solid #d1dee3; border-radius: 4px;
-  font-size: 10px; font-weight: 700; line-height: 12px; color: #18334a; opacity: .5; }  /* Bold 10/12, неактивные — текст 50% */
-.ostat-tabs span.active { opacity: 1; }
-.ostat-graph { display: grid; grid-template-columns: 22px 1fr; gap: 5px; margin-top: 6px; }
-.ostat-gy { display: flex; flex-direction: column; justify-content: space-between; height: 211px;
-  font-size: 10px; font-weight: 500; line-height: 12px; color: #979ea1; text-align: right; }
-.ostat-gx { display: flex; justify-content: space-around; margin-top: 6px;
-  font-size: 10px; font-weight: 500; line-height: 12px; color: #979ea1; }
-.ostat-years { display: flex; flex-direction: column; gap: 4px; width: 108px; height: 125px; padding: 10px 8px;
-  border-radius: 8px; background: #f4f8fa; }
-.ostat-years label { position: relative; display: block; height: 24px; padding-left: 50px; font-size: 16px; line-height: 24px; cursor: pointer; }
-.ostat-years input { position: absolute; left: 0; top: 3px; width: 18px; height: 18px; margin: 0; border: 0; border-radius: 3px;
-  appearance: none; -webkit-appearance: none; background-color: var(--pale); cursor: pointer; flex: none; }
-.ostat-years input:checked { background-color: #2f80ed;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 8'%3E%3Cpath d='M1 4.2 3.6 6.8 9 1.2' stroke='white' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-position: center; background-repeat: no-repeat; background-size: 10px; }
-.ostat-years i { position: absolute; left: 28px; top: 6px; width: 12px; height: 12px; border-radius: 6px; }
-
 /* =============================================================
+   § Дэшборд «Статистика» — СТАРАЯ фигма (dtp-old.fig, «Главная 2021»:
+   «2 stats_by_days» 431:0 + «2 stats_by_types» 440:30) — 06-dashboard.html
+   Шрифт — Roboto. Всё из document.agent.json (см. §9 реестра).
+   Потеряно в дампе и реконструировано: радиусы (панель ~12, бары ~4 сверху,
+   чипы меню ~4, «Скрыть» ~6, скролл ~3), вес обводки линии (~2) и точек (~1.5).
+   ============================================================= */
+.odas { width: 980px; max-width: 100%; border-radius: 12px; background: #fff;
+  box-shadow: var(--shadow-card); color: #18334a; font-family: Roboto, Arial, sans-serif; }
+.odas-head { position: relative; height: 76px; }
+.odas-place { position: absolute; left: 20px; top: 12px; }
+.odas-place strong { display: block; font-size: 20px; font-weight: 700; line-height: 28px; }
+.odas-place span { display: block; font-size: 14px; line-height: 20px; opacity: .5; }
+.odas-cnt { position: absolute; top: 12px; }
+.odas-cnt span { display: block; font-size: 14px; font-weight: 500; line-height: 20px; opacity: .5; }
+.odas-cnt b { font-size: 20px; font-weight: 700; line-height: 28px; }
+.odas-cnt b.inj { color: #fecc5c; }
+.odas-cnt b.dth { color: #e31a1c; }
+.odas-hide { position: absolute; top: 20px; display: inline-flex; align-items: center; gap: 8px;
+  height: 36px; padding: 0 12px; border: 0; border-radius: 6px; background: #ebeef0;
+  font-family: inherit; font-size: 16px; font-weight: 500; line-height: 24px; color: #18334a; cursor: pointer; }
+.odas-body { display: grid; grid-template-columns: 708px 204px; column-gap: 28px; padding: 8px 20px 20px; }
+.odas h3 { margin: 0; font-size: 20px; font-weight: 700; line-height: 28px; }
+.odas p { margin: 4px 0 0; font-size: 14px; line-height: 20px; opacity: .5; }
+.odas-legend { display: flex; justify-content: space-between; align-items: center; height: 16px; margin: 12px 0 0; }
+.odas-legend span { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 500; line-height: 16px; color: #000; }
+.odas-legend i { width: 12px; height: 12px; border-radius: 3px; background: rgba(24,51,74,.22); }
+.odas-legend i.red { background: #e31a1c; }
+/* --- график «по дням» 708×356 ------------------------------------------ */
+.odas-plot { position: relative; height: 356px; margin-top: 16px; overflow: hidden; }
+.odas-grid s { position: absolute; left: 27px; width: 654.6px; height: 0; border-top: 1px solid rgba(24,51,74,.1); }
+.odas-plot > b { position: absolute; font-size: 10px; font-weight: 400; line-height: 8px; color: #18334a; opacity: .5; }
+.odas-plot > b.yl { left: 0; width: 20px; text-align: right; }
+.odas-plot > b.rl { left: 694px; width: 14px; }
+.odas-plot > i { position: absolute; bottom: 18.7px; width: 16.4px; border-radius: 4px 4px 0 0; background: rgba(24,51,74,.22); }
+.odas-line { position: absolute; left: 39.7px; top: 45px; }
+.odas-line path { fill: none; stroke: #e31a1c; stroke-opacity: .1; stroke-width: 2.2; }
+.odas-plot em { position: absolute; width: 8px; height: 8px; border-radius: 50%; background: #e31a1c; box-shadow: 0 0 0 1.5px #fff; }
+.odas-xl span { position: absolute; top: 345px; font-size: 10px; line-height: 10px; color: #18334a; opacity: .5; }
+.odas-scroll { position: relative; width: 655px; height: 6px; margin: 8px 0 0 27px; border-radius: 3px; background: #f4f8fa; }
+.odas-scroll i { position: absolute; left: 0; top: 0; width: 140px; height: 6px; border-radius: 3px; background: #18334a; }
+/* --- правое меню --------------------------------------------------------- */
+.odas-grp + .odas-grp { margin-top: 20px; }
+.odas-side h4 { margin: 0 0 8px; padding-left: 12px; font-size: 14px; font-weight: 500; line-height: 20px; opacity: .5; }
+.odas-side ul { list-style: none; margin: 0; padding: 0; }
+.odas-side li { height: 32px; padding: 4px 12px; border-radius: 4px; font-size: 16px; line-height: 24px; }
+.odas-side li.active { background: rgba(24,51,74,.1); font-weight: 500; }
+/* --- «по нарушениям ПДД»: две колонки горизонтальных баров --------------- */
+.otypes-legend { position: relative; justify-content: flex-start; }
+.otypes-legend span { position: absolute; top: 0; }
+.otypes-legend .c1 { left: 112px; }
+.otypes-legend .c2 { left: 408px; }
+.otypes { position: relative; height: 356px; margin-top: 8px; }
+.otypes-col { position: absolute; top: 0; }
+.otypes-col.c1 { left: 0; width: 376px; }
+.otypes-col.c2 { left: 408px; width: 279px; }
+.hb { position: absolute; left: 0; height: 20px; }
+.hb em { position: absolute; left: 0; top: 5px; width: 104px; overflow: hidden; font-style: normal; font-size: 10px; line-height: 10px; color: #a3a3a3; white-space: nowrap; }
+.hb b { position: absolute; left: 112px; top: 2px; width: 32px; font-size: 10px; font-weight: 500; line-height: 16px; }
+.hb u { position: absolute; left: 152px; top: 0; height: 20px; border-radius: 4px; background: rgba(24,51,74,.22); text-decoration: none; }
+.hb s { position: absolute; right: 8px; top: 2px; font-size: 10px; line-height: 16px; text-decoration: none; color: #18334a; }
+.c2 .hb b { left: 0; font-size: 12px; }
+.c2 .hb u { left: 40px; background: rgba(227,26,28,.22); }
+.c2 .hb s { font-size: 12px; font-weight: 500; color: #e31a1c; }
+
    § Панель «Фильтры» — СТАРАЯ фигма (dtp-old.fig, «v3 / C - Фильтры» 0:2, панель 0:11) — 04-filters.html
    Панель 390 ширины, padding 20/14; поля 350×40 #F4F8FA; чекбоксы 18×18 (слот 24),
    свотчи 12×12 на x=28, подписи Medium 16/24 на x=50. Ритм: заголовок → 10 → блок.
@@ -293,3 +283,7 @@ a { color: inherit; }
 .donate .bar i { display: block; height: 100%; width: 31%; border-radius: 3px; background: var(--yellow); }
 .donate .nums { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); }
 .donate .nums b { color: var(--navy); font-weight: 600; }
+/* --- состояние ошибки («2 stats_by_days_error» 438:23) -------------------- */
+.odas--err .odas-body { padding-bottom: 20px; }
+.odas-err { display: flex; align-items: center; justify-content: center; width: 708px; height: 364px; margin-top: 12px;
+  text-align: center; font-size: 14px; line-height: 20px; color: #18334a; }
