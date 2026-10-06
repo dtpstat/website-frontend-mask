@@ -205,72 +205,75 @@ body .advanced-options .advanced-interval-field input { flex:1 1 0; width:0; min
 body .advanced-interval-field:focus-within { background:#e2f0f8; }
 body .advanced-interval-field:has(input:not(:placeholder-shown)) { background:var(--pale); }
 
-/* Панель «Статистика» — под старую фигму (dtp-old.fig 12:92; референс — design/components/06-dashboard.html).
-   Шрифт макета PT Root UI в Google Fonts нет — рендерим Roboto, стек оставлен на будущее.
-   Плашка итогов справа по макету (#f4f8fa r8), крестик-маска, чекбокс «С учётом фильтров» */
-.chart { padding:20px; border-radius:8px; font-family:'PT Root UI', Roboto, Arial, sans-serif; }
-.chart-head { gap:24px; padding-right:40px; }
-.chart-name { font-size:20px; font-weight:700; line-height:24px; }
-.chart-place strong { font-size:16px; font-weight:500; line-height:22px; }
-.chart-place span { color:#979ea1; font-size:12px; line-height:16px; }
-/* Чекбокс макета: 18×18 r3, бордер 2px #d1dee3, отмеченный — #2f80ed с белой галочкой */
+/* Панель «Статистика» — под старую фигму (dtp-old.fig, «Главная 2021»: «2 stats_by_days» 431:0,
+   «2 stats_by_types» 440:30; референс и спека — design/components/06-dashboard.html, §3 style-registry).
+   Шрифт панели — Roboto (стек оставлен с 'PT Root UI' на будущее). Счётчики — в шапке
+   (подпись над числом: navy / #fecc5c / #e31a1c), кнопка «Скрыть» — пилюля #ebeef0 */
+.chart { padding:20px; border-radius:12px; font-family:'PT Root UI', Roboto, Arial, sans-serif; }
+.chart-head { gap:14px 40px; align-items:flex-start; }
+.chart-place strong { font-size:20px; font-weight:700; line-height:28px; }
+.chart-place span { color:var(--navy); opacity:.5; font-size:14px; line-height:20px; }
+/* Счётчики шапки по 431:0: подпись Medium 14/20 @.5 над числом Bold 20/28 */
+.chart-cnt { display:grid; }
+.chart-cnt span { font-size:14px; font-weight:500; line-height:20px; opacity:.5; }
+.chart-cnt b { font-size:20px; font-weight:700; line-height:28px; font-variant-numeric:tabular-nums; }
+.chart-cnt.inj b { color:#fecc5c; }
+.chart-cnt.dth b { color:#e31a1c; }
+/* Чекбокс «С учётом фильтров»: в макете его нет (функциональный элемент v65) —
+   перекрашен в палитру макета: 18×18 r3, бордер 2px #d1dee3, отмеченный — navy */
 .chart-check { display:inline-flex; align-items:center; gap:10px; font-size:16px; line-height:24px; cursor:pointer; }
 .chart-check input { width:18px; height:18px; margin:0; border:2px solid #d1dee3; border-radius:3px; appearance:none; -webkit-appearance:none; background:#fff; cursor:pointer; flex:none; }
-.chart-check input:checked { border-color:#2f80ed; background-color:#2f80ed; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 8'%3E%3Cpath d='M1 4.2 3.6 6.8 9 1.2' stroke='white' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-position:center; background-repeat:no-repeat; background-size:10px; }
-.chart-check input:focus-visible { outline:2px solid #2f80ed; outline-offset:2px; }
-/* Закрыть — крестик-маска 14×14 #4c6779 (кликабельное поле 28×28) */
-.chart-close { position:absolute; top:17px; right:17px; width:28px; height:28px; margin:0; padding:0; border:0; cursor:pointer; background:#4c6779; -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M2 2l10 10M12 2L2 12' stroke='black' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") center/14px no-repeat; mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M2 2l10 10M12 2L2 12' stroke='black' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") center/14px no-repeat; }
-.chart-close:hover { background:#18334a; }
-/* Тело: заголовок разреза Bold 14/24, мета-строки Medium 12 #979ea1 */
-.chart-main { gap:32px; }
-.chart h2 { font-size:14px; font-weight:700; line-height:24px; }
-.chart-meta { margin:4px 0 0; color:#979ea1; font-size:12px; font-weight:500; line-height:16px; }
-.chart-note { color:#979ea1; font-size:12px; }
-.chart-empty { color:#979ea1; font-size:13px; }
-/* Легенда: точки-кружки 8×8, подписи Medium 11 #979ea1; в разрезе по типам — тёмные заголовки колонок */
-.chart-legend { margin-top:12px; color:#979ea1; font-size:11px; font-weight:500; line-height:14px; }
-.chart-legend i { width:8px; height:8px; border-radius:50%; }
-.legend-crashes { background:#2f80ed; }
-.legend-dead { background:#dc3545; }
+.chart-check input:checked { border-color:#18334a; background-color:#18334a; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 8'%3E%3Cpath d='M1 4.2 3.6 6.8 9 1.2' stroke='white' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-position:center; background-repeat:no-repeat; background-size:10px; }
+.chart-check input:focus-visible { outline:2px solid #18334a; outline-offset:2px; }
+/* «Скрыть» — пилюля 36 высотой #ebeef0 r6, Medium 16/24 + крестик 20×20 (431:0, x=846 y=20) */
+.chart-hide { display:inline-flex; align-items:center; gap:8px; margin-left:auto; height:36px; padding:0 12px 0 16px; border:0; border-radius:6px; color:#18334a; background:#ebeef0; font-size:16px; font-weight:500; line-height:24px; cursor:pointer; }
+.chart-hide:hover { background:#dde3e7; }
+.chart-hide svg { flex:none; }
+/* Тело: колонка графика + меню 204 (в макете 708 + 28 + 204); заголовок разреза Bold 20/28,
+   мета-строки Regular 14/20 @.5 */
+.chart-main { grid-template-columns:1fr 204px; gap:28px; }
+.chart h2 { font-size:20px; font-weight:700; line-height:28px; }
+.chart-meta { margin:4px 0 0; color:var(--navy); opacity:.5; font-size:14px; line-height:20px; }
+.chart-note { color:var(--navy); opacity:.5; font-size:12px; }
+/* Ошибка/нет данных — как «2 stats_by_days_error» 438:23: просто текст по центру, без подложки */
+.chart-empty { display:flex; align-items:center; justify-content:center; min-height:240px; margin-top:14px; padding:0; background:none; color:var(--navy); font-size:14px; line-height:20px; text-align:center; }
+/* Легенда 431:0: свотч 12×12 r3 (navy @.22 / #e31a1c), Medium 12 #000 */
+.chart-legend { margin-top:12px; color:#000; font-size:12px; font-weight:500; line-height:16px; }
+.chart-legend i { width:12px; height:12px; border-radius:3px; }
+.legend-crashes { background:rgba(24,51,74,.22); }
+.legend-dead { background:#e31a1c; }
 .bars-horizontal { gap:10px; }
 .hrow { gap:12px 14px; }
-.chart-legend.chart-legend-columns { color:#18334a; font-size:12px; font-weight:700; }
-/* Пилюли разреза по типам: ДТП — синий градиент из дампа, погибшие — бледно-розовые; r6 */
+.chart-legend.chart-legend-columns { color:#000; font-size:12px; }
+/* Пилюли разреза по типам (440:30): ДТП — #18334a @.22 с navy-процентом внутри,
+   погибшие — #e31a1c @.22 с красным; r4 по макету */
 .htrack { height:24px; background:none; }
-.htrack i { border-radius:6px; display:flex; align-items:center; justify-content:flex-end; }
-.htrack.crash i { background:linear-gradient(180deg, rgba(47,128,237,.45) 0%, #2f80ed 100%); }
-.htrack.dead i { background:#ffc9cb; }
-.hpct { padding:0 10px; font-size:11px; font-weight:500; color:#566773; white-space:nowrap; }
-.htrack.crash .hpct { color:#fff; }
-.htrack.crash .hpct.hpct-out { color:#566773; }
-.htrack.dead .hpct { color:#dc3545; }
+.htrack i { border-radius:4px; display:flex; align-items:center; justify-content:flex-end; }
+.htrack.crash i { background:rgba(24,51,74,.22); }
+.htrack.dead i { background:rgba(227,26,28,.22); }
+.hpct { padding:0 10px; font-size:11px; font-weight:500; color:#18334a; white-space:nowrap; }
+.htrack.dead .hpct { color:#e31a1c; }
 .hpct-out { position:absolute; left:8px; top:50%; transform:translateY(-50%); }
-/* Заголовки «Количество ДТП» / «Количество погибших» — по сетке строк над своими группами баров */
-.chart-legend-columns { grid-template-columns:minmax(120px,220px) 52px 1fr 52px 1fr; gap:12px 14px; }
+/* Заголовки «Количество ДТП» / «Количество погибших» — по сетке строк над своими группами баров
+   (базовая .chart-legend — flex, грида там не было, заголовки уезжали к краям) */
+.chart-legend-columns { display:grid; align-items:center; grid-template-columns:minmax(120px,220px) 52px 1fr 52px 1fr; gap:12px 14px; }
 .chart-legend-columns i { display:none; }
 .chart-legend-columns span:nth-child(1) { grid-column:3; justify-self:center; }
 .chart-legend-columns span:nth-child(2) { grid-column:5; justify-self:center; }
-/* Правая колонка: инфоплашка по макету + чипы разрезов r4 с бордером #d1dee3 */
-.chart-plate { display:flex; flex-direction:column; gap:4px; margin:0 0 18px; padding:16px; border-radius:8px; background:#f4f8fa; }
-.chart-plate > div { display:grid; }
-.chart-plate b { font-size:16px; font-weight:700; line-height:20px; font-variant-numeric:tabular-nums; }
-.chart-plate span { font-size:14px; font-weight:700; line-height:24px; }
-.chart-plate .inj b { color:#ffc107; }
-.chart-plate .dth b { color:#dc3545; }
-.chart-plate + .chart-side-title { margin-top:0; }
-.chart-side { gap:6px; }
-.chart-side-title { color:#979ea1; font-size:12px; font-weight:500; }
-.chart-side button { border:1px solid #d1dee3; border-radius:4px; padding:8px 10px; color:#18334a; background:#fff; font-size:12px; font-weight:700; line-height:16px; text-align:left; }
-.chart-side button:hover:not(:disabled) { background:#f4f8fa; }
-.chart-side button.active { border-color:#2f80ed; color:#fff; background:#2f80ed; }
-.chart-side button:disabled { border-color:#e8eef1; color:#979ea1; background:#fff; opacity:1; cursor:not-allowed; }
+/* Правое меню по 431:0: группы Medium 14/20 @.5, строки 32px Regular 16/24,
+   активная — заливка #18334a @.1 r4 + Medium (текст остаётся navy) */
+.chart-side { gap:0; }
+.chart-side-title { margin:20px 0 8px; padding-left:12px; color:var(--navy); opacity:.5; font-size:14px; font-weight:500; line-height:20px; }
+.chart-side button { min-height:32px; margin:0; padding:4px 12px; border:0; border-radius:4px; color:#18334a; background:none; font-size:16px; font-weight:400; line-height:24px; text-align:left; }
+.chart-side button:hover:not(:disabled) { background:rgba(24,51,74,.06); }
+.chart-side button.active { color:#18334a; background:rgba(24,51,74,.1); font-weight:500; }
+.chart-side button:disabled { color:#18334a; background:none; opacity:.4; cursor:not-allowed; }
 @media (max-width:800px) {
-  .chart-head { gap:14px; }
-  .chart-place strong { font-size:15px; }
+  .chart-head { gap:10px 18px; }
+  .chart-place strong { font-size:17px; line-height:24px; }
+  .chart-cnt b { font-size:17px; line-height:24px; }
   .chart-legend-columns { grid-template-columns:96px 40px 1fr 40px 1fr; gap:6px; }
   .hpct { padding:0 6px; font-size:11px; }
-  .chart-plate { flex-direction:row; justify-content:space-between; align-items:center; padding:12px 14px; }
-  .chart-plate span { font-size:12px; line-height:18px; }
 }
 /* Мобильные: в интервальных рядах про-фильтров подпись может переноситься,
    поля «от–до» сжимаются (иначе на экранах ≤375px выезжают за границу панели).

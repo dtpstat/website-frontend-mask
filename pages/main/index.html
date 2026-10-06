@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" />
-    <link rel="stylesheet" href="styles.css?v=65" />
+    <link rel="stylesheet" href="styles.css?v=66" />
     <link rel="stylesheet" href="mapbox.css" />
   </head>
   <body>
@@ -126,10 +126,13 @@
 
       <section id="chart" class="chart" hidden aria-labelledby="chart-title">
         <header class="chart-head">
-          <strong class="chart-name" data-i18n="statistics">Статистика</strong>
           <div class="chart-place"><strong id="chart-region">Все регионы</strong><span data-i18n="officialData">Официальные данные</span></div>
+          <!-- Счётчики в шапке — по «2 stats_by_days» 431:0 (подпись над числом) -->
+          <div class="chart-cnt"><span data-i18n="accidents">ДТП</span><b id="chart-count">—</b></div>
+          <div class="chart-cnt inj"><span data-i18n="injured">Пострадали</span><b id="chart-injured-count">—</b></div>
+          <div class="chart-cnt dth"><span data-i18n="dead">Погибли</span><b id="chart-dead-count">—</b></div>
           <label class="chart-check"><input id="chart-filtered" type="checkbox" checked /><span data-i18n="withFilters">С учётом фильтров</span></label>
-          <button id="close-chart" class="chart-close" type="button" aria-label="Закрыть" data-i18n-aria="close"></button>
+          <button id="close-chart" class="chart-hide" type="button" data-i18n="hide">Скрыть<svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
         </header>
         <div class="chart-main">
           <div class="chart-body">
@@ -146,12 +149,6 @@
             <p class="chart-note" data-i18n="chartNote">Диаграмма показывает ориентировочное распределение за выбранный период.</p>
           </div>
           <aside class="chart-side" id="chart-side" aria-label="Разрезы статистики">
-            <!-- Плашка итогов — по старой фигме (#f4f8fa r8), считаются тем же источником, что и график -->
-            <div class="chart-plate">
-              <div><b id="chart-count">—</b><span data-i18n="plateAccidents">Всего ДТП</span></div>
-              <div class="inj"><b id="chart-injured-count">—</b><span data-i18n="plateInjured">Пострадавшие</span></div>
-              <div class="dth"><b id="chart-dead-count">—</b><span data-i18n="plateDead">Погибшие</span></div>
-            </div>
             <p class="chart-side-title" data-i18n="timeIntervals">Временные интервалы</p>
             <button type="button" data-mode="hours" data-i18n="byHours">По часам</button>
             <button type="button" data-mode="days" data-i18n="byDays">По дням</button>
@@ -168,6 +165,6 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <script src="maps-config.js"></script>
-    <script type="module" src="main/app.js?v=65"></script>
+    <script type="module" src="main/app.js?v=66"></script>
   </body>
 </html>

@@ -164,20 +164,19 @@ function renderChart() {
     const lines = [], steps = 5;
     for (let step = 0; step <= steps; step++) {
       const value = max / steps * step, y = scale(value);
-      lines.push(`<line x1="${side === "l" ? padL : padL + plotW}" y1="${y}" x2="${side === "l" ? padL + plotW : padL + plotW}" y2="${y}" stroke="#e6e6e6"></line>`);
-      lines.push(`<text x="${side === "l" ? padL - 8 : padL + plotW + 8}" y="${y + 4}" text-anchor="${side === "l" ? "end" : "start"}" font-size="10" font-weight="500" fill="#979ea1">${tick(value)}</text>`);
+      // Сетка и оси — по «2 stats_by_days» 431:0: линии #18334a @ .1, подписи Regular 10 @ .5
+      lines.push(`<line x1="${side === "l" ? padL : padL + plotW}" y1="${y}" x2="${side === "l" ? padL + plotW : padL + plotW}" y2="${y}" stroke="#18334a" stroke-opacity=".1"></line>`);
+      lines.push(`<text x="${side === "l" ? padL - 8 : padL + plotW + 8}" y="${y + 4}" text-anchor="${side === "l" ? "end" : "start"}" font-size="10" fill="#18334a" fill-opacity=".5">${tick(value)}</text>`);
     }
     return lines.join("");
   };
-  // Столбец: скруглена только шапка (радиус ≤ 7, у низких — меньше), основание прямое
+  // Столбец: скруглена только шапка (радиус 4 по вектору баров из дампа, у низких — меньше), основание прямое
   const column = (cx: number, top: number, bottom: number) => {
-    const radius = Math.min(7, colW / 2, Math.max(1, bottom - top)), left = cx - colW / 2, right = cx + colW / 2;
+    const radius = Math.min(4, colW / 2, Math.max(1, bottom - top)), left = cx - colW / 2, right = cx + colW / 2;
     return `M${left},${top + radius} A${radius},${radius} 0 0 1 ${right},${top + radius} L${right},${bottom} L${left},${bottom} Z`;
   };
-  // Пилюли-столбцы — градиент из старой фигмы (стопы GRADIENT_LINEAR потеряны при распаковке,
-  // реконструкция rgba(47,128,237,.45)→#2f80ed); градиент один на весь svg
-  const defs = `<defs><linearGradient id="chart-col" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2f80ed" stop-opacity=".45"/><stop offset="1" stop-color="#2f80ed"/></linearGradient></defs>`;
-  const columns = values.map(([, bucket], index) => `<path d="${column(x(index), yCount(bucket.count), padT + plotH)}" fill="url(#chart-col)"></path>`).join("");
+  // Столбцы — по «2 stats_by_days» 431:0: заливка #18334a @ .22 (union-вектор баров), без градиента
+  const columns = values.map(([, bucket], index) => `<path d="${column(x(index), yCount(bucket.count), padT + plotH)}" fill="#18334a" fill-opacity=".22"></path>`).join("");
   const deadPoints = values.map(([, bucket], index) => [x(index), yDead(bucket.dead)] as const);
   // Линия погибших — сплошная бледно-розовая со сглаживанием (Catmull-Rom → кубические Безье),
   // маркеры — красные точки поверх линии; сглаженная кривая зажата снизу базой графика,
@@ -194,8 +193,10 @@ function renderChart() {
     }
     return d;
   };
-  const line = `<path d="${smoothPath(deadPoints)}" fill="none" stroke="#dc3545" stroke-width="2"></path>`;
-  const markers = deadPoints.map(([cx, cy]) => `<circle cx="${cx}" cy="${cy}" r="4" fill="#dc3545" stroke="#fff" stroke-width="1.5"></circle>`).join("");
+  // Линия #e31a1c: в дампе stroke-opacity .1, но на рендере фигмы ядро линии ≈ rgb(240,148,148)
+  // (замер по скриншоту макета) = альфа ≈ .45 — беру её, при .1 линия бы не читалась
+  const line = `<path d="${smoothPath(deadPoints)}" fill="none" stroke="#e31a1c" stroke-opacity=".45" stroke-width="2"></path>`;
+  const markers = deadPoints.map(([cx, cy]) => `<circle cx="${cx}" cy="${cy}" r="4" fill="#e31a1c" stroke="#fff" stroke-width="1.5"></circle>`).join("");
   // Подписи оси X: по дням — число, на первом числе месяца — имя месяца; месяца — ММ.ГГГГ, часы/годы — как есть.
   // Крайние подписи всегда, промежуточные — с шагом, при котором соседние не сливаются
   const monthName = (key: string) => {
@@ -213,8 +214,8 @@ function renderChart() {
   }
   // Крайняя левая подпись — пограничная: показываем всегда, когда она не перекрывает соседнюю
   if (values.length > 1) shown[0] = fits(0, previous, 2);
-  const labels = values.map(([label], index) => shown[index] ? `<text x="${x(index)}" y="${height - 6}" text-anchor="middle" font-size="10" font-weight="500" fill="#979ea1">${axisLabel(String(label)).replace(/&/g, "&amp;").replace(/</g, "&lt;")}</text>` : "").join("");
-  bars.replaceChildren(Object.assign(document.createElement("div"), { innerHTML: `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${defs}${axis(maxCount, yCount, "l")}${axis(maxDead, yDead, "r")}<line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="#e6e6e6"></line>${columns}${line}${markers}${labels}</svg>` }));
+  const labels = values.map(([label], index) => shown[index] ? `<text x="${x(index)}" y="${height - 6}" text-anchor="middle" font-size="10" fill="#18334a" fill-opacity=".5">${axisLabel(String(label)).replace(/&/g, "&amp;").replace(/</g, "&lt;")}</text>` : "").join("");
+  bars.replaceChildren(Object.assign(document.createElement("div"), { innerHTML: `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${axis(maxCount, yCount, "l")}${axis(maxDead, yDead, "r")}<line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="#18334a" stroke-opacity=".1"></line>${columns}${line}${markers}${labels}</svg>` }));
 }
 
 
