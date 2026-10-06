@@ -9,11 +9,11 @@ import { map, renderMapSwitcher, switchMapClient, renderHeatControls, updateHeat
 import { updateTerritoryCard, drawRegionSuggest } from "./territory.js";
 import { renderChart, setChartMode, chartAxis, chartDatesAvailable } from "./chart.js";
 import { loadMapData, loadFilters, applyHeatMode } from "./pipeline.js";
-import { scheduleRegionLookup, applyRegionMask } from "./geom.js";
+import { scheduleRegionLookup } from "./geom.js";
 
 // Реестр восходящих вызовов заполняется до boot: подписки ниже по файлу начинают
 // стрелять только после этого, так что колбэки ранних модулей всегда видят значения
-Object.assign(actions, { loadMapData, refreshCascade, applyLanguage, scheduleMapLoad, applyHeatMode, scheduleRegionLookup, applyRegionMask });
+Object.assign(actions, { loadMapData, refreshCascade, applyLanguage, scheduleMapLoad, applyHeatMode, scheduleRegionLookup });
 
 function applyLanguage() {
   document.documentElement.lang = state.language;

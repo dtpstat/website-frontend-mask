@@ -43,7 +43,6 @@ interface AppActions {
   scheduleMapLoad: (...args: unknown[]) => unknown;
   applyHeatMode: (...args: unknown[]) => unknown;
   scheduleRegionLookup: (...args: unknown[]) => unknown;
-  applyRegionMask: (...args: unknown[]) => unknown;
 }
 const actions: AppActions = {} as AppActions;
 

@@ -10,8 +10,6 @@ Object.assign(copy.ru, { regionSearch:"Введите адрес или реги
 Object.assign(copy.en, { regionSearch:"Enter address or region", noInjured:"No injuries (no data)", accidentKind:"Accident type", show:"Show", lockPin:"Data is pinned to the territory", unlock:"Unpin data", lockHint:"Unpin the territory first", participantNoData:"No open API data for these road users", noMatches:"Nothing found" });
 Object.assign(copy.ru, { heatIntensity:"Интенсивность", heatMapOpacity:"Непрозрачность" });
 Object.assign(copy.en, { heatIntensity:"Intensity", heatMapOpacity:"Opacity" });
-Object.assign(copy.ru, { regionPlate:"Территория под центром карты" });
-Object.assign(copy.en, { regionPlate:"Area under map center" });
 // Панель «Статистика» (старая фигма): чекбокс учёта фильтров, плашка итогов, крестик
 Object.assign(copy.ru, { withFilters:"С учётом фильтров", notApplied:"не учтены" });
 Object.assign(copy.en, { withFilters:"With filters", notApplied:"not applied" });
