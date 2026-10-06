@@ -6,7 +6,7 @@
 // Уровень подписи из зума: с зума дэшборда — 4 регион (совпадает с данными счётчиков),
 // 11-13 → 6 округ, 14+ → 8 район города. Таблица покрыта только Россией — вне её name пустой
 
-import { api, $ } from "./context.js";
+import { api, $, state, regionName } from "./context.js";
 import { currentView } from "./maps.js";
 
 // Кэш ответов по ячейкам: размер ячейки в градусах на admin-level (в fetch идут те же
@@ -55,20 +55,27 @@ async function lookupRegion() {
   try {
     const [name, parentName] = await Promise.all([lookupName(level, lat, lng), lookupName(parent, lat, lng)]);
     if (loadId !== regionSeq) return;
-    applyRegion(name, parentName);
+    applyRegion(name, parentName, level);
   } catch (error) {
     if (loadId === regionSeq && (error as Error).name !== "AbortError") regionKey = ""; // сбой — подпись не трогаем, повторим на следующем ходе
   }
 }
 
-function applyRegion(name: string, parentName: string) {
+// Подпись и родитель дублируют заголовок карточки, когда называют тот же субъект:
+// без закрепления подпись уровня 4 всегда и есть регион данных, а родитель района —
+// тем более. Оформные слова не мешают сравнению («г. Москва» = «Москва», «Республика
+// Татарстан» = «Татарстан»); остаются только новые строки — район и страна
+const subjectKey = (name: string) => name.toLowerCase().replace(/^(г\.\s*|республика\s+|\S+\s+республика$)/, "").trim();
+const duplicates = (candidate: string, name: string) => Boolean(candidate) && Boolean(name) && subjectKey(candidate) === subjectKey(name);
+
+function applyRegion(name: string, parentName: string, level: number) {
   const plate = ($("#region-plate") as HTMLElement), parent = ($("#region-parent") as HTMLElement);
-  if (plate.textContent === name && parent.textContent === parentName) return;
+  const title = state.territory?.name ?? regionName(state.dataRegion);
   plate.textContent = name;
-  plate.hidden = !name;
+  plate.hidden = !name || (level === 4 && !state.territory) || duplicates(name, title);
   // Родитель виден только при живой подписи: серая строка под ней
   parent.textContent = parentName;
-  parent.hidden = !name || !parentName;
+  parent.hidden = !name || !parentName || duplicates(parentName, title) || duplicates(parentName, name) || (level !== 4 && !state.territory);
 }
 
 export { scheduleRegionLookup };
