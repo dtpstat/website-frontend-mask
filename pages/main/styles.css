@@ -209,14 +209,15 @@ body .advanced-interval-field:has(input:not(:placeholder-shown)) { background:va
    «2 stats_by_types» 440:30; референс и спека — design/components/06-dashboard.html, §3 style-registry).
    Шрифт панели — Roboto (стек оставлен с 'PT Root UI' на будущее). Счётчики — в шапке
    (подпись над числом: navy / #fecc5c / #e31a1c), кнопка «Скрыть» — пилюля #ebeef0 */
-.chart { padding:20px; border-radius:12px; font-family:'PT Root UI', Roboto, Arial, sans-serif; }
+.chart { padding:12px 20px 20px; border-radius:12px; font-family:'PT Root UI', Roboto, Arial, sans-serif; }
 .chart-head { gap:14px 40px; align-items:flex-start; }
+.chart-place { gap:0; }
 .chart-place strong { font-size:20px; font-weight:700; line-height:28px; }
-.chart-place span { color:var(--navy); opacity:.5; font-size:14px; line-height:20px; }
+.chart-place span { margin-top:4px; color:var(--navy); opacity:.5; font-size:14px; line-height:20px; letter-spacing:.15px; }
 /* Счётчики шапки по 431:0: подпись Medium 14/20 @.5 над числом Bold 20/28 */
 .chart-cnt { display:grid; }
-.chart-cnt span { font-size:14px; font-weight:500; line-height:20px; opacity:.5; }
-.chart-cnt b { font-size:20px; font-weight:700; line-height:28px; font-variant-numeric:tabular-nums; }
+.chart-cnt span { font-size:14px; font-weight:500; line-height:20px; letter-spacing:.15px; opacity:.5; }
+.chart-cnt b { margin-top:4px; font-size:20px; font-weight:700; line-height:28px; }
 .chart-cnt.inj b { color:#fecc5c; }
 .chart-cnt.dth b { color:#e31a1c; }
 /* Чекбокс «С учётом фильтров»: в макете его нет (функциональный элемент v65) —
@@ -226,14 +227,14 @@ body .advanced-interval-field:has(input:not(:placeholder-shown)) { background:va
 .chart-check input:checked { border-color:#18334a; background-color:#18334a; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 8'%3E%3Cpath d='M1 4.2 3.6 6.8 9 1.2' stroke='white' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-position:center; background-repeat:no-repeat; background-size:10px; }
 .chart-check input:focus-visible { outline:2px solid #18334a; outline-offset:2px; }
 /* «Скрыть» — пилюля 36 высотой #ebeef0 r6, Medium 16/24 + крестик 20×20 (431:0, x=846 y=20) */
-.chart-hide { display:inline-flex; align-items:center; gap:8px; margin-left:auto; height:36px; padding:0 12px 0 16px; border:0; border-radius:6px; color:#18334a; background:#ebeef0; font-size:16px; font-weight:500; line-height:24px; cursor:pointer; }
+.chart-hide { display:inline-flex; align-items:center; gap:8px; margin:8px 0 0 auto; height:36px; padding:0 12px 0 16px; border:0; border-radius:18px; color:#18334a; background:#ebeef0; font-size:16px; font-weight:500; line-height:24px; cursor:pointer; }
 .chart-hide:hover { background:#dde3e7; }
 .chart-hide svg { flex:none; }
 /* Тело: колонка графика + меню 204 (в макете 708 + 28 + 204); заголовок разреза Bold 20/28,
    мета-строки Regular 14/20 @.5 */
-.chart-main { grid-template-columns:1fr 204px; gap:28px; }
+.chart-main { grid-template-columns:1fr 204px; gap:28px; margin-top:20px; }
 .chart h2 { font-size:20px; font-weight:700; line-height:28px; }
-.chart-meta { margin:4px 0 0; color:var(--navy); opacity:.5; font-size:14px; line-height:20px; }
+.chart-meta { margin:4px 0 0; color:var(--navy); opacity:.5; font-size:14px; line-height:20px; letter-spacing:.15px; }
 .chart-note { color:var(--navy); opacity:.5; font-size:12px; }
 /* Ошибка/нет данных — как «2 stats_by_days_error» 438:23: просто текст по центру, без подложки */
 .chart-empty { display:flex; align-items:center; justify-content:center; min-height:240px; margin-top:14px; padding:0; background:none; color:var(--navy); font-size:14px; line-height:20px; text-align:center; }
@@ -263,7 +264,7 @@ body .advanced-interval-field:has(input:not(:placeholder-shown)) { background:va
 /* Правое меню по 431:0: группы Medium 14/20 @.5, строки 32px Regular 16/24,
    активная — заливка #18334a @.1 r4 + Medium (текст остаётся navy) */
 .chart-side { gap:0; }
-.chart-side-title { margin:20px 0 8px; padding-left:12px; color:var(--navy); opacity:.5; font-size:14px; font-weight:500; line-height:20px; }
+.chart-side-title { margin:20px 0 8px; padding-left:12px; color:var(--navy); opacity:.5; font-size:14px; font-weight:500; line-height:20px; letter-spacing:.15px; }
 .chart-side button { min-height:32px; margin:0; padding:4px 12px; border:0; border-radius:4px; color:#18334a; background:none; font-size:16px; font-weight:400; line-height:24px; text-align:left; }
 .chart-side button:hover:not(:disabled) { background:rgba(24,51,74,.06); }
 .chart-side button.active { color:#18334a; background:rgba(24,51,74,.1); font-weight:500; }
