@@ -1,17 +1,19 @@
 // Территория: границы регионов, regionAtCenter, закрепление региона, поиск
 
-import { $, state, regionIndex, actions, type Bounds } from "./context.js";
+import { $, state, regionIndex, actions } from "./context.js";
 import { t } from "./i18n.js";
 import { refreshCascade } from "./filters.js";
 import { map, yandex, mapbox } from "./maps.js";
 
 const regionShapes = fetch("assets/regions.geojson").then((response) => response.ok ? response.json() : Promise.reject(new Error("Region boundaries unavailable")));
 function inRing(point, ring) { let inside = false; for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index++) { const [x, y] = ring[index], [px, py] = ring[previous]; if ((y > point[1]) !== (py > point[1]) && point[0] < (px - x) * (point[1] - y) / (py - y) + x) inside = !inside; } return inside; }
-// Фолбэк для бэкенда без LATITUDE/LONGITUDE: регион под центром видимой области.
-// Внутренние кольца (дырки) учитываем, из содержащих регионов выбираем наименьший —
-// иначе Москва попадёт во внешнее кольцо Московской области
-async function regionAtCenter(bounds: Bounds) {
-  const data = await regionShapes, x = (bounds.west + bounds.east) / 2, y = (bounds.south + bounds.north) / 2, point = [x, y];
+// Фолбэк для бэкенда без LATITUDE/LONGITUDE: регион под центром карты. Центр передаёт
+// вызывающий: в Меркаторе середина bounds по широте не совпадает с центром вида и на
+// малом зуме уводит точку в соседний регион. Внутренние кольца (дырки) учитываем, из
+// содержащих регионов выбираем наименьший — иначе Москва попадёт во внешнее кольцо
+// Московской области
+async function regionAtCenter(latitude: number, longitude: number) {
+  const data = await regionShapes, point = [longitude, latitude];
   const contains = (rings) => rings.length && inRing(point, rings[0]) && !rings.slice(1).some((ring) => inRing(point, ring));
   let best: number | null = null, bestArea = Infinity;
   for (const feature of data.features || []) {

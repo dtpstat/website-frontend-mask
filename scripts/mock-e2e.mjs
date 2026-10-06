@@ -1,5 +1,6 @@
-// Временный E2E-мок: как serve.mjs, но /api/dtp/filter_fields дополнен LATITUDE/LONGITUDE
-// (симуляция обновлённого бэкенда), а /dtp/points с рамкой возвращает синтетику.
+// Временный E2E-мок: как serve.mjs, но /dtp/points с REGION (субъект под центром)
+// возвращает детерминированную синтетику — e2e не зависит от продовых данных и скорости.
+// /geom/getRegionUnderPoint проксируется на прод: подписи нужны настоящие.
 // Запуск: PORT=8124 node mock-e2e.mjs
 import { createServer } from "node:http";
 import { request as tlsRequest } from "node:https";
@@ -31,10 +32,10 @@ function proxy(path, cb) {
   upstream.end();
 }
 
-// Синтетические точки: детерминированные, внутри запрошенной рамки, в запрошенном периоде
+// Синтетические точки: детерминированные, внутри прямоугольника региона, в запрошенном периоде
+const regionBoxes = { 36: [37.3, 55.55, 37.95, 55.95], 78: [30.1, 59.7, 30.8, 60.1] }; // г. Москва, Санкт-Петербург
 function syntheticPoints(query) {
-  const south = Number(query.get("LATITUDE_FROM")), north = Number(query.get("LATITUDE_TO"));
-  const west = Number(query.get("LONGITUDE_FROM")), east = Number(query.get("LONGITUDE_TO"));
+  const [west, south, east, north] = regionBoxes[Number(query.get("REGION"))] || [28, 49, 42, 62];
   const from = query.get("DATE_TIME_FROM") || "", to = query.get("DATE_TIME_TO") || "";
   const span = Math.max(north - south, east - west, 0.01);
   let step = span > 10 ? 0.5 : span > 3 ? 0.1 : 0.05;
@@ -60,21 +61,9 @@ function syntheticPoints(query) {
 const server = createServer((req, res) => {
   const url = new URL(req.url, "http://localhost");
 
-  if (url.pathname === "/api/dtp/filter_fields") {
-    return proxy(url.pathname + url.search, (status, body, type) => {
-      try {
-        const fields = JSON.parse(body.toString());
-        fields.push({ name: "LATITUDE", kind: "interval", type: "numeric", caption: "Широта", min: 41, max: 82, required: false, order: 79, hide: true });
-        fields.push({ name: "LONGITUDE", kind: "interval", type: "numeric", caption: "Долгота", min: 19, max: 190, required: false, order: 80, hide: true });
-        res.writeHead(200, { "content-type": "application/json" });
-        res.end(JSON.stringify(fields));
-      } catch { res.writeHead(502); res.end(); }
-    });
-  }
-
   const points = url.pathname === "/api/dtp/points";
-  if (points && url.searchParams.has("LATITUDE_FROM")) {
-    console.log("[mock] points bbox", url.searchParams.toString());
+  if (points && url.searchParams.has("REGION")) {
+    console.log("[mock] points region", url.searchParams.toString());
     res.writeHead(200, { "content-type": "application/json" });
     return res.end(JSON.stringify(syntheticPoints(url.searchParams)));
   }

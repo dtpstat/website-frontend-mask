@@ -1,6 +1,6 @@
-// Конвейер данных: renderMapData/loadMapData/loadFilters, рамка загрузки, режим тепло/точки
+// Конвейер данных: renderMapData/loadMapData/loadFilters, гейт дэшборда, режим тепло/точки
 
-import { $, state, api, apiFetch, regionCache, dataRange, emTypeNames, lastRender, regionIndex, EMPTY_HEAT, setStatus, actions, mapQuery, type Bounds } from "./context.js";
+import { $, state, api, apiFetch, regionCache, dataRange, emTypeNames, lastRender, regionIndex, regionName, EMPTY_HEAT, setStatus, actions, mapQuery } from "./context.js";
 import { t, number } from "./i18n.js";
 import { period } from "./dates.js";
 import { serverQuery, renderAdvancedFilters, enrichFilters, filteredPoints, serverSections, serverSectionLabels, maskFeatures, intervalFields } from "./filters.js";
@@ -10,31 +10,31 @@ import { renderLeaflet, renderYandex, renderMapbox, renderHeatControls, currentV
 import { consumeLinkedPopup } from "./deeplink.js";
 import { renderChart } from "./chart.js";
 
+// Ниже зума 6 территория не определяется (minZoomForHeatmap старого сайта), вне субъектов
+// РФ её тоже нет: карточка «Статистика» и график скрыты целиком. Глобальный [hidden] с
+// !important (styles.css) бьёт все репозиции карточки; закреплённая территория гейт не проходит
+const dashboardMinZoom = 6;
+function applyDashboardGate() {
+  const hidden = !state.territory && (currentView().zoom < dashboardMinZoom || state.outsideRegions);
+  $("#statistics").hidden = hidden;
+  $("#chart").hidden = hidden || !state.chartOpen;
+}
 // Мгновенная смена режима «тепло/точки» при пересечении порога зума —
-// не дожидаясь отложенной догрузки данных
+// не дожидаясь отложенной догрузки данных; заодно применяется гейт дэшборда
 function applyHeatMode() {
   const heatVisible = currentView().zoom < heatZoomMax;
   if (heatVisible !== lastRender.heatVisible) renderMapData(currentView());
-}
-// Рамка для запроса точек: в полтора раза шире видимой области, чтобы панорамирование
-// в её пределах обходилось без новых запросов. Ключ рамки округляется до 0.001° (~100 м),
-// чтобы микродвижения карты не порождали новые наборы в кэше.
-type MapFrame = Bounds & { key: string; covers: (view: Bounds) => boolean };
-let loadedFrame: MapFrame | null = null;
-function viewFrame(bounds: Bounds): MapFrame {
-  const dx = (bounds.east - bounds.west) / 2, dy = (bounds.north - bounds.south) / 2, round = (value: number) => Math.round(value * 1000) / 1000;
-  const frame = { west: round(bounds.west - dx), east: round(bounds.east + dx), south: round(bounds.south - dy), north: round(bounds.north + dy) };
-  return { ...frame, key: `${frame.south},${frame.west},${frame.north},${frame.east}`, covers: (view: Bounds) => view.west >= frame.west && view.east <= frame.east && view.south >= frame.south && view.north <= frame.north };
+  applyDashboardGate();
 }
 function renderMapData(view) {
   const filtered = filteredPoints(), visible = [];
   for (const item of filtered) if (contains(view.bounds, item.point)) visible.push(item);
-  // При закреплённой территории счётчики считаются по всей территории, а не по видимой области
-  const counted = state.territory ? filtered : visible;
-  state.items = counted;
-  $("#count").textContent = number().format(counted.length);
-  $("#injured").textContent = number().format(counted.reduce((sum, item) => sum + Number(item.injured || 0), 0));
-  $("#dead").textContent = number().format(counted.reduce((sum, item) => sum + Number(item.dead || 0), 0));
+  // Счётчики и график — по территории данных (субъект под центром или закреплённый
+  // регион), а не по видимой области: пан внутри региона их не меняет
+  state.items = filtered;
+  $("#count").textContent = number().format(filtered.length);
+  $("#injured").textContent = number().format(filtered.reduce((sum, item) => sum + Number(item.injured || 0), 0));
+  $("#dead").textContent = number().format(filtered.reduce((sum, item) => sum + Number(item.dead || 0), 0));
   if (!$("#chart").hidden) renderChart();
   // На отдалении плотность читается только теплом (точек сотни тысяч), вблизи —
   // точки-маркеры: поверх точек плотность не читается
@@ -47,12 +47,15 @@ function renderMapData(view) {
   else if (state.mapClient === "yandex") renderYandex(visible, heatPoints, heatVisible);
   else renderMapbox(visible, heatPoints, heatVisible);
   consumeLinkedPopup();
-  setStatus(`${number().format(counted.length)} ${(state.territory ? t("accidents") : t("accidentsInArea")).toLowerCase()}`);
+  const name = state.territory?.name ?? regionName(state.dataRegion);
+  setStatus(`${number().format(filtered.length)} ${t("accidents").toLowerCase()}${name ? ` — ${name}` : ""}`);
 }
 
 async function loadMapData() {
   const { start, end } = period();
   if (!start || !end || end < start) return;
+  // Ниже зума дэшборда данных нет и карточка скрыта — запрос не нужен
+  if (!state.territory && currentView().zoom < dashboardMinZoom) { applyDashboardGate(); return; }
   state.abort?.abort();
   const controller = state.abort = new AbortController(), loadId = ++state.dataLoadId, view = currentView();
   setStatus(t("loadingMap"));
@@ -60,36 +63,30 @@ async function loadMapData() {
     const server = serverQuery();
     const bucketKey = `${start}|${end}|${server.toString()}`;
     // Держим один активный бакет: смена периода/серверных фильтров даёт новый ключ
-    if (!regionCache.has(bucketKey)) { regionCache.clear(); loadedFrame = null; }
+    if (!regionCache.has(bucketKey)) regionCache.clear();
     const bucket = regionCache.get(bucketKey) ?? new Map<string, any[]>();
     regionCache.set(bucketKey, bucket);
-    // Два режима загрузки точек:
-    // 1) без закреплённой территории — рамка карты (точка + масштаб), параметрами LATITUDE/LONGITUDE;
-    // 2) закреплён регион и/или место — только эти точки, параметром REGION.
-    const frame = !state.territory && loadedFrame?.covers(view.bounds) ? loadedFrame : viewFrame(view.bounds);
-    const cacheKey = state.territory ? String(state.territory.id) : frame.key;
+    // Единственный режим загрузки: REGION = закреплённая территория или субъект под
+    // центром (полигоны regions.geojson, их id = параметру REGION). Кэш по региону:
+    // пан внутри региона — ноль запросов, переезд в соседний — ровно один.
+    // Весь период одним запросом — бэкенд с ним справляется
+    const regionId = state.territory ? state.territory.id : await regionAtCenter(view.center.latitude, view.center.longitude);
+    if (state.dataLoadId !== loadId) return;
+    const cacheKey = String(regionId ?? "none");
+    state.dataRegion = regionId;
+    state.outsideRegions = regionId === null;
     if (!bucket.has(cacheKey)) {
       $("#chart-period").textContent = `${t("forPeriod")}: ${start} — ${end}`;
-      // Бэкенд ещё не умеет рамку (в /dtp/filter_fields нет LATITUDE) — режим карты
-      // деградирует в регион под центром видимой области
-      const fallback = !state.territory && !state.bboxSupported ? await regionAtCenter(view.bounds) : null;
-      if (state.dataLoadId !== loadId) return;
-      // Весь период одним запросом — бэкенд с ним справляется
       const query = new URLSearchParams({ DATE_TIME_FROM:`${start}T00:00:00`, DATE_TIME_TO:`${end}T23:59:59` });
-      const regionId = state.territory ? state.territory.id : fallback;
-      if (regionId !== null) query.set("REGION", String(regionId));
-      else if (state.bboxSupported) {
-        query.set("LATITUDE_FROM", String(frame.south)); query.set("LATITUDE_TO", String(frame.north));
-        query.set("LONGITUDE_FROM", String(frame.west)); query.set("LONGITUDE_TO", String(frame.east));
-      } else { bucket.set(cacheKey, []); } // видимая область вне регионов РФ
+      if (regionId === null) bucket.set(cacheKey, []); // центр вне субъектов РФ — запрос не нужен
       if (!bucket.has(cacheKey)) {
+        query.set("REGION", cacheKey);
         server.forEach((value, key) => query.append(key, value));
         const response = await apiFetch(`${api}/dtp/points?${query}`, { signal: controller.signal });
         if (!response.ok) throw new Error("API unavailable");
         bucket.set(cacheKey, pointItems(await response.json()));
       }
       if (state.dataLoadId !== loadId) return;
-      if (!state.territory) loadedFrame = frame;
       renderAdvancedFilters();
     }
     // Пересобираем rawItems только когда набор реально изменился
@@ -98,6 +95,7 @@ async function loadMapData() {
       state.rawItemsKey = mergedKey;
       state.rawItems = bucket.get(cacheKey) ?? [];
     }
+    applyDashboardGate();
     renderMapData(view);
   } catch (error) {
     if (error.name !== "AbortError") setStatus(t("unavailable"));
@@ -111,8 +109,6 @@ async function loadFilters() {
     // Секции проф-фильтра: EM_TYPE фильтруется на клиенте (поле em_type_id есть в точках),
     // серверные секции (serverSections) уходят параметрами в /dtp/points
     const fields = await fieldsResponse.json(), advancedFields = fields.filter((field) => field.name === "EM_TYPE" || serverSections.includes(field.name));
-    // Рамка видимой области доступна, только если бэкенд знает LATITUDE/LONGITUDE
-    state.bboxSupported = fields.some((field) => field.name === "LATITUDE");
     const dictionaries = await Promise.all(advancedFields.map(async (field) => {
       // Словари грузятся лениво: секции — при открытии про-панели (loadLazyDicts),
       // каскадные (PLACE/ROAD/STREET/NP/MODEL) — по выбору родителя (refreshCascade).
@@ -140,17 +136,17 @@ async function loadFilters() {
       { name:"intervals", key:"intervals", param:"intervals", label:t("quantity"), values:intervalFields },
     ]);
     state.participants = (state.filters.find((filter) => filter.name === "participant_categories")?.values || []).map((participant) => ({ ...participant, selected: Boolean(participant.default) }));
-    apiFetch(`${api}/dict/regions`).then((response) => response.ok ? response.json() : []).then((rows) => {
-      for (const row of rows || []) if (row?.name && row.id !== 1) regionIndex.push({ id:Number(row.id), name:String(row.name), lower:String(row.name).toLowerCase() });
-      // Прямая ссылка на территорию (?region=<id>) — закрепляем её и центрируем карту
-      const regionId = Number(mapQuery.get("region"));
-      if (Number.isFinite(regionId) && regionId > 0) selectRegion(regionIndex.find((region) => region.id === regionId) || { id:regionId, name:String(regionId) });
-    }).catch(() => {});
+    // Индекс регионов ждём до первой отрисовки: имя субъекта нужно статусу и заголовку графика
+    const rows = await apiFetch(`${api}/dict/regions`).then((response) => response.ok ? response.json() : []).catch(() => []);
+    for (const row of rows || []) if (row?.name && row.id !== 1) regionIndex.push({ id:Number(row.id), name:String(row.name), lower:String(row.name).toLowerCase() });
     actions.applyLanguage();
     updateTerritoryCard();
+    applyDashboardGate(); // прямая ссылка с ?zoom=<малый> открывает карту без дэшборда
     // Прямая ссылка на территорию (?region=<id>) закрепляет её и сама грузит точки —
-    // стартовая загрузка по рамке тут не нужна, selectRegion вызовет loadMapData
-    if (!mapQuery.get("region")) loadMapData();
+    // стартовая загрузка тут не нужна, selectRegion вызовет loadMapData
+    const regionId = Number(mapQuery.get("region"));
+    if (Number.isFinite(regionId) && regionId > 0) selectRegion(regionIndex.find((region) => region.id === regionId) || { id:regionId, name:String(regionId) });
+    else loadMapData();
   } catch { setStatus(t("unavailable")); }
 }
 

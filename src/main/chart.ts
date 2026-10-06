@@ -1,6 +1,6 @@
 // Дэшборд: разрезы дни/часы/месяцы/годы/типы, SVG-график
 
-import { $, state } from "./context.js";
+import { $, state, regionName } from "./context.js";
 import { t, number, percent } from "./i18n.js";
 import { period } from "./dates.js";
 import { participantLabel } from "./participants.js";
@@ -93,7 +93,7 @@ function renderChart() {
   // Плашка итогов считается из того же набора, что и график (галочка «С учётом фильтров»):
   // включена — совпадает с карточкой статистики, выключена — по сырым точкам
   const rows = chartSource();
-  $("#chart-region").textContent = state.territory ? state.territory.name : t("allRegions");
+  $("#chart-region").textContent = state.territory ? state.territory.name : regionName(state.dataRegion) || t("allRegions");
   $("#chart-count").textContent = number().format(rows.length);
   $("#chart-injured-count").textContent = number().format(rows.reduce((sum, item) => sum + Number(item.injured || 0), 0));
   $("#chart-dead-count").textContent = number().format(rows.reduce((sum, item) => sum + Number(item.dead || 0), 0));

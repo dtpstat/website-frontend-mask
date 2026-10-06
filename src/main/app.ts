@@ -89,9 +89,11 @@ document.querySelectorAll("[data-quick-map]").forEach((button) => button.addEven
 $("#chart-button").addEventListener("click", () => {
   // По дням/часам без дат построить нечего — сразу открываем доступный разрез «По типам»
   if (state.chartMode !== "types" && (!chartDatesAvailable() || chartAxis(state.chartMode) === null)) setChartMode("types");
-  $("#chart").hidden = false; renderChart();
+  // chartOpen нужен гейту дэшборда: после возврата из скрытых зумов график появляется,
+  // только если пользователь его открыл
+  state.chartOpen = true; $("#chart").hidden = false; renderChart();
 });
-$("#close-chart").addEventListener("click", () => { $("#chart").hidden = true; });
+$("#close-chart").addEventListener("click", () => { state.chartOpen = false; $("#chart").hidden = true; });
 // «С учётом фильтров»: снятая галочка — график и плашка по сырым точкам (без клиентских фильтров)
 $("#chart-filtered").addEventListener("change", renderChart);
 $("#download-button").addEventListener("click", downloadData);
