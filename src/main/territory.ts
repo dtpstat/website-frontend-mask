@@ -3,6 +3,7 @@
 import { $, state, regionIndex, regionName, actions } from "./context.js";
 import { t } from "./i18n.js";
 import { refreshCascade } from "./filters.js";
+import { cancelRegionLookup, scheduleRegionLookup } from "./geom.js";
 import { map, yandex, mapbox } from "./maps.js";
 
 const regionShapes = fetch("assets/regions.geojson").then((response) => response.ok ? response.json() : Promise.reject(new Error("Region boundaries unavailable")));
@@ -31,6 +32,10 @@ function featureBounds(feature) {
   return { west, south, east, north };
 }
 function updateTerritoryCard() {
+  // Место под центром — атрибут «плавающего» региона: под замком не определяем
+  // (карточка считает весь закреплённый субъект), при снятии ищем заново
+  state.place = null;
+  if (state.territory) cancelRegionLookup(); else scheduleRegionLookup();
   // Мгновенный отклик на закрепление/снятие до пересчёта конвейера: та же формула, что
   // в renderMapData — место счётчиков, без него субъект данных; «Все регионы» остаётся
   // только до первого набора (карточка вне субъектов РФ скрыта гейтом)

@@ -47,6 +47,8 @@ async function lookupName(level: number, lat: string, lng: string) {
 
 async function lookupRegion() {
   const view = currentView();
+  // Под замком место под центром не определяем: контекст карточки — закреплённый субъект
+  if (state.territory) { showResolving(false); return; }
   // Ниже зума 6 карточка скрыта гейтом конвейера — подписи не нужны
   if (view.zoom < 6) { showResolving(false); return; }
   const level = view.zoom <= 10 ? 4 : view.zoom <= 13 ? 6 : 8;
@@ -96,4 +98,14 @@ async function applyRegion(plate: { name: string; geometry: any }, parentName: s
   if (changed) actions.refreshRender(); // место доехало позже данных — пересчитать счётчики и график
 }
 
-export { scheduleRegionLookup };
+// Замок: прибить текущий лукап (ответ не должен перезаписать подпись после
+// закрепления) и спрятать лоадер с родительской строкой — место больше не ищется
+function cancelRegionLookup() {
+  regionSeq++;
+  regionAbort?.abort(); regionAbort = new AbortController();
+  regionKey = "";
+  showResolving(false);
+  ($("#region-parent") as HTMLElement).hidden = true;
+}
+
+export { scheduleRegionLookup, cancelRegionLookup };

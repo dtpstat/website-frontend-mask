@@ -30,13 +30,13 @@ function renderMapData(view) {
   const filtered = filteredPoints(), visible = [];
   for (const item of filtered) if (contains(view.bounds, item.point)) visible.push(item);
   state.items = filtered;
-  // Счётчики и график — по месту из карточки (округ/район под центром), пока оно не
-  // определено — по территории данных (субъект под центром или закреплённый регион);
-  // пан внутри территории их не меняет. Слои остаются viewport-клипом региона.
-  // Исключение — отмеченное место ДТП: тогда контекст счётчиков само место фильтра
+  // Счётчики и график — по месту из карточки (округ/район под центром), пока регион
+  // «плавает»; под замком контекст — весь закреплённый субъект, место не определяется.
+  // Пан внутри территории счётчики не меняет. Слои остаются viewport-клипом региона.
+  // Ещё одно исключение — отмеченное место ДТП: контекст счётчиков само место фильтра
   // (клип по месту под центром обнулил бы карточку — см. geoSelectionNames)
   const geo = geoSelectionNames();
-  const counted = geo.length ? filtered : applyPlace(filtered);
+  const counted = geo.length || state.territory ? filtered : applyPlace(filtered);
   $("#count").textContent = number().format(counted.length);
   $("#injured").textContent = number().format(counted.reduce((sum, item) => sum + Number(item.injured || 0), 0));
   $("#dead").textContent = number().format(counted.reduce((sum, item) => sum + Number(item.dead || 0), 0));
@@ -55,12 +55,12 @@ function renderMapData(view) {
   // Заголовок карточки называет то, что посчитано, — место счётчиков; когда места нет
   // (подпись скрыта или ещё едет) — субъект данных. Второй строкой серым уезжает регион
   // данных (округ/район — часть субъекта), родитель-страна с уровня подписи — третья
-  const name = geo.length ? geo.join(", ") : state.place?.name ?? state.territory?.name ?? regionName(state.dataRegion);
+  const name = geo.length ? geo.join(", ") : state.territory ? state.territory.name : state.place?.name ?? regionName(state.dataRegion);
   $("#region-name").textContent = name || t("allRegions");
   const region = state.territory?.name ?? regionName(state.dataRegion);
   const plateNode = ($("#region-plate") as HTMLElement);
   plateNode.textContent = region || "";
-  plateNode.hidden = geo.length ? !region || region === name : !state.place || !region || region === name;
+  plateNode.hidden = geo.length || state.territory ? !region || region === name : !state.place || !region || region === name;
   setStatus(`${number().format(counted.length)} ${t("accidents").toLowerCase()}${name ? ` — ${name}` : ""}`);
 }
 // Перерисовка текущим видом: место из карточки доехало позже данных (geom отвечает
