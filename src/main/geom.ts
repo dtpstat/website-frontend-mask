@@ -48,13 +48,14 @@ async function lookupName(level: number, lat: string, lng: string) {
 async function lookupRegion() {
   const view = currentView();
   // Ниже зума 6 карточка скрыта гейтом конвейера — подписи не нужны
-  if (view.zoom < 6) return;
+  if (view.zoom < 6) { showResolving(false); return; }
   const level = view.zoom <= 10 ? 4 : view.zoom <= 13 ? 6 : 8;
   const parent = parentLevel[level];
   const { lat, lng } = cellKey(level, view.center.latitude, view.center.longitude);
   const key = `${level}|${lat}|${lng}+${parent}`;
   if (key === regionKey) return;
   regionKey = key;
+  showResolving(level !== 4); // место будет только у округа/района — на уровне субъекта не обещаем
   const loadId = ++regionSeq;
   regionAbort?.abort(); regionAbort = new AbortController();
   try {
@@ -62,9 +63,14 @@ async function lookupRegion() {
     if (loadId !== regionSeq) return;
     await applyRegion(plate, parentPlace.name, level);
   } catch (error) {
-    if (loadId === regionSeq && (error as Error).name !== "AbortError") regionKey = ""; // сбой — подпись не трогаем, повторим на следующем ходе
+    if (loadId === regionSeq && (error as Error).name !== "AbortError") { regionKey = ""; showResolving(false); } // сбой — подпись не трогаем, повторим на следующем ходе
   }
 }
+
+// Лоадер резолва места: строка под регионом в карточке. Показывается на время каждого
+// лукапа уровня округа/района (geom на тяжёлых полигонах отвечает до 4.5с), прячется
+// ответом/сбоем. Кэш-хит проходит тот же путь синхронно — вспышки не будет
+function showResolving(visible: boolean) { ($("#region-resolving") as HTMLElement).hidden = !visible; }
 
 // Место — самая конкретная строка подписи и «место» счётчиков: по нему фильтруется
 // набор региона, его имя встаёт в заголовок карточки. Место есть только у округа/района
@@ -75,6 +81,7 @@ async function lookupRegion() {
 // applyRegion (смена периода/фильтров пересчитывает те же точки, движка карты не
 // требует; иначе заголовок остался бы, а счётчики молча переехали бы на весь регион)
 async function applyRegion(plate: { name: string; geometry: any }, parentName: string, level: number) {
+  showResolving(false);
   const parent = ($("#region-parent") as HTMLElement);
   const name = plate.name;
   const within = Boolean(name) && plate.geometry && level !== 4 && (!state.territory || (await regionAtCenter(currentView().center.latitude, currentView().center.longitude)) === state.territory.id);
