@@ -86,4 +86,37 @@ function drawRegionSuggest() {
   if (!matches.length) { const empty = document.createElement("p"); empty.className = "region-suggest-empty"; empty.textContent = t("noMatches"); suggest.append(empty); }
 }
 
-export { regionAtCenter, updateTerritoryCard, selectRegion, drawRegionSuggest };
+// Место из карточки: geom кладёт в state.place самый конкретный адрес подписи (округ/
+// район) вместе с его геометрией — счётчики и график считают по нему; пока места нет
+// (подпись скрыта или ещё едет) — весь набор региона. Попадание — чётность накрывших
+// колец: анклавы внутри субъекта (дырка в дырке) вычитаются. bbox кольца посчитан один
+// раз при создании места и отсекает почти все точки до точного луча
+function pointInPlace(longitude: number, latitude: number, place: NonNullable<typeof state.place>) {
+  let hits = 0;
+  for (let index = 0; index < place.rings.length; index++) {
+    const box = place.boxes[index];
+    if (longitude < box.west || longitude > box.east || latitude < box.south || latitude > box.north) continue;
+    if (inRing([longitude, latitude], place.rings[index])) hits++;
+  }
+  return hits % 2 === 1;
+}
+function applyPlace(rows: any[]) {
+  const place = state.place;
+  return place ? rows.filter((item) => pointInPlace(item.point.longitude, item.point.latitude, place)) : rows;
+}
+// Геометрия getRegionUnderPoint (Polygon | MultiPolygon) → место для счётчиков.
+// Эндпоинт отдаёт единицу двумя кодировками: уровни 4/6/8 — «маской» (внешнее кольцо —
+// весь мир, сама единица вырезана дырками, включая вложенные), уровень 2 — обычным
+// мультиполигоном. Храним плоский список колец — чётности достаточно для обеих
+function makePlace(name: string, geometry: any) {
+  const polygons: number[][][][] = geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
+  const rings = polygons.flatMap((poly) => (poly[0].some(([x]) => Math.abs(x) > 179) ? poly.slice(1) : poly));
+  const boxes = rings.map((ring) => {
+    let west = 180, south = 90, east = -180, north = -90;
+    for (const [x, y] of ring) { if (x < west) west = x; if (x > east) east = x; if (y < south) south = y; if (y > north) north = y; }
+    return { west, south, east, north };
+  });
+  return { name, rings, boxes };
+}
+
+export { regionAtCenter, applyPlace, makePlace, updateTerritoryCard, selectRegion, drawRegionSuggest };

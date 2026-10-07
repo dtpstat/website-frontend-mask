@@ -8,12 +8,12 @@ import { refreshCascade, renderAdvancedFilters, openAdvanced, syncAdvancedRegion
 import { map, renderMapSwitcher, switchMapClient, renderHeatControls, updateHeatControls } from "./maps.js";
 import { updateTerritoryCard, drawRegionSuggest } from "./territory.js";
 import { renderChart, setChartMode, chartAxis, chartDatesAvailable } from "./chart.js";
-import { loadMapData, loadFilters, applyHeatMode } from "./pipeline.js";
+import { loadMapData, loadFilters, applyHeatMode, refreshRender } from "./pipeline.js";
 import { scheduleRegionLookup } from "./geom.js";
 
 // Реестр восходящих вызовов заполняется до boot: подписки ниже по файлу начинают
 // стрелять только после этого, так что колбэки ранних модулей всегда видят значения
-Object.assign(actions, { loadMapData, refreshCascade, applyLanguage, scheduleMapLoad, applyHeatMode, scheduleRegionLookup });
+Object.assign(actions, { loadMapData, refreshCascade, applyLanguage, scheduleMapLoad, applyHeatMode, refreshRender, scheduleRegionLookup });
 
 function applyLanguage() {
   document.documentElement.lang = state.language;
@@ -94,8 +94,6 @@ $("#chart-button").addEventListener("click", () => {
   state.chartOpen = true; $("#chart").hidden = false; renderChart();
 });
 $("#close-chart").addEventListener("click", () => { state.chartOpen = false; $("#chart").hidden = true; });
-// «С учётом фильтров»: снятая галочка — график и плашка по сырым точкам (без клиентских фильтров)
-$("#chart-filtered").addEventListener("change", renderChart);
 $("#download-button").addEventListener("click", downloadData);
 $("#chart-side").addEventListener("click", (event) => {
   const button = event.target.closest("button[data-mode]");

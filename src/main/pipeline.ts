@@ -4,7 +4,7 @@ import { $, state, api, apiFetch, regionCache, dataRange, emTypeNames, lastRende
 import { t, number } from "./i18n.js";
 import { period } from "./dates.js";
 import { serverQuery, renderAdvancedFilters, enrichFilters, filteredPoints, serverSections, serverSectionLabels, maskFeatures, intervalFields } from "./filters.js";
-import { regionAtCenter, updateTerritoryCard, selectRegion } from "./territory.js";
+import { regionAtCenter, applyPlace, updateTerritoryCard, selectRegion } from "./territory.js";
 import { pointItems, contains } from "./popups.js";
 import { renderLeaflet, renderYandex, renderMapbox, renderHeatControls, currentView, heatZoomMax, heatInView } from "./maps.js";
 import { consumeLinkedPopup } from "./deeplink.js";
@@ -29,12 +29,14 @@ function applyHeatMode() {
 function renderMapData(view) {
   const filtered = filteredPoints(), visible = [];
   for (const item of filtered) if (contains(view.bounds, item.point)) visible.push(item);
-  // Счётчики и график — по территории данных (субъект под центром или закреплённый
-  // регион), а не по видимой области: пан внутри региона их не меняет
   state.items = filtered;
-  $("#count").textContent = number().format(filtered.length);
-  $("#injured").textContent = number().format(filtered.reduce((sum, item) => sum + Number(item.injured || 0), 0));
-  $("#dead").textContent = number().format(filtered.reduce((sum, item) => sum + Number(item.dead || 0), 0));
+  // Счётчики и график — по месту из карточки (округ/район под центром), пока оно не
+  // определено — по территории данных (субъект под центром или закреплённый регион);
+  // пан внутри территории их не меняет. Слои остаются viewport-клипом региона
+  const counted = applyPlace(filtered);
+  $("#count").textContent = number().format(counted.length);
+  $("#injured").textContent = number().format(counted.reduce((sum, item) => sum + Number(item.injured || 0), 0));
+  $("#dead").textContent = number().format(counted.reduce((sum, item) => sum + Number(item.dead || 0), 0));
   if (!$("#chart").hidden) renderChart();
   // На отдалении плотность читается только теплом (точек сотни тысяч), вблизи —
   // точки-маркеры: поверх точек плотность не читается
@@ -47,10 +49,16 @@ function renderMapData(view) {
   else if (state.mapClient === "yandex") renderYandex(visible, heatPoints, heatVisible);
   else renderMapbox(visible, heatPoints, heatVisible);
   consumeLinkedPopup();
-  const name = state.territory?.name ?? regionName(state.dataRegion);
-  // Заголовок карточки = тот же регион, что счётчики/статус: «Все регионы» не показываем никогда
-  $("#region-name").textContent = name || t("allRegions");
-  setStatus(`${number().format(filtered.length)} ${t("accidents").toLowerCase()}${name ? ` — ${name}` : ""}`);
+  // Заголовок карточки называет субъект данных, статус и график — место счётчиков
+  const name = state.place?.name ?? state.territory?.name ?? regionName(state.dataRegion);
+  $("#region-name").textContent = state.territory ? state.territory.name : (regionName(state.dataRegion) || t("allRegions"));
+  setStatus(`${number().format(counted.length)} ${t("accidents").toLowerCase()}${name ? ` — ${name}` : ""}`);
+}
+// Перерисовка текущим видом: место из карточки доехало позже данных (geom отвечает
+// медленнее точек) — счётчики и график пересчитываются без нового запроса
+function refreshRender() {
+  applyDashboardGate();
+  renderMapData(currentView());
 }
 
 async function loadMapData() {
@@ -91,7 +99,8 @@ async function loadMapData() {
       if (state.dataLoadId !== loadId) return;
       renderAdvancedFilters();
     }
-    // Пересобираем rawItems только когда набор реально изменился
+    // Пересобираем rawItems только когда набор реально изменился; место подписи —
+    // география и смену набора переживает (см. applyRegion в geom.ts)
     const mergedKey = `${bucketKey}|${cacheKey}`;
     if (state.rawItemsKey !== mergedKey) {
       state.rawItemsKey = mergedKey;
@@ -152,4 +161,4 @@ async function loadFilters() {
   } catch { setStatus(t("unavailable")); }
 }
 
-export { loadMapData, loadFilters, applyHeatMode };
+export { loadMapData, loadFilters, applyHeatMode, refreshRender };

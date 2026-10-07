@@ -226,10 +226,6 @@ body .advanced-interval-field:has(input:not(:placeholder-shown)) { background:va
 .chart-cnt.dth b { color:#e31a1c; }
 /* Чекбокс «С учётом фильтров»: в макете его нет (функциональный элемент v65) —
    перекрашен в палитру макета: 18×18 r3, бордер 2px #d1dee3, отмеченный — navy */
-.chart-check { display:inline-flex; align-items:center; gap:10px; font-size:16px; line-height:24px; cursor:pointer; }
-.chart-check input { width:18px; height:18px; margin:0; border:2px solid #d1dee3; border-radius:3px; appearance:none; -webkit-appearance:none; background:#fff; cursor:pointer; flex:none; }
-.chart-check input:checked { border-color:#18334a; background-color:#18334a; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 8'%3E%3Cpath d='M1 4.2 3.6 6.8 9 1.2' stroke='white' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-position:center; background-repeat:no-repeat; background-size:10px; }
-.chart-check input:focus-visible { outline:2px solid #18334a; outline-offset:2px; }
 /* «Скрыть» — 36 высотой #ebeef0, Medium 16/24 + крестик 20×20 (431:0, x=846 y=20);
    в дампе r20 (= капсула), но капсула смотрится слишком пузато — берём r8 как у панели/строк */
 .chart-hide { display:inline-flex; align-items:center; gap:8px; margin:8px 0 0 auto; height:36px; padding:0 12px 0 16px; border:0; border-radius:8px; color:#18334a; background:#ebeef0; font-size:16px; font-weight:500; line-height:24px; cursor:pointer; }

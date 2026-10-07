@@ -4,6 +4,7 @@ import { $, state, regionName } from "./context.js";
 import { t, number, percent } from "./i18n.js";
 import { period } from "./dates.js";
 import { participantLabel } from "./participants.js";
+import { applyPlace } from "./territory.js";
 
 // Период данных: шесть полей-сегментов «ДД ММ ГГГГ» начала и конца фиксированной
 // ширины (правка одного сегмента не двигает строку) + дропдаун пресетов (как на
@@ -53,9 +54,8 @@ function chartAxis(mode: string) {
 // Дни/часы требуют дату точки: в открытом API её нет — табы отключаем с пояснением.
 // Если даты появились (мок e2e, будущий бэкенд с рамкой) — включаются сами
 const chartDatesAvailable = () => state.items.some((item) => item.datetime);
-// Чекбокс «С учётом фильтров»: включён — график и плашка по отфильтрованным точкам,
-// выключен — по сырым (период и регион остаются, клиентские фильтры нет)
-const chartSource = () => ($("#chart-filtered") as HTMLInputElement)?.checked === false ? state.rawItems : state.items;
+// График всегда с клиентскими фильтрами и по месту из карточки — как счётчики
+const chartSource = () => applyPlace(state.items);
 function setChartMode(mode: string) { state.chartMode = mode; document.querySelectorAll("#chart-side button[data-mode]").forEach((item) => item.classList.toggle("active", item.dataset.mode === mode)); }
 function updateChartTabs() {
   const dates = chartDatesAvailable();
@@ -90,17 +90,16 @@ function activeFiltersSummary() {
 function renderChart() {
   const bars = $("#bars"), empty = $("#chart-empty");
   updateChartTabs();
-  // Плашка итогов считается из того же набора, что и график (галочка «С учётом фильтров»):
-  // включена — совпадает с карточкой статистики, выключена — по сырым точкам
+  // Плашка итогов — из того же набора, что и график: место из карточки с фильтрами,
+  // как и счётчики карточки
   const rows = chartSource();
-  $("#chart-region").textContent = state.territory ? state.territory.name : regionName(state.dataRegion) || t("allRegions");
+  $("#chart-region").textContent = state.place?.name ?? (state.territory ? state.territory.name : regionName(state.dataRegion) || t("allRegions"));
   $("#chart-count").textContent = number().format(rows.length);
   $("#chart-injured-count").textContent = number().format(rows.reduce((sum, item) => sum + Number(item.injured || 0), 0));
   $("#chart-dead-count").textContent = number().format(rows.reduce((sum, item) => sum + Number(item.dead || 0), 0));
   $("#chart-title").textContent = chartTitle();
   $("#chart-period").textContent = `${t("forPeriod")}: ${formatDate($("#start-date").value)} - ${formatDate($("#end-date").value)}`;
-  const filtered = ($("#chart-filtered") as HTMLInputElement).checked;
-  $("#chart-filters").textContent = `${t("activeFilters")}${filtered ? "" : ` (${t("notApplied")})`}: ${activeFiltersSummary()}`;
+  $("#chart-filters").textContent = `${t("activeFilters")}: ${activeFiltersSummary()}`;
   // Легенда по умолчанию — точки; в разрезе по типам превратится в заголовки колонок (модификатор ниже)
   $(".chart-legend").className = "chart-legend";
   $("#legend-label-deaths").textContent = t("deathsLegend");
