@@ -1,6 +1,6 @@
 // Фильтры: метаданные секций, каскадные словари, про-панель, passesFilters/serverQuery
 
-import { $, state, api, apiFetch, actions, regionIndex } from "./context.js";
+import { $, state, api, apiFetch, actions, regionIndex, regionName } from "./context.js";
 import { t } from "./i18n.js";
 import { period } from "./dates.js";
 import { participantConfig, renderAdvancedControls, selectedParticipants, participantEmTypes, participantProdTypeIds } from "./participants.js";
@@ -123,7 +123,7 @@ function checkboxOptions(filter, options: HTMLElement, search: HTMLInputElement 
   const columns = document.createElement("div");
   columns.className = "advanced-columns";
   options.append(columns);
-  const draw = () => { const query = search ? search.value.trim().toLowerCase() : "", selected = state.selectedFilters[key] || []; columns.replaceChildren(...dynamicValues(filter).filter((item) => item.preview.toLowerCase().includes(query)).map((item) => { const label = document.createElement("label"), input = document.createElement("input"); if (item.ui_tone) label.className = `filter-tone ${item.ui_tone}`; input.type = "checkbox"; input.checked = selected.includes(item.value); input.addEventListener("change", () => { const values = new Set(state.selectedFilters[key] || []); input.checked ? values.add(item.value) : values.delete(item.value); state.selectedFilters[key] = [...values]; actions.loadMapData(); refreshCascade(); }); label.append(input, document.createTextNode(item.preview)); return label; })); };
+  const draw = () => { const query = search ? search.value.trim().toLowerCase() : "", selected = state.selectedFilters[key] || []; columns.replaceChildren(...dynamicValues(filter).filter((item) => item.preview.toLowerCase().includes(query)).map((item) => { const label = document.createElement("label"), input = document.createElement("input"); if (item.ui_tone) label.className = `filter-tone ${item.ui_tone}`; input.type = "checkbox"; input.checked = selected.includes(item.value); input.addEventListener("change", () => { const values = new Set(state.selectedFilters[key] || []); input.checked ? values.add(item.value) : values.delete(item.value); state.selectedFilters[key] = [...values]; lockGeoRegion(key); actions.loadMapData(); refreshCascade(); }); label.append(input, document.createTextNode(item.preview)); return label; })); };
   if (search) { search.addEventListener("input", draw); search.addEventListener("keydown", (event) => event.stopPropagation()); }
   draw();
 }
@@ -329,19 +329,32 @@ function serverQuery() {
 // Фильтрация пересчитывается только при смене данных/фильтров,
 // при панорамировании берётся готовый результат
 const filterCache = { key: "", filtered: [] as any[] };
-// Выбранные значения гео-секций аккордеона «Место ДТП» (PLACE/ROAD/STREET/NP) в порядке
-// секций: пока они отмечены, именно они — контекст счётчиков карточки. Клип по месту под
-// центром вырезал бы из них всё, когда место фильтра и центр карты разнесены
+// Гео-секции аккордеона «Место ДТП»: выбор в них держится за регион данных
+const geoSections = ["PLACE", "ROAD", "STREET", "NP"];
+
+// Выбранные значения гео-секций аккордеона «Место ДТП» в порядке секций: пока они
+// отмечены, именно они — контекст счётчиков карточки. Клип по месту под центром
+// вырезал бы из них всё, когда место фильтра и центр карты разнесены
 // («Царицыно» при центре в СВАО давал бы нули при живых точках на карте)
 function geoSelectionNames() {
   const names: string[] = [];
-  for (const name of ["PLACE", "ROAD", "STREET", "NP"]) {
+  for (const name of geoSections) {
     const filter = state.filters.find((item) => item.name === name);
     const selected = state.selectedFilters[name] || [];
     if (!filter || !selected.length) continue;
     for (const value of filter.values) if (selected.includes(value.value)) names.push(value.preview);
   }
   return names;
+}
+
+// Отметка в аккордеоне «Место ДТП» сама закрывает замок: регион под центром
+// «плавающий», пан к соседнему субъекту перегрузил бы каскад и молча стёр отметки.
+// Фиксируем текущий регион данных (выбор сделан под ним); обратно замок не
+// открываем — это ручное действие, как и при выборе региона в поле
+function lockGeoRegion(key: string) {
+  if (!geoSections.includes(key) || state.territory || !state.selectedFilters[key]?.length || state.dataRegion === null) return;
+  state.territory = { id: state.dataRegion, name: regionName(state.dataRegion) || String(state.dataRegion) };
+  updateTerritoryCard();
 }
 
 function filteredPoints() {
