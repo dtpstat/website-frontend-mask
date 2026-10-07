@@ -4,7 +4,7 @@ import { $, state, api, apiFetch, regionCache, dataRange, emTypeNames, lastRende
 import { t, number } from "./i18n.js";
 import { period } from "./dates.js";
 import { serverQuery, renderAdvancedFilters, enrichFilters, filteredPoints, serverSections, serverSectionLabels, maskFeatures, intervalFields } from "./filters.js";
-import { regionAtCenter, applyPlace, updateTerritoryCard, selectRegion } from "./territory.js";
+import { regionAtCenter, applyPlace, updateTerritoryCard, selectRegion, syncRegionFields } from "./territory.js";
 import { pointItems, contains } from "./popups.js";
 import { renderLeaflet, renderYandex, renderMapbox, renderHeatControls, currentView, heatZoomMax, heatInView } from "./maps.js";
 import { consumeLinkedPopup } from "./deeplink.js";
@@ -91,6 +91,7 @@ async function loadMapData() {
     const cacheKey = String(regionId ?? "none");
     state.dataRegion = regionId;
     state.outsideRegions = regionId === null;
+    syncRegionFields(); // регион под центром сменился — поле «Регион» переезжает вместе с картой
     if (!bucket.has(cacheKey)) {
       $("#chart-period").textContent = `${t("forPeriod")}: ${start} — ${end}`;
       const query = new URLSearchParams({ DATE_TIME_FROM:`${start}T00:00:00`, DATE_TIME_TO:`${end}T23:59:59` });

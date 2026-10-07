@@ -1,12 +1,12 @@
 // Точка входа: заполнение actions, подписки на события, стартовая загрузка
 
-import { $, state, actions, setStatus } from "./context.js";
+import { $, state, actions, setStatus, regionName } from "./context.js";
 import { t, number } from "./i18n.js";
 import { period, renderDateFields, closeDateMenu, openDateMenu, blurDateRange } from "./dates.js";
 import { renderParticipants, renderAdvancedControls } from "./participants.js";
 import { refreshCascade, renderAdvancedFilters, openAdvanced, syncAdvancedRegion, drawAdvancedRegionSuggest, advancedRegionCommit, closeAdvanced, setAdvancedCollapsed, setFiltersCollapsed, filteredPoints } from "./filters.js";
 import { map, renderMapSwitcher, switchMapClient, renderHeatControls, updateHeatControls } from "./maps.js";
-import { updateTerritoryCard, drawRegionSuggest } from "./territory.js";
+import { updateTerritoryCard, drawRegionSuggest, syncRegionFields } from "./territory.js";
 import { renderChart, setChartMode, chartAxis, chartDatesAvailable } from "./chart.js";
 import { loadMapData, loadFilters, applyHeatMode, refreshRender } from "./pipeline.js";
 import { scheduleRegionLookup } from "./geom.js";
@@ -64,13 +64,14 @@ document.querySelectorAll(".date-range").forEach((node) => {
 });
 // Регион про-панели: подсказки на ввод, Enter — выбор первого совпадения, пустой ввод — сброс (DTP-25)
 $("#advanced-region").addEventListener("input", drawAdvancedRegionSuggest);
-$("#advanced-region").addEventListener("focus", drawAdvancedRegionSuggest);
+// Как и в стандартной панели: на фокусе очищаем показанный регион — поле для ввода
+$("#advanced-region").addEventListener("focus", () => { ($("#advanced-region") as HTMLInputElement).value = ""; drawAdvancedRegionSuggest(); });
 $("#advanced-region").addEventListener("keydown", (event) => {
   if (event.key === "Enter") { event.preventDefault(); advancedRegionCommit(); }
   if (event.key === "Escape") { syncAdvancedRegion(); ($("#region-suggest-adv") as HTMLElement).hidden = true; }
   event.stopPropagation();
 });
-$("#advanced-region").addEventListener("blur", () => setTimeout(() => { ($("#region-suggest-adv") as HTMLElement).hidden = true; }, 150));
+$("#advanced-region").addEventListener("blur", () => setTimeout(() => { ($("#region-suggest-adv") as HTMLElement).hidden = true; syncRegionFields(); }, 150));
 document.querySelectorAll('input[name="severity"]').forEach((input) => input.addEventListener("change", reload));
 $("#close-advanced").addEventListener("click", () => setAdvancedCollapsed(!document.body.classList.contains("advanced-collapsed")));
 $("#back-to-basic").addEventListener("click", closeAdvanced);
@@ -78,8 +79,23 @@ $("#hide-filters").addEventListener("click", () => setFiltersCollapsed(!$("#filt
 if (matchMedia("(max-width: 800px)").matches) setFiltersCollapsed(true);
 $("#professional-toggle").addEventListener("click", openAdvanced);
 $("#region-search").addEventListener("input", drawRegionSuggest);
-$("#region-search").addEventListener("focus", drawRegionSuggest);
-$("#lock-button").addEventListener("click", () => { if (!state.territory) return; state.territory = null; updateTerritoryCard(); refreshCascade(); loadMapData(); });
+// Сфокусированное поле отдано пользователю: показанный регион мешал бы вводу
+$("#region-search").addEventListener("focus", () => { ($("#region-search") as HTMLInputElement).value = ""; drawRegionSuggest(); });
+$("#region-search").addEventListener("blur", () => setTimeout(syncRegionFields, 150));
+// Замок: закреплённую территорию снимает, «плавающий» регион под центром — фиксирует
+$("#lock-button").addEventListener("click", () => {
+  if (state.territory) {
+    state.territory = null;
+    updateTerritoryCard();
+    refreshCascade();
+    loadMapData();
+  } else if (state.dataRegion !== null) {
+    state.territory = { id: state.dataRegion, name: regionName(state.dataRegion) || String(state.dataRegion) };
+    updateTerritoryCard();
+    refreshCascade();
+    loadMapData();
+  }
+});
 document.addEventListener("click", (event) => {
   const target = event.target as Element;
   if (!target.closest(".region-search")) $("#region-suggest").hidden = true;

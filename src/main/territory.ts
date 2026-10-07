@@ -40,6 +40,19 @@ function updateTerritoryCard() {
   $("#lock-button").setAttribute("aria-pressed", String(locked));
   $("#lock-button").title = locked ? t("unlock") : t("lockPin");
   applyRegionLock();
+  syncRegionFields();
+}
+// Поля региона показывают фактический регион данных: закреплённую территорию, пока она
+// закреплена, иначе субъект под центром (loadMapData дёргает синх после каждого
+// разрешения региона — поле «плавает» вместе с картой). Ввод не трогаем: вне фокуса
+// значение можно писать смело, сфокусированное поле отдано пользователю (на фокусе
+// оно очищается, на потере фокуса синх возвращает отображение)
+function syncRegionFields() {
+  const name = state.territory?.name ?? regionName(state.dataRegion);
+  for (const input of [$("#region-search"), $("#advanced-region")] as HTMLInputElement[]) {
+    if (document.activeElement === input) continue;
+    if (input.value !== name) input.value = name;
+  }
 }
 // Закрытый замок блокирует смену региона: поля поиска приглушены, попытка ввода
 // показывает подсказку «Сначала открепите территорию» вместо списка (DTP-28)
@@ -54,10 +67,12 @@ async function selectRegion(region) {
   const feature = (data.features || []).find((item) => Number(item.properties.id) === region.id);
   if (!feature) return;
   state.territory = { id: region.id, name: region.name };
+  // Выбранный регион сразу в оба поля: синхронизация пропускает сфокусированное поле
+  // (оно у пользователя), а после выбора из подсказок фокус ещё в поле поиска
+  for (const input of [$("#region-search"), $("#advanced-region")] as HTMLInputElement[]) input.value = region.name;
   updateTerritoryCard();
   refreshCascade(); // регион — родитель каскадной секции «Место ДТП»
   $("#region-suggest").hidden = true;
-  $("#region-search").value = "";
   // Карта открывается по центру выбранной области (города региона)
   const { west, south, east, north } = featureBounds(feature);
   if (state.mapClient === "yandex" && yandex.map) yandex.map.setBounds([[west, south], [east, north]], { checkZoomRange: true });
@@ -120,4 +135,4 @@ function makePlace(name: string, geometry: any) {
   return { name, rings, boxes };
 }
 
-export { regionAtCenter, applyPlace, makePlace, updateTerritoryCard, selectRegion, drawRegionSuggest };
+export { regionAtCenter, applyPlace, makePlace, updateTerritoryCard, selectRegion, drawRegionSuggest, syncRegionFields };

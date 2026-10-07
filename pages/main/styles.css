@@ -295,3 +295,15 @@ body .advanced-interval-field:has(input:not(:placeholder-shown)) { background:va
    заголовки мельче секционных, поиск и списки наследуют стили секций */
 body .advanced-filter .advanced-subgroup .advanced-subhead { margin:14px 0 0; color:var(--navy); font-size:14px; font-weight:600; line-height:20px; }
 body .advanced-filter .advanced-subgroup .advanced-subhead:first-child { margin-top:12px; }
+
+/* Мини-скроллы длинных списков проф-фильтров: высота ограничена, скроллбар тонкий
+   (короткие списки и интервалы не дорастают — остаются без скролла). Мультиколонки
+   переезжают на внутреннюю обёртку: переполнение multicol уходит вбок, вертикально
+   его не прокрутить — скроллится сам список, колонки считаются внутри */
+body .advanced-filter .advanced-options { max-height:280px; overflow-y:auto; columns:auto; scrollbar-width:thin; scrollbar-color:var(--line) transparent; }
+body .advanced-filter .advanced-columns { columns:2; column-gap:30px; }
+@media (max-width:800px) { body .advanced-filter .advanced-columns { columns:1; } }
+body .advanced-filter .advanced-options::-webkit-scrollbar { width:6px; }
+body .advanced-filter .advanced-options::-webkit-scrollbar-track { background:transparent; }
+body .advanced-filter .advanced-options::-webkit-scrollbar-thumb { border-radius:3px; background:var(--line); }
+body .advanced-filter .advanced-options::-webkit-scrollbar-thumb:hover { background:var(--muted); }

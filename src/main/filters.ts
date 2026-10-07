@@ -4,7 +4,7 @@ import { $, state, api, apiFetch, actions, regionIndex } from "./context.js";
 import { t } from "./i18n.js";
 import { period } from "./dates.js";
 import { participantConfig, renderAdvancedControls, selectedParticipants, participantEmTypes, participantProdTypeIds } from "./participants.js";
-import { selectRegion, updateTerritoryCard } from "./territory.js";
+import { selectRegion, updateTerritoryCard, syncRegionFields } from "./territory.js";
 
 // Секции проф-фильтра, которые уходят параметрами на сервер в /dtp/points.
 // Серверные секции проф-фильтра уходят параметрами `${name}_IDS` в /dtp/points.
@@ -110,10 +110,15 @@ function advancedSearchInput(key: string, saved?: string) {
   return search;
 }
 // Чекбоксы значений с живым поиском: выбор живёт в state.selectedFilters[key], смена
-// перезагружает точки и детей каскада. Общие для секций и подгрупп аккордеона места
+// перезагружает точки и детей каскада. Общие для секций и подгрупп аккордеона места.
+// Мультиколонки — на внутренней обёртке: список сам мини-скролл, а multicol-переполнение
+// уходит вбок и вертикально не прокручивается
 function checkboxOptions(filter, options: HTMLElement, search: HTMLInputElement | null) {
   const key = filter.key || filter.name;
-  const draw = () => { const query = search ? search.value.trim().toLowerCase() : "", selected = state.selectedFilters[key] || []; options.replaceChildren(...dynamicValues(filter).filter((item) => item.preview.toLowerCase().includes(query)).map((item) => { const label = document.createElement("label"), input = document.createElement("input"); if (item.ui_tone) label.className = `filter-tone ${item.ui_tone}`; input.type = "checkbox"; input.checked = selected.includes(item.value); input.addEventListener("change", () => { const values = new Set(state.selectedFilters[key] || []); input.checked ? values.add(item.value) : values.delete(item.value); state.selectedFilters[key] = [...values]; actions.loadMapData(); refreshCascade(); }); label.append(input, document.createTextNode(item.preview)); return label; })); };
+  const columns = document.createElement("div");
+  columns.className = "advanced-columns";
+  options.append(columns);
+  const draw = () => { const query = search ? search.value.trim().toLowerCase() : "", selected = state.selectedFilters[key] || []; columns.replaceChildren(...dynamicValues(filter).filter((item) => item.preview.toLowerCase().includes(query)).map((item) => { const label = document.createElement("label"), input = document.createElement("input"); if (item.ui_tone) label.className = `filter-tone ${item.ui_tone}`; input.type = "checkbox"; input.checked = selected.includes(item.value); input.addEventListener("change", () => { const values = new Set(state.selectedFilters[key] || []); input.checked ? values.add(item.value) : values.delete(item.value); state.selectedFilters[key] = [...values]; actions.loadMapData(); refreshCascade(); }); label.append(input, document.createTextNode(item.preview)); return label; })); };
   if (search) { search.addEventListener("input", draw); search.addEventListener("keydown", (event) => event.stopPropagation()); }
   draw();
 }
@@ -243,8 +248,8 @@ function openAdvanced() { renderAdvancedControls(); renderAdvancedFilters(); syn
 // Регион про-панели — то же поле с подсказками, что в стандартной панели; можно впечатать вручную (DTP-25).
 // Подсказки прижаты к ПРАВОМУ краю поля. Пустой ввод + Enter (или кнопка сброса) возвращает «Все регионы»
 function syncAdvancedRegion() {
-  const input = $("#advanced-region") as HTMLInputElement;
-  input.value = state.territory ? state.territory.name : "";
+  // Тот же «эффективный» регион, что и в стандартной панели: замок ?? субъект под центром
+  syncRegionFields();
 }
 function drawAdvancedRegionSuggest() {
   const input = $("#advanced-region") as HTMLInputElement, suggest = $("#region-suggest-adv");
