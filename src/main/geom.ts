@@ -1,13 +1,13 @@
 // Территория под центром карты: эндпоинт /geom/getRegionUnderPoint (lat, lng, level = OSM
-// admin_level) возвращает name админ-единицы под центром — подпись живёт в карточке
-// статистики (#region-plate), серой строкой под ней родитель (#region-parent) с того же
-// эндпоинта на более грубом уровне. Видимая строка подписи — ещё и «место» счётчиков
-// (state.place): её геометрия фильтрует набор региона. Fetch мимо apiFetch, чтобы каждый
-// пан не мигал полоской загрузки. Уровень подписи из зума: с зума дэшборда — 4 регион
-// (совпадает с данными счётчиков), 11-13 → 6 округ, 14+ → 8 район города. Таблица
-// покрыта только Россией — вне её name пустой
+// admin_level) возвращает name админ-единицы под центром. Место (state.place) — самое
+// конкретное из ответов (с зума дэшборда: 11-13 → 6 округ, 14+ → 8 район города): его
+// имя становится заголовком карточки (#region-name у pipeline), а геометрия фильтрует
+// набор региона для счётчиков; серой строкой под заголовком pipeline показывает регион
+// данных (#region-plate), ещё строкой ниже — родитель (#region-parent) с того же
+// эндпоинта на более грубом уровне. Fetch мимо apiFetch, чтобы каждый пан не мигал
+// полоской загрузки. Таблица покрыта только Россией — вне её name пустой
 
-import { api, $, state, regionName, actions } from "./context.js";
+import { api, $, state, actions } from "./context.js";
 import { currentView } from "./maps.js";
 import { regionAtCenter, makePlace } from "./territory.js";
 
@@ -66,33 +66,23 @@ async function lookupRegion() {
   }
 }
 
-// Подпись и родитель дублируют заголовок карточки, когда называют тот же субъект:
-// без закрепления подпись уровня 4 всегда и есть регион данных, а родитель района —
-// тем более. Оформные слова не мешают сравнению («г. Москва» = «Москва», «Республика
-// Татарстан» = «Татарстан»); остаются только новые строки — район и страна
-const subjectKey = (name: string) => name.toLowerCase().replace(/^(г\.\s*|республика\s+|\S+\s+республика$)/, "").trim();
-const duplicates = (candidate: string, name: string) => Boolean(candidate) && Boolean(name) && subjectKey(candidate) === subjectKey(name);
-
-// Видимая строка подписи — «место» счётчиков и графика: по нему фильтруется набор
-// региона. Считаем по месту, только когда оно внутри набора данных: без закрепления
-// это всегда так (подпись и регион — один субъект), с закреплением — пока центр не
-// выехал из закреплённого субъекта (там подпись чужая, а данные остаются закреплёнными).
-// Место — география: живёт до следующего вызова applyRegion (смена периода/фильтров
-// пересчитывает те же точки, движка карты не требует; иначе подпись осталась бы,
-// а счётчики молча переехали бы на весь регион)
+// Место — самая конкретная строка подписи и «место» счётчиков: по нему фильтруется
+// набор региона, его имя встаёт в заголовок карточки. Место есть только у округа/района
+// (уровни 6/8): подпись уровня 4 — сам субъект данных, считать по нему нечего. Считаем
+// по месту, только когда оно внутри набора данных: без закрепления это всегда так,
+// с закреплением — пока центр не выехал из закреплённого субъекта (там подпись чужая,
+// а данные остаются закреплёнными). Место — география: живёт до следующего вызова
+// applyRegion (смена периода/фильтров пересчитывает те же точки, движка карты не
+// требует; иначе заголовок остался бы, а счётчики молча переехали бы на весь регион)
 async function applyRegion(plate: { name: string; geometry: any }, parentName: string, level: number) {
-  const plateNode = ($("#region-plate") as HTMLElement), parent = ($("#region-parent") as HTMLElement);
+  const parent = ($("#region-parent") as HTMLElement);
   const name = plate.name;
-  const title = state.territory?.name ?? regionName(state.dataRegion);
-  const plateVisible = Boolean(name) && !((level === 4 && !state.territory) || duplicates(name, title));
-  plateNode.textContent = name;
-  plateNode.hidden = !plateVisible;
-  // Родитель виден, пока есть подпись: на уровне 4 он остаётся виден и при скрытой
-  // подписи-дубле («г. Москва» / «Россия»), на уровнях 6/8 сам дублирует заголовок
-  parent.textContent = parentName;
-  parent.hidden = !name || !parentName || duplicates(parentName, title) || duplicates(parentName, name) || (level !== 4 && !state.territory);
-  const within = plateVisible && plate.geometry && (!state.territory || (await regionAtCenter(currentView().center.latitude, currentView().center.longitude)) === state.territory.id);
+  const within = Boolean(name) && plate.geometry && level !== 4 && (!state.territory || (await regionAtCenter(currentView().center.latitude, currentView().center.longitude)) === state.territory.id);
   const next = within ? makePlace(name, plate.geometry) : null;
+  // Родитель — контекст подписи уровня 4 (страна под субъектом); у округа/района
+  // его роль берёт строка региона данных (#region-plate у pipeline)
+  parent.textContent = parentName;
+  parent.hidden = !name || !parentName || level !== 4;
   // Геометрия и имя приезжают одним ответом — имя меняется только вместе с местом
   const changed = (state.place?.name ?? null) !== (next?.name ?? null);
   state.place = next;

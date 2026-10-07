@@ -49,9 +49,15 @@ function renderMapData(view) {
   else if (state.mapClient === "yandex") renderYandex(visible, heatPoints, heatVisible);
   else renderMapbox(visible, heatPoints, heatVisible);
   consumeLinkedPopup();
-  // Заголовок карточки называет субъект данных, статус и график — место счётчиков
+  // Заголовок карточки называет то, что посчитано, — место счётчиков; когда места нет
+  // (подпись скрыта или ещё едет) — субъект данных. Второй строкой серым уезжает регион
+  // данных (округ/район — часть субъекта), родитель-страна с уровня подписи — третья
   const name = state.place?.name ?? state.territory?.name ?? regionName(state.dataRegion);
-  $("#region-name").textContent = state.territory ? state.territory.name : (regionName(state.dataRegion) || t("allRegions"));
+  $("#region-name").textContent = name || t("allRegions");
+  const region = state.territory?.name ?? regionName(state.dataRegion);
+  const plateNode = ($("#region-plate") as HTMLElement);
+  plateNode.textContent = region || "";
+  plateNode.hidden = !state.place || !region || region === name;
   setStatus(`${number().format(counted.length)} ${t("accidents").toLowerCase()}${name ? ` — ${name}` : ""}`);
 }
 // Перерисовка текущим видом: место из карточки доехало позже данных (geom отвечает

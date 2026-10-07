@@ -31,9 +31,10 @@ function featureBounds(feature) {
   return { west, south, east, north };
 }
 function updateTerritoryCard() {
-  // Без закрепления карточка живёт субъектом под центром — «Все регионы» остаётся
-  // только до первого набора данных (карточка вне субъектов РФ скрыта гейтом)
-  $("#region-name").textContent = state.territory ? state.territory.name : regionName(state.dataRegion) || t("allRegions");
+  // Мгновенный отклик на закрепление/снятие до пересчёта конвейера: та же формула, что
+  // в renderMapData — место счётчиков, без него субъект данных; «Все регионы» остаётся
+  // только до первого набора (карточка вне субъектов РФ скрыта гейтом)
+  $("#region-name").textContent = (state.place?.name ?? state.territory?.name ?? regionName(state.dataRegion)) || t("allRegions");
   const locked = Boolean(state.territory);
   $("#lock-button").classList.toggle("locked", locked);
   $("#lock-button").setAttribute("aria-pressed", String(locked));
