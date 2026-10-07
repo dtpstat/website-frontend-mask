@@ -101,11 +101,78 @@ async function refreshCascade() {
   if (dirty) renderAdvancedFilters(); // сброс/загрузка детей — сразу перерисовываем (хинты, «загружаем»)
   if (jobs.length) { await Promise.all(jobs); renderAdvancedFilters(); }
 }
+// Поисковая строка списка значений: ключ секции в data-param — по нему панель
+// запоминает запросы при перерисовках (в аккордеоне места их до четырёх)
+function advancedSearchInput(key: string, saved?: string) {
+  const search = document.createElement("input");
+  search.type = "search"; search.placeholder = t("search"); search.className = "advanced-search"; search.dataset.param = key;
+  if (saved) search.value = saved;
+  return search;
+}
+// Чекбоксы значений с живым поиском: выбор живёт в state.selectedFilters[key], смена
+// перезагружает точки и детей каскада. Общие для секций и подгрупп аккордеона места
+function checkboxOptions(filter, options: HTMLElement, search: HTMLInputElement | null) {
+  const key = filter.key || filter.name;
+  const draw = () => { const query = search ? search.value.trim().toLowerCase() : "", selected = state.selectedFilters[key] || []; options.replaceChildren(...dynamicValues(filter).filter((item) => item.preview.toLowerCase().includes(query)).map((item) => { const label = document.createElement("label"), input = document.createElement("input"); if (item.ui_tone) label.className = `filter-tone ${item.ui_tone}`; input.type = "checkbox"; input.checked = selected.includes(item.value); input.addEventListener("change", () => { const values = new Set(state.selectedFilters[key] || []); input.checked ? values.add(item.value) : values.delete(item.value); state.selectedFilters[key] = [...values]; actions.loadMapData(); refreshCascade(); }); label.append(input, document.createTextNode(item.preview)); return label; })); };
+  if (search) { search.addEventListener("input", draw); search.addEventListener("keydown", (event) => event.stopPropagation()); }
+  draw();
+}
+// Текст-подсказка каскадной секции: «загружаем» или какой родитель выбрать первым
+function cascadeHint(filter, parent: string) { return t(filter.loading ? "loading" : parent === "REGION" ? "pickRegion" : parent === "PLACE" ? "pickPlace" : "pickMark"); }
+// Аккордеон «Место ДТП»: список мест (каскад от региона) плюс подгруппы дорог, улиц
+// и НП (каскад от места) — вместо трёх отдельных секций. У каждой подгруппы свой
+// поиск и подсказки, выбор хранится в тех же ключах state.selectedFilters — серверные
+// параметры PLACE_IDS/ROAD_IDS/STREET_IDS/NP_IDS не меняются
+function placeGroupSection(place, children: any[], previous: Map<string, any>) {
+  const saved = previous.get(place.label);
+  const section = document.createElement("details"), title = document.createElement("summary"), name = document.createElement("span");
+  section.className = "advanced-collapse";
+  section.dataset.label = place.label;
+  if (saved?.open) section.open = true;
+  name.textContent = place.label;
+  title.append(name);
+  section.append(title);
+  appendCascadeBlock(section, place, saved?.queries?.[place.key || place.name], false);
+  for (const child of children) appendCascadeBlock(section, child, saved?.queries?.[child.key || child.name], true);
+  return section;
+}
+// Блок одной каскадной секции: подсказка (родитель не выбран / словарь грузится) либо
+// поиск + чекбоксы. subgroup=true добавляет заголовок подгруппы внутри аккордеона места
+function appendCascadeBlock(section: HTMLElement, filter, query: string | undefined, subgroup: boolean) {
+  const key = filter.key || filter.name, parent = sectionParents[key];
+  let host: HTMLElement = section;
+  if (subgroup) {
+    host = document.createElement("div");
+    host.className = "advanced-subgroup";
+    const head = document.createElement("div");
+    head.className = "advanced-subhead";
+    head.textContent = filter.label;
+    host.append(head);
+    section.append(host);
+  }
+  if (filter.loading || (parent && !cascadeParentIds(parent).length)) {
+    const hint = document.createElement("div");
+    hint.className = "advanced-hint";
+    hint.textContent = cascadeHint(filter, parent);
+    host.append(hint);
+    return;
+  }
+  const options = document.createElement("div");
+  options.className = "advanced-options";
+  const search = filter.key === "street" || filter.values.length > 8 ? advancedSearchInput(key, query) : null;
+  host.append(...(search ? [search, options] : [options]));
+  checkboxOptions(filter, options, search);
+}
 function renderAdvancedFilters() {
   const root = $("#advanced-dynamic");
-  // Живая перезагрузка данных пересобирает панель — сохраняем раскрытые секции, поисковые запросы и фокус ввода
+  // Живая перезагрузка данных пересобирает панель — сохраняем раскрытые секции,
+  // поисковые запросы (ключ — параметр секции, у аккордеона места их четыре) и фокус ввода
   const previous = new Map();
-  for (const section of root.querySelectorAll(".advanced-collapse")) previous.set(section.dataset.label, { open: section.open, query: section.querySelector(".advanced-search")?.value ?? "" });
+  for (const section of root.querySelectorAll(".advanced-collapse")) {
+    const queries: Record<string, string> = {};
+    for (const input of section.querySelectorAll(".advanced-search") as Iterable<HTMLInputElement>) if (input.dataset.param) queries[input.dataset.param] = input.value;
+    previous.set(section.dataset.label, { open: section.open, queries });
+  }
   const active = document.activeElement;
   let restore: { label: string; row?: string; input?: number; search?: boolean } | null = null;
   if (active instanceof HTMLInputElement) {
@@ -114,7 +181,12 @@ function renderAdvancedFilters() {
       ? { label: (section as HTMLElement).dataset.label ?? "", row: row.querySelector("span")?.textContent ?? "", input: [...row.querySelectorAll("input")].indexOf(active) }
       : { label: (section as HTMLElement).dataset.label ?? "", search: active.classList.contains("advanced-search") };
   }
-  const sections = state.filters.filter((filter) => filter.param).map((filter) => {
+  // Место/дорога/улица/НП — один аккордеон: дети уходят подгруппами внутрь секции места
+  const placeFilter = state.filters.find((filter) => filter.param && filter.name === "PLACE");
+  const placeGroup = placeFilter ? ["ROAD", "STREET", "NP"].map((name) => state.filters.find((filter) => filter.param && filter.name === name)).filter(Boolean) : [];
+  const grouped = new Set(placeGroup);
+  const sections = state.filters.filter((filter) => filter.param && !grouped.has(filter)).map((filter) => {
+    if (filter.name === "PLACE" && placeGroup.length) return placeGroupSection(filter, placeGroup, previous);
     const section = document.createElement("details"), title = document.createElement("summary"), name = document.createElement("span"), options = document.createElement("div"), key = filter.key || filter.name, saved = previous.get(filter.label);
     section.dataset.label = filter.label;
     name.textContent = filter.label;
@@ -146,17 +218,16 @@ function renderAdvancedFilters() {
     if (filter.loading || (parent && !cascadeParentIds(parent).length)) {
       title.append(name);
       options.className = "advanced-hint";
-      options.textContent = filter.loading ? t("loading") : t(parent === "REGION" ? "pickRegion" : parent === "PLACE" ? "pickPlace" : "pickMark");
+      options.textContent = cascadeHint(filter, parent);
       section.append(title, options); return section;
     }
-    const search = filter.key === "street" || filter.values.length > 8 ? document.createElement("input") : null;
-    if (search) { search.type = "search"; search.placeholder = t("search"); search.className = "advanced-search"; if (saved?.query) search.value = saved.query; }
     options.className = "advanced-options";
-    const draw = () => { const query = search ? search.value.trim().toLowerCase() : "", selected = state.selectedFilters[key] || []; options.replaceChildren(...dynamicValues(filter).filter((item) => item.preview.toLowerCase().includes(query)).map((item) => { const label = document.createElement("label"), input = document.createElement("input"); if (item.ui_tone) label.className = `filter-tone ${item.ui_tone}`; input.type = "checkbox"; input.checked = selected.includes(item.value); input.addEventListener("change", () => { const values = new Set(state.selectedFilters[key] || []); input.checked ? values.add(item.value) : values.delete(item.value); state.selectedFilters[key] = [...values]; actions.loadMapData(); refreshCascade(); }); label.append(input, document.createTextNode(item.preview)); return label; })); };
+    const search = filter.key === "street" || filter.values.length > 8 ? advancedSearchInput(key, saved?.queries?.[key]) : null;
     title.append(name);
-    if (search) { search.addEventListener("input", draw); search.addEventListener("keydown", (event) => event.stopPropagation()); section.append(title, search, options); }
+    checkboxOptions(filter, options, search);
+    if (search) section.append(title, search, options);
     else section.append(title, options);
-    draw(); return section;
+    return section;
   });
   root.replaceChildren(...sections);
   if (restore) {

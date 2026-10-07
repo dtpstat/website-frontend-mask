@@ -290,3 +290,8 @@ body .advanced-interval-field:has(input:not(:placeholder-shown)) { background:va
 .loader { position:fixed; top:0; left:0; right:0; z-index:5; height:4px; background-image:repeating-linear-gradient(90deg,transparent,transparent 20px,#8d99a5 0,#8d99a5 25px); background-size:200% 100%; animation:loader-slide 12s linear infinite; transition:opacity 1s; opacity:0; pointer-events:none; }
 .loader.visible { opacity:1; }
 @keyframes loader-slide { to { background-position:100%; } }
+
+/* Аккордеон «Место ДТП»: подгруппы дорог/улиц/НП внутри секции места —
+   заголовки мельче секционных, поиск и списки наследуют стили секций */
+body .advanced-filter .advanced-subgroup .advanced-subhead { margin:14px 0 0; color:var(--navy); font-size:14px; font-weight:600; line-height:20px; }
+body .advanced-filter .advanced-subgroup .advanced-subhead:first-child { margin-top:12px; }
