@@ -31,10 +31,11 @@ function featureBounds(feature) {
   for (const polygon of polygons) for (const ring of polygon) for (const [x, y] of ring) { if (x < west) west = x; if (x > east) east = x; if (y < south) south = y; if (y > north) north = y; }
   return { west, south, east, north };
 }
-function updateTerritoryCard() {
-  // Место под центром — атрибут «плавающего» региона: под замком не определяем
-  // (карточка считает весь закреплённый субъект), при снятии ищем заново
-  state.place = null;
+function updateTerritoryCard(keepPlace = false) {
+  // Место под центром — атрибут «плавающего» региона: при снятии замка ищем заново,
+  // при закреплении из поиска/каскада не наследуем чужое место. Ручной замок (keepPlace)
+  // закрепляет само место: лукап выключен, пан и зум его не меняют, счётчики считают по нему
+  if (!keepPlace || !state.territory) state.place = null;
   if (state.territory) cancelRegionLookup(); else scheduleRegionLookup();
   // Мгновенный отклик на закрепление/снятие до пересчёта конвейера: та же формула, что
   // в renderMapData — место счётчиков, без него субъект данных; «Все регионы» остаётся

@@ -82,7 +82,8 @@ $("#region-search").addEventListener("input", drawRegionSuggest);
 // Сфокусированное поле отдано пользователю: показанный регион мешал бы вводу
 $("#region-search").addEventListener("focus", () => { ($("#region-search") as HTMLInputElement).value = ""; drawRegionSuggest(); });
 $("#region-search").addEventListener("blur", () => setTimeout(syncRegionFields, 150));
-// Замок: закреплённую территорию снимает, «плавающий» регион под центром — фиксирует
+// Замок: закреплённую территорию снимает; «плавающие» место и регион под центром —
+// фиксирует (место — контекст карточки: подпись и счётчики остаются, ход карты не меняет их)
 $("#lock-button").addEventListener("click", () => {
   if (state.territory) {
     state.territory = null;
@@ -91,7 +92,7 @@ $("#lock-button").addEventListener("click", () => {
     loadMapData();
   } else if (state.dataRegion !== null) {
     state.territory = { id: state.dataRegion, name: regionName(state.dataRegion) || String(state.dataRegion) };
-    updateTerritoryCard();
+    updateTerritoryCard(true); // место под центром закрепляется вместе с регионом данных
     refreshCascade();
     loadMapData();
   }

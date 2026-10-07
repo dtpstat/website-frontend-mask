@@ -55,9 +55,9 @@ function chartAxis(mode: string) {
 // Дни/часы требуют дату точки: в открытом API её нет — табы отключаем с пояснением.
 // Если даты появились (мок e2e, будущий бэкенд с рамкой) — включаются сами
 const chartDatesAvailable = () => state.items.some((item) => item.datetime);
-// График всегда с клиентскими фильтрами и по месту из карточки — как счётчики;
-// отмеченное место ДТП или замок заменяют место под центром (см. geoSelectionNames)
-const chartSource = () => geoSelectionNames().length || state.territory ? state.items : applyPlace(state.items);
+// График всегда с клиентскими фильтрами и по месту из карточки — как счётчики
+// (под замком место закреплено); отмеченное место ДТП заменяет место под центром
+const chartSource = () => geoSelectionNames().length ? state.items : applyPlace(state.items);
 function setChartMode(mode: string) { state.chartMode = mode; document.querySelectorAll("#chart-side button[data-mode]").forEach((item) => item.classList.toggle("active", item.dataset.mode === mode)); }
 function updateChartTabs() {
   const dates = chartDatesAvailable();
@@ -96,7 +96,7 @@ function renderChart() {
   // как и счётчики карточки
   const rows = chartSource();
   const geo = geoSelectionNames();
-  $("#chart-region").textContent = geo.length ? geo.join(", ") : state.territory ? state.territory.name : state.place?.name ?? (regionName(state.dataRegion) || t("allRegions"));
+  $("#chart-region").textContent = geo.length ? geo.join(", ") : state.place?.name ?? state.territory?.name ?? (regionName(state.dataRegion) || t("allRegions"));
   $("#chart-count").textContent = number().format(rows.length);
   $("#chart-injured-count").textContent = number().format(rows.reduce((sum, item) => sum + Number(item.injured || 0), 0));
   $("#chart-dead-count").textContent = number().format(rows.reduce((sum, item) => sum + Number(item.dead || 0), 0));
