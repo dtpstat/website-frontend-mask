@@ -55,7 +55,12 @@ function scheduleFilterReload() { clearTimeout(filterReloadTimer); filterReloadT
 // когда выбран родитель. На секции храним parentSel (подпись выбора родителя, для
 // которой загружены values); смена родителя сбрасывает и выбор в самой секции
 function cascadeParentIds(parent: string): number[] {
-  if (parent === "REGION") return state.territory ? [state.territory.id] : [];
+  // Эффективный регион данных: замок, иначе субъект под центром — тот же, что показывает
+  // поле «Регион»; автопроставленный регион тоже родитель каскада «Место ДТП»
+  if (parent === "REGION") {
+    const region = state.territory ? state.territory.id : state.dataRegion;
+    return region === null ? [] : [region];
+  }
   return state.selectedFilters[parent] || [];
 }
 function cascadeSignature(name: string): string {
