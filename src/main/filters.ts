@@ -329,6 +329,21 @@ function serverQuery() {
 // Фильтрация пересчитывается только при смене данных/фильтров,
 // при панорамировании берётся готовый результат
 const filterCache = { key: "", filtered: [] as any[] };
+// Выбранные значения гео-секций аккордеона «Место ДТП» (PLACE/ROAD/STREET/NP) в порядке
+// секций: пока они отмечены, именно они — контекст счётчиков карточки. Клип по месту под
+// центром вырезал бы из них всё, когда место фильтра и центр карты разнесены
+// («Царицыно» при центре в СВАО давал бы нули при живых точках на карте)
+function geoSelectionNames() {
+  const names: string[] = [];
+  for (const name of ["PLACE", "ROAD", "STREET", "NP"]) {
+    const filter = state.filters.find((item) => item.name === name);
+    const selected = state.selectedFilters[name] || [];
+    if (!filter || !selected.length) continue;
+    for (const value of filter.values) if (selected.includes(value.value)) names.push(value.preview);
+  }
+  return names;
+}
+
 function filteredPoints() {
   // Клиентски фильтруются только секции, чьи поля есть в точках (тип ДТП, тяжесть, участники);
   // серверные секции (serverSections) уже отфильтрованы при загрузке /dtp/points
@@ -364,4 +379,4 @@ function activeFiltersLabel() {
   return `${t("filters")} (${count} ${count % 10 === 1 && count % 100 !== 11 ? "активный" : "активных"})`;
 }
 
-export { serverSections, serverSectionLabels, maskFeatures, intervalFields, enrichFilters, refreshCascade, renderAdvancedFilters, openAdvanced, syncAdvancedRegion, drawAdvancedRegionSuggest, advancedRegionCommit, closeAdvanced, setAdvancedCollapsed, serverQuery, filteredPoints, setFiltersCollapsed };
+export { serverSections, serverSectionLabels, maskFeatures, intervalFields, enrichFilters, refreshCascade, renderAdvancedFilters, openAdvanced, syncAdvancedRegion, drawAdvancedRegionSuggest, advancedRegionCommit, closeAdvanced, setAdvancedCollapsed, serverQuery, filteredPoints, geoSelectionNames, setFiltersCollapsed };

@@ -5,6 +5,7 @@ import { t, number, percent } from "./i18n.js";
 import { period } from "./dates.js";
 import { participantLabel } from "./participants.js";
 import { applyPlace } from "./territory.js";
+import { geoSelectionNames } from "./filters.js";
 
 // Период данных: шесть полей-сегментов «ДД ММ ГГГГ» начала и конца фиксированной
 // ширины (правка одного сегмента не двигает строку) + дропдаун пресетов (как на
@@ -54,8 +55,9 @@ function chartAxis(mode: string) {
 // Дни/часы требуют дату точки: в открытом API её нет — табы отключаем с пояснением.
 // Если даты появились (мок e2e, будущий бэкенд с рамкой) — включаются сами
 const chartDatesAvailable = () => state.items.some((item) => item.datetime);
-// График всегда с клиентскими фильтрами и по месту из карточки — как счётчики
-const chartSource = () => applyPlace(state.items);
+// График всегда с клиентскими фильтрами и по месту из карточки — как счётчики;
+// отмеченное место ДТП заменяет место под центром (см. geoSelectionNames)
+const chartSource = () => geoSelectionNames().length ? state.items : applyPlace(state.items);
 function setChartMode(mode: string) { state.chartMode = mode; document.querySelectorAll("#chart-side button[data-mode]").forEach((item) => item.classList.toggle("active", item.dataset.mode === mode)); }
 function updateChartTabs() {
   const dates = chartDatesAvailable();
@@ -93,7 +95,8 @@ function renderChart() {
   // Плашка итогов — из того же набора, что и график: место из карточки с фильтрами,
   // как и счётчики карточки
   const rows = chartSource();
-  $("#chart-region").textContent = state.place?.name ?? (state.territory ? state.territory.name : regionName(state.dataRegion) || t("allRegions"));
+  const geo = geoSelectionNames();
+  $("#chart-region").textContent = geo.length ? geo.join(", ") : state.place?.name ?? (state.territory ? state.territory.name : regionName(state.dataRegion) || t("allRegions"));
   $("#chart-count").textContent = number().format(rows.length);
   $("#chart-injured-count").textContent = number().format(rows.reduce((sum, item) => sum + Number(item.injured || 0), 0));
   $("#chart-dead-count").textContent = number().format(rows.reduce((sum, item) => sum + Number(item.dead || 0), 0));
