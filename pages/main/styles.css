@@ -195,11 +195,9 @@ body.advanced-collapsed .advanced-filter .advanced-body, body.advanced-collapsed
 body.advanced-collapsed .advanced-filter #close-advanced { align-items:center; justify-content:center; position:fixed; left:20px; right:auto; top:20px; bottom:auto; width:auto; height:40px; padding:0 20px; border-radius:20px; color:var(--navy); background:#fff; box-shadow:0 2px 10px #18334a2e; font-size:14px; white-space:nowrap; pointer-events:auto; }
 /* Мобильный: развёрнутый сайдбар стандартных фильтров — плотная белая панель (как до v=18 прозрачной оболочки) */
 @media (max-width:800px) { body .filters:not(.collapsed) { background:#fff; box-shadow:0 5px 15px #d4dadd; padding:20px; } }
-/* Чипы карт по макету: превью на всю плашку, подпись чёрная жирная снизу-слева на белой подложке,
+/* Чипы карт по макету: превью на всю плашку, подпись чёрная жирная снизу-слева,
    активный — рамка navy (DTP-26) */
 body .filters:not(.collapsed) .quick-filter-list button { position:relative; display:flex; align-items:center; min-height:64px; padding:6px 7px; border-radius:8px; overflow:hidden; color:#18334a; background-color:#dfe7ec; box-shadow:none; font-size:12px; font-weight:700; line-height:16px; letter-spacing:.15px; text-align:left; text-shadow:none; }
-body .filters:not(.collapsed) .quick-filter-list button::before { position:absolute; inset:0; content:""; background:linear-gradient(180deg, rgba(255,255,255,0) 45%, rgba(255,255,255,.92) 100%); }
-body .filters:not(.collapsed) .quick-filter-list button span { position:relative; z-index:1; }
 body .filters:not(.collapsed) .quick-filter-list button:hover:not(.active) { background-color:#d3dee5; }
 body .filters:not(.collapsed) .quick-filter-list button.active { box-shadow:inset 0 0 0 2px var(--navy); }
 /* Регион заблокирован замком территории: поле приглушено, ввод даёт подсказку (DTP-28) */
