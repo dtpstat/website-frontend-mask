@@ -24,15 +24,13 @@ const popupCache = new WeakMap<object, string>();
 function markerPopup(item) {
   const cached = popupCache.get(item);
   if (cached) return cached;
-  // Адреса в точках API нет — строку места не выводим вовсе
-  const place = item.address || item.street || "";
   const escape = (value) => String(value || "").replace(/[&<>\"]/g, (character) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '\"':"&quot;" })[character]);
   const details = state.language === "en" ? "Accident details" : "Подробнее о ДТП";
   // Даты в точках API нет — строка с датой просто не выводится
   const day = item.datetime ? intlFormatter("day", { day:"2-digit", month:"2-digit", year:"numeric" }).format(new Date(item.datetime)) + `, ${item.datetime.slice(11, 16)}` : "";
   const injured = item.injured > 0 ? `<p class="popup-injured">${number().format(item.injured)} ${pluralPeople(item.injured)} ${state.language === "ru" ? (item.injured === 1 && item.injured % 100 !== 11 ? "пострадал" : "пострадали") : item.injured === 1 ? "was injured" : "were injured"}</p>` : "";
   const dead = item.dead > 0 ? `<p class="popup-dead">${number().format(item.dead)} ${pluralPeople(item.dead)} ${state.language === "ru" ? (item.dead % 10 === 1 && item.dead % 100 !== 11 ? "погиб" : "погибло") : item.dead === 1 ? "died" : "died"}</p>` : "";
-  const html = `<div class="marker-popup"><strong>${escape(item.category_name)}</strong>${day ? `<span>${escape(day)}</span>` : ""}${place ? `<span>${escape(place)}</span>` : ""}${injured}${dead}<a href="details/?id=${encodeURIComponent(item.id)}&lang=${state.language}">${details}</a></div>`;
+  const html = `<div class="marker-popup"><strong>${escape(item.category_name)}</strong>${day ? `<span>${escape(day)}</span>` : ""}${injured}${dead}<a href="details/?id=${encodeURIComponent(item.id)}&lang=${state.language}">${details}</a></div>`;
   popupCache.set(item, html);
   return html;
 }
