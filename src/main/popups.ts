@@ -27,7 +27,7 @@ function markerPopup(item) {
   // Адреса в точках API нет — строку места не выводим вовсе
   const place = item.address || item.street || "";
   const escape = (value) => String(value || "").replace(/[&<>\"]/g, (character) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '\"':"&quot;" })[character]);
-  const details = state.language === "en" ? "Accident details" : "Подробности ДТП";
+  const details = state.language === "en" ? "Accident details" : "Подробнее о ДТП";
   // Даты в точках API нет — строка с датой просто не выводится
   const day = item.datetime ? intlFormatter("day", { day:"2-digit", month:"2-digit", year:"numeric" }).format(new Date(item.datetime)) + `, ${item.datetime.slice(11, 16)}` : "";
   const injured = item.injured > 0 ? `<p class="popup-injured">${number().format(item.injured)} ${pluralPeople(item.injured)} ${state.language === "ru" ? (item.injured === 1 && item.injured % 100 !== 11 ? "пострадал" : "пострадали") : item.injured === 1 ? "was injured" : "were injured"}</p>` : "";
