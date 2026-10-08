@@ -96,7 +96,10 @@ function renderChart() {
   // как и счётчики карточки
   const rows = chartSource();
   const geo = geoSelectionNames();
-  $("#chart-region").textContent = geo.length ? geo.join(", ") : state.place?.name ?? state.territory?.name ?? (regionName(state.dataRegion) || t("allRegions"));
+  const name = geo.length ? geo.join(", ") : state.place?.name ?? state.territory?.name ?? (regionName(state.dataRegion) || t("allRegions"));
+  $("#chart-region").textContent = name;
+  // Пояснение называет то же место, что и заголовок; без определённого места — общий текст про все регионы
+  $(".chart-note").textContent = name === t("allRegions") ? t("chartNote") : `${t("chartNotePlace")} ${name}.`;
   $("#chart-count").textContent = number().format(rows.length);
   $("#chart-injured-count").textContent = number().format(rows.reduce((sum, item) => sum + Number(item.injured || 0), 0));
   $("#chart-dead-count").textContent = number().format(rows.reduce((sum, item) => sum + Number(item.dead || 0), 0));
