@@ -51,7 +51,9 @@ async function lookupRegion() {
   const level = view.zoom <= 10 ? 4 : view.zoom <= 13 ? 6 : 8;
   const { lat, lng } = centerKey(view.center.latitude, view.center.longitude);
   const key = `${level}|${lat}|${lng}`;
-  if (key === regionKey) return;
+  // Дедуп пропускает ход, только если место по этому ключу живо: стёртое место
+  // (смена замка) должно пере-примениться повторным лукапом — из кэша, без запроса
+  if (key === regionKey && state.place) return;
   regionKey = key;
   showResolving(level !== 4); // место будет только у округа/района — на уровне субъекта не обещаем
   const loadId = ++regionSeq;

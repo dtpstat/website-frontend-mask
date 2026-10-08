@@ -31,12 +31,20 @@ function featureBounds(feature) {
   for (const polygon of polygons) for (const ring of polygon) for (const [x, y] of ring) { if (x < west) west = x; if (x > east) east = x; if (y < south) south = y; if (y > north) north = y; }
   return { west, south, east, north };
 }
+let lockedMemo = false;
 function updateTerritoryCard(keepPlace = false) {
-  // Место под центром — атрибут «плавающего» региона: при снятии замка ищем заново,
-  // при закреплении из поиска/каскада не наследуем чужое место. Ручной замок (keepPlace)
-  // закрепляет само место: лукап выключен, пан и зум его не меняют, счётчики считают по нему
-  if (!keepPlace || !state.territory) state.place = null;
-  if (state.territory) cancelRegionLookup(); else scheduleRegionLookup();
+  // Смену состояния считаем по реальной смене замка, а не по факту вызова: карточку
+  // обновляет и хвост loadFilters, когда доезжает индекс регионов, — к этому моменту
+  // лукап места мог уже примениться, и безусловное «state.place = null» стирало место
+  // навсегда (повторный лукап съедал дедуп по ключу центра в geom). На переходах:
+  // закрепление из поиска/каскада не наследует чужое место, снятие ищет место заново;
+  // ручной замок (keepPlace) закрепляет само место: лукап выключен, пан и зум его не
+  // меняют, счётчики считают по нему. Вызовы без смены — только перерисовка карточки
+  const isLocked = Boolean(state.territory);
+  const changed = isLocked !== lockedMemo;
+  lockedMemo = isLocked;
+  if (changed && (!keepPlace || !isLocked)) state.place = null;
+  if (isLocked) cancelRegionLookup(); else if (changed) scheduleRegionLookup();
   // Мгновенный отклик на закрепление/снятие до пересчёта конвейера: та же формула, что
   // в renderMapData — место счётчиков, без него субъект данных; «Все регионы» остаётся
   // только до первого набора (карточка вне субъектов РФ скрыта гейтом)
