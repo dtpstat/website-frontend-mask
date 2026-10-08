@@ -111,6 +111,38 @@ $("#chart-button").addEventListener("click", () => {
   state.chartOpen = true; $("#chart").hidden = false; renderChart();
 });
 $("#close-chart").addEventListener("click", () => { state.chartOpen = false; $("#chart").hidden = true; });
+// Плавающие панели двигаются за заголовок: дэшборд (#chart) — всегда, карточка счётчиков
+// — когда плавает поверх карты (меню свёрнуто; внутри сайдбара она статична). Позиция
+// пишется инлайном (left/top, right/bottom → auto) и переживает скрытие панели; координаты
+// считаются относительно containing block (absolute в .map-page) или вьюпорта (fixed).
+// Тяга не начинается с кнопок и полей, на мобильной раскладке панели на всю ширину — не двигаются
+function makeMovable(panel: HTMLElement, handle: HTMLElement, active: () => boolean = () => true) {
+  let frame: DOMRect | null = null, originX = 0, originY = 0, startX = 0, startY = 0, width = 0, height = 0, moving = false;
+  handle.addEventListener("pointerdown", (event) => {
+    if (moving || event.button !== 0 || !active() || !matchMedia("(min-width: 801px)").matches) return;
+    if ((event.target as Element).closest("button, a, input, select, label, summary, textarea")) return;
+    const rect = panel.getBoundingClientRect(), parent = panel.offsetParent;
+    frame = parent ? parent.getBoundingClientRect() : null;
+    originX = rect.left - (frame?.left ?? 0); originY = rect.top - (frame?.top ?? 0);
+    startX = event.clientX; startY = event.clientY; width = rect.width; height = rect.height;
+    moving = true;
+    handle.setPointerCapture(event.pointerId);
+    handle.classList.add("movable-dragging");
+    event.preventDefault();
+  });
+  handle.addEventListener("pointermove", (event) => {
+    if (!moving) return;
+    const limitX = Math.max((frame?.width ?? innerWidth) - width - 8, 8), limitY = Math.max((frame?.height ?? innerHeight) - height - 8, 8);
+    panel.style.left = `${Math.round(Math.min(Math.max(originX + event.clientX - startX, 8), limitX))}px`;
+    panel.style.top = `${Math.round(Math.min(Math.max(originY + event.clientY - startY, 8), limitY))}px`;
+    panel.style.right = "auto"; panel.style.bottom = "auto";
+  });
+  const stop = () => { if (!moving) return; moving = false; handle.classList.remove("movable-dragging"); };
+  handle.addEventListener("pointerup", stop);
+  handle.addEventListener("pointercancel", stop);
+}
+makeMovable($("#chart") as HTMLElement, document.querySelector(".chart-head") as HTMLElement);
+makeMovable($("#statistics") as HTMLElement, document.querySelector("#statistics .place") as HTMLElement, () => document.body.classList.contains("filters-collapsed"));
 $("#download-button").addEventListener("click", downloadData);
 $("#chart-side").addEventListener("click", (event) => {
   const button = event.target.closest("button[data-mode]");

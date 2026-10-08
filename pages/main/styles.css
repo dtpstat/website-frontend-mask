@@ -164,6 +164,10 @@ body.filters-collapsed .filters .filters-heading, body.filters-collapsed .filter
 body.filters-collapsed .filters #statistics { display:flex; flex-direction:column; align-items:stretch; position:fixed; left:20px; right:auto; top:auto; bottom:20px; z-index:2; width:344px; min-width:0; max-width:calc(100vw - 40px); margin:0; padding:20px; gap:14px; border:0; border-radius:12px; box-shadow:0 4px 18px #18334a2b; pointer-events:auto; }
 body.filters-collapsed .filters #hide-filters { display:flex; align-items:center; justify-content:center; position:fixed; left:20px; right:auto; top:20px; bottom:auto; width:auto; height:40px; padding:0 20px; margin:0; transform:none; border:0; border-radius:20px; color:var(--navy); background:#fff; box-shadow:0 2px 10px #18334a2e; font-size:14px; white-space:nowrap; pointer-events:auto; }
 body.filters-collapsed .filters #hide-filters::after { content:none; }
+/* Плавающие панели двигаются за заголовок: дэшборд и карточка счётчиков в свёрнутом
+   меню (внутри сайдбара карточка статична — захват не показываем). На мобильной
+   раскладке панели на всю ширину — не двигаются */
+@media (min-width:801px) { .chart .chart-head, body.filters-collapsed .statistics .place { cursor:grab; touch-action:none; } }.movable-dragging { cursor:grabbing !important; user-select:none; }
 @media (max-width:800px) { body .filters:not(.collapsed) { overflow-x:hidden; } body .filters:not(.collapsed) #hide-filters { top:16px; right:-16px; } }
 /* Про-панель: тот же кастомный скролл с резервом места, круглая кнопка закрытия как у базовых фильтров */
 body .advanced-filter .advanced-body { overflow-x:hidden; margin-right:-20px; padding-right:20px; scrollbar-gutter:stable; scrollbar-width:thin; scrollbar-color:#b9c9d2 transparent; } /* скролл у правой границы панели */
