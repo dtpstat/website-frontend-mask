@@ -60,7 +60,8 @@ function openLinkedPopup() {
   }
   if (state.mapClient === "mapbox" && mapbox.map && (window as any).mapboxgl) {
     mapbox.map.jumpTo({ center: [item.point.longitude, item.point.latitude], zoom });
-    const popup = new (window as any).mapboxgl.Popup().setLngLat([item.point.longitude, item.point.latitude]).setHTML(markerPopup(item)).addTo(mapbox.map);
+    // focusAfterOpen: false — как в maps.ts: авт-фокус рисует рамку на кнопке
+    const popup = new (window as any).mapboxgl.Popup({ focusAfterOpen: false }).setLngLat([item.point.longitude, item.point.latitude]).setHTML(markerPopup(item)).addTo(mapbox.map);
     popup.on("close", clearPopupUrl);
     syncPopupUrl(item.id, item.point.latitude, item.point.longitude, mapbox.map.getZoom());
     return true;

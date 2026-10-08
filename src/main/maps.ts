@@ -281,7 +281,9 @@ async function ensureMapbox(view) {
     map.addLayer({ id:"dtp-heat", type:"heatmap", source:"dtp-heat", paint:{ "heatmap-weight":["get", "weight"], "heatmap-intensity":paint.intensity, "heatmap-radius":paint.radius, "heatmap-opacity":paint.opacity, "heatmap-color":["interpolate", ["linear"], ["heatmap-density"], 0,"rgba(126, 171, 85, 0)", .2,"rgba(126, 171, 85, .6)", .4,"rgba(255, 254, 85, .7)", .6,"rgba(245, 193, 66, .8)", .8,"rgba(223, 130, 68, .9)", 1,"rgba(176, 36, 24, 1)"] } });
     map.addLayer({ id:"dtp-points", type:"circle", source:"dtp-points", paint:{ "circle-radius":5, "circle-color":["match", ["get", "severity"], 4,"#FF001A", 3,"#FF7F24", 1,"#FFB81F", "rgba(24, 51, 74, 0.5)"], "circle-stroke-width":0, "circle-opacity":1 } });
     map.on("click", "dtp-points", (event) => {
-      const feature = event.features[0], popup = new mapboxgl.Popup().setLngLat(feature.geometry.coordinates).setHTML(feature.properties.popup).addTo(map);
+      // focusAfterOpen выключаем: авт-фокус кнопки рисует рамку, которой нет у Leaflet/Яндекса;
+      // клавиатурным пользователям ссылка по-прежнему доступна по Tab (обводка :focus-visible)
+      const feature = event.features[0], popup = new mapboxgl.Popup({ focusAfterOpen: false }).setLngLat(feature.geometry.coordinates).setHTML(feature.properties.popup).addTo(map);
       popup.on("close", clearPopupUrl);
       syncPopupUrl(feature.properties.id, feature.geometry.coordinates[1], feature.geometry.coordinates[0], map.getZoom());
     });
