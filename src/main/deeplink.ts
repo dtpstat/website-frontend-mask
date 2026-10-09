@@ -2,7 +2,7 @@
 
 import { state, lastRender, mapQuery } from "./context.js";
 import { map, markers, yandex, mapbox, currentView, heatZoomMax } from "./maps.js";
-import { markerPopup } from "./popups.js";
+import { markerPopup, setSiteOrigin } from "./popups.js";
 
 // Открытый попап ДТП отражается в адресной строке: ?popup=<em_number> плюс центр
 // и зум на момент открытия — по такой ссылке карта откроется в том же месте.
@@ -30,6 +30,27 @@ function postPopupToParent(popup: string | null, center?: string, zoom?: number)
   if (window.parent === window) return;
   try { window.parent.postMessage({ source: "dtpstat-map", popup, center, zoom }, "*"); } catch {}
 }
+// Origin сайта-родителя: во встраивании ссылки «Подробнее о ДТП» должны вести
+// на домен сайта (/dtp/<id>/), а не на pages.dev — спрашиваем его у родителя
+// один раз. Родитель не ответил за 1.5 c (стороннее встраивание без моста) —
+// считаем, что его нет, и работаем по-старому. Origin принимаем только вида
+// scheme://host[:port] — он подставляется в href без экранирования
+const parentOrigin = new Promise<string | null>((resolve) => {
+  if (window.parent === window) { resolve(null); return; }
+  const token = Math.random().toString(36).slice(2);
+  const timer = setTimeout(() => { window.removeEventListener("message", onReply); resolve(null); }, 1500);
+  const onReply = (event: MessageEvent) => {
+    const data = event.data;
+    if (data && data.source === "dtpstat-site" && data.token === token) {
+      clearTimeout(timer);
+      window.removeEventListener("message", onReply);
+      resolve(typeof data.origin === "string" && /^https?:\/\/[a-z0-9.-]+(:\d+)?$/i.test(data.origin) ? data.origin : null);
+    }
+  };
+  window.addEventListener("message", onReply);
+  try { window.parent.postMessage({ source: "dtpstat-map", ask: "origin", token }, "*"); } catch { resolve(null); }
+});
+parentOrigin.then(setSiteOrigin);
 // Прямая ссылка на конкретное ДТП открывает его попап (?popup=<em_number>).
 // Единожды: при первом рендере, где точка уже загружена — иначе попап
 // пересоздавался бы на каждый сдвиг карты

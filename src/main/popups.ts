@@ -20,7 +20,26 @@ function pluralPeople(count) {
   return last >= 2 && last <= 4 && (two < 10 || two > 20) ? (state.language === "ru" ? "человека" : "people") : (state.language === "ru" ? "человек" : "people");
 }
 // HTML попапа кэшируется: один и тот же пункт попадает в попап/GeoJSON многократно
-const popupCache = new WeakMap<object, string>();
+let popupCache = new WeakMap<object, string>();
+// Origin сайта-родителя во встраивании (запрашивает deeplink.ts, ответ — main.js
+// темы): «Подробнее о ДТП» ведёт на /dtp/<id>/ домена сайта через target="_top",
+// вне встраивания — на локальную details/, как раньше. Origin приходит
+// асинхронно, поэтому кэш сбрасывается, а открытые попапы перелинковываются
+let siteOrigin: string | null = null;
+function detailsHref(id: string) {
+  return siteOrigin ? `${siteOrigin}/dtp/${encodeURIComponent(id)}/` : `details/?id=${encodeURIComponent(id)}&lang=${state.language}`;
+}
+function setSiteOrigin(origin: string | null) {
+  if (siteOrigin === origin) return;
+  siteOrigin = origin;
+  popupCache = new WeakMap();
+  document.querySelectorAll(".marker-popup a[href^='details/']").forEach((anchor: HTMLAnchorElement) => {
+    const id = new URL(anchor.href).searchParams.get("id");
+    if (!id) return;
+    anchor.href = detailsHref(id);
+    if (origin) anchor.setAttribute("target", "_top");
+  });
+}
 function markerPopup(item) {
   const cached = popupCache.get(item);
   if (cached) return cached;
@@ -30,9 +49,9 @@ function markerPopup(item) {
   const day = item.datetime ? intlFormatter("day", { day:"2-digit", month:"2-digit", year:"numeric" }).format(new Date(item.datetime)) + `, ${item.datetime.slice(11, 16)}` : "";
   const injured = item.injured > 0 ? `<p class="popup-injured">${number().format(item.injured)} ${pluralPeople(item.injured)} ${state.language === "ru" ? (item.injured === 1 && item.injured % 100 !== 11 ? "пострадал" : "пострадали") : item.injured === 1 ? "was injured" : "were injured"}</p>` : "";
   const dead = item.dead > 0 ? `<p class="popup-dead">${number().format(item.dead)} ${pluralPeople(item.dead)} ${state.language === "ru" ? (item.dead % 10 === 1 && item.dead % 100 !== 11 ? "погиб" : "погибло") : item.dead === 1 ? "died" : "died"}</p>` : "";
-  const html = `<div class="marker-popup"><strong>${escape(item.category_name)}</strong>${day ? `<span>${escape(day)}</span>` : ""}${injured}${dead}<a href="details/?id=${encodeURIComponent(item.id)}&lang=${state.language}">${details}</a></div>`;
+  const html = `<div class="marker-popup"><strong>${escape(item.category_name)}</strong>${day ? `<span>${escape(day)}</span>` : ""}${injured}${dead}<a href="${detailsHref(item.id)}"${siteOrigin ? ' target="_top"' : ""}>${details}</a></div>`;
   popupCache.set(item, html);
   return html;
 }
 
-export { contains, pointItems, markerColor, markerPopup };
+export { contains, pointItems, markerColor, markerPopup, setSiteOrigin };

@@ -5,6 +5,33 @@ const query = new URLSearchParams(location.search), id = query.get("id") || "", 
 // Страница деталей живёт и во встраивании (WP-сайт: кросс-доменный iframe) —
 // там адресную строку обновляет страница-родитель, дублируем ей открытое ДТП
 if (id && window.parent !== window) { try { window.parent.postMessage({ source: "dtpstat-map", popup: id }, "*"); } catch {} }
+// Во встраивании «Показать ДТП рядом» должен вести на главную сайта-родителя,
+// а не на pages.dev — спрашиваем у родителя его origin один раз. Нет ответа за
+// 1.5 c (стороннее встраивание) — остаёмся на относительной ссылке. Origin
+// принимаем только вида scheme://host[:port] — он попадает в href как есть
+let siteOrigin: string | null = null;
+const parentOrigin = new Promise<string | null>((resolve) => {
+  if (window.parent === window) { resolve(null); return; }
+  const token = Math.random().toString(36).slice(2);
+  const timer = setTimeout(() => { window.removeEventListener("message", onReply); resolve(null); }, 1500);
+  const onReply = (event: MessageEvent) => {
+    const data = event.data;
+    if (data && data.source === "dtpstat-site" && data.token === token) {
+      clearTimeout(timer);
+      window.removeEventListener("message", onReply);
+      resolve(typeof data.origin === "string" && /^https?:\/\/[a-z0-9.-]+(:\d+)?$/i.test(data.origin) ? data.origin : null);
+    }
+  };
+  window.addEventListener("message", onReply);
+  try { window.parent.postMessage({ source: "dtpstat-map", ask: "origin", token }, "*"); } catch { resolve(null); }
+});
+const nearbyHref = (point: { latitude: number; longitude: number }) => `${siteOrigin ? siteOrigin + "/" : "../"}?center=${point.latitude}:${point.longitude}&zoom=15`;
+parentOrigin.then((origin) => {
+  siteOrigin = origin;
+  const pill = document.querySelector(".pill") as HTMLAnchorElement | null;
+  // карточка ещё не отрисована (pill.search пуст) — ссылку соберёт load()
+  if (origin && pill && pill.search) pill.href = origin + "/" + pill.search;
+});
 const text = language === "en" ? { title:"Accident details", missing:"Accident was not found.", nearby:"Show accident nearby", map:"Map", panorama:"Panorama", transport:"Vehicles", users:"Road users", injured:"Injured", dead:"Deaths", official:"Official traffic police data", address:"Address unknown", scheme:"Crash scheme", noViolations:"No violations", violations:"Traffic violations" } : { title:"Подробности ДТП", missing:"ДТП не найдено.", nearby:"Показать ДТП рядом", map:"Карта", panorama:"Панорама", transport:"Транспорт", users:"Участники", injured:"Пострадали", dead:"Погибли", official:"Официальные данные ГИБДД", address:"Адрес неизвестен", scheme:"Схема ДТП", noViolations:"Нет нарушений", violations:"Нарушения ПДД" };
 const escape = (value: unknown) => String(value ?? "").replace(/[&<>\"]/g, (character) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '\"':"&quot;" } as Record<string, string>)[character]);
 const list = (value: unknown) => Array.isArray(value) ? value.filter(Boolean).map(String) : value ? [String(value)] : [];
@@ -94,7 +121,7 @@ async function load() {
     const title = [vehicle.MARK, vehicle.COLOR, vehicle.YEAR].filter(Boolean).join(", ");
     return `<div class="person-group">${title ? `<h3>${escape(title)}</h3>` : ""}<div class="person-cards">${objects(vehicle.PERSONS).map(personCard).join("")}</div></div>`;
   }).join("")}</div>`;
-  root.innerHTML = `<section class="map-stage"><div id="detail-map" class="detail-map" aria-label="${language === "en" ? "Accident location" : "Место ДТП"}"></div><div id="detail-panorama" class="detail-map" hidden aria-label="${text.panorama}"></div><div class="map-tools"><a class="pill" href="../?center=${detail.point.latitude}:${detail.point.longitude}&zoom=15" target="_blank" rel="noopener">${text.nearby}</a><span class="pill-group"><button id="show-map" class="active" type="button">${text.map}</button><button id="show-panorama" type="button" disabled>${text.panorama}</button></span></div></section><article class="content"><div class="head-grid${detail.schema ? "" : " no-scheme"}">${detail.schema && schemeImage(detail.schema) ? `<figure class="scheme"><img src="${schemeImage(detail.schema)}" alt="${text.scheme}" onerror="this.closest('figure').remove();document.querySelector('.head-grid').classList.add('no-scheme')"><figcaption>${text.scheme}</figcaption></figure>` : ""}<div class="head"><p class="meta">${escape(formatDate(detail.datetime))} <i>|</i> ${escape(detail.address)}</p><h1>${escape(detail.category_name || text.title)}</h1><div class="counters">${counter("all", text.transport, detail.vehiclesCount)}${counter("participants", text.users, detail.participants)}${counter("injured", text.injured, detail.injured, "injured")}${counter("dead", text.dead, detail.dead, "dead")}</div>${detail.tags.length ? `<div class="chips">${detail.tags.map((tag: string) => `<span>${escape(tag)}</span>`).join("")}</div>` : ""}</div></div><section class="participants"><h2>${text.users}</h2>${groups}</section><p class="official"><a href="https://gibdd.ru" target="_blank" rel="noopener"><img src="https://wp.dtp-stat.ru/wp-content/uploads/2026/09/gibdd-5ee641.svg" alt="">${text.official}</a></p></article>`;
+  root.innerHTML = `<section class="map-stage"><div id="detail-map" class="detail-map" aria-label="${language === "en" ? "Accident location" : "Место ДТП"}"></div><div id="detail-panorama" class="detail-map" hidden aria-label="${text.panorama}"></div><div class="map-tools"><a class="pill" href="${nearbyHref(detail.point)}" target="_blank" rel="noopener">${text.nearby}</a><span class="pill-group"><button id="show-map" class="active" type="button">${text.map}</button><button id="show-panorama" type="button" disabled>${text.panorama}</button></span></div></section><article class="content"><div class="head-grid${detail.schema ? "" : " no-scheme"}">${detail.schema && schemeImage(detail.schema) ? `<figure class="scheme"><img src="${schemeImage(detail.schema)}" alt="${text.scheme}" onerror="this.closest('figure').remove();document.querySelector('.head-grid').classList.add('no-scheme')"><figcaption>${text.scheme}</figcaption></figure>` : ""}<div class="head"><p class="meta">${escape(formatDate(detail.datetime))} <i>|</i> ${escape(detail.address)}</p><h1>${escape(detail.category_name || text.title)}</h1><div class="counters">${counter("all", text.transport, detail.vehiclesCount)}${counter("participants", text.users, detail.participants)}${counter("injured", text.injured, detail.injured, "injured")}${counter("dead", text.dead, detail.dead, "dead")}</div>${detail.tags.length ? `<div class="chips">${detail.tags.map((tag: string) => `<span>${escape(tag)}</span>`).join("")}</div>` : ""}</div></div><section class="participants"><h2>${text.users}</h2>${groups}</section><p class="official"><a href="https://gibdd.ru" target="_blank" rel="noopener"><img src="https://wp.dtp-stat.ru/wp-content/uploads/2026/09/gibdd-5ee641.svg" alt="">${text.official}</a></p></article>`;
   initMap(detail);
 }
 
