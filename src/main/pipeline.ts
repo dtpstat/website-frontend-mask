@@ -14,16 +14,6 @@ import { renderChart } from "./chart.js";
 // РФ её тоже нет: карточка «Статистика» и график скрыты целиком. Глобальный [hidden] с
 // !important (styles.css) бьёт все репозиции карточки; закреплённая территория гейт не проходит
 const dashboardMinZoom = 6;
-// Календарные куски периода, каждый не длиннее года (бэкенд принимает интервалы
-// не больше 366 дней): короткий период остаётся одним запросом, длинный режется
-// по границам годов — [начало..конец года], [полные годы], [начало года..конец]
-function dateSlices(start: string, end: string): [string, string][] {
-  if ((Date.parse(end) - Date.parse(start)) / 86400000 <= 366) return [[start, end]];
-  const slices: [string, string][] = [];
-  const firstYear = Number(start.slice(0, 4)), lastYear = Number(end.slice(0, 4));
-  for (let year = firstYear; year <= lastYear; year++) slices.push([year === firstYear ? start : `${year}-01-01`, year === lastYear ? end : `${year}-12-31`]);
-  return slices;
-}
 function applyDashboardGate() {
   const hidden = !state.territory && (currentView().zoom < dashboardMinZoom || state.outsideRegions);
   $("#statistics").hidden = hidden;
@@ -110,19 +100,14 @@ async function loadMapData() {
     refreshCascade();
     if (!bucket.has(cacheKey)) {
       $("#chart-period").textContent = `${t("forPeriod")}: ${start} — ${end}`;
+      const query = new URLSearchParams({ DATE_TIME_FROM:`${start}T00:00:00`, DATE_TIME_TO:`${end}T23:59:59` });
       if (regionId === null) bucket.set(cacheKey, []); // центр вне субъектов РФ — запрос не нужен
       if (!bucket.has(cacheKey)) {
-        // Длинный периода бэкенд одним запросом не принимает — режем на годы и качаем
-        // параллельно, складывая точки в один набор (масштаб как у одиночного запроса)
-        const parts = await Promise.all(dateSlices(start, end).map(async ([sliceStart, sliceEnd]) => {
-          const query = new URLSearchParams({ DATE_TIME_FROM:`${sliceStart}T00:00:00`, DATE_TIME_TO:`${sliceEnd}T23:59:59`, REGION: cacheKey });
-          server.forEach((value, key) => query.append(key, value));
-          const response = await apiFetch(`${api}/dtp/points?${query}`, { signal: controller.signal });
-          if (!response.ok) throw new Error("API unavailable");
-          return pointItems(await response.json());
-        }));
-        if (state.dataLoadId !== loadId) return;
-        bucket.set(cacheKey, parts.flat());
+        query.set("REGION", cacheKey);
+        server.forEach((value, key) => query.append(key, value));
+        const response = await apiFetch(`${api}/dtp/points?${query}`, { signal: controller.signal });
+        if (!response.ok) throw new Error("API unavailable");
+        bucket.set(cacheKey, pointItems(await response.json()));
       }
       if (state.dataLoadId !== loadId) return;
       renderAdvancedFilters();
