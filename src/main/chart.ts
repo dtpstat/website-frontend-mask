@@ -181,11 +181,12 @@ function renderChart() {
     }
     return lines.join("");
   };
-  // Столбец: скруглена только шапка, радиус 3 (дамповый 6 смотрелся пузато — попросили меньше),
-  // у низких и узких — меньше, основание прямое
+  // Столбец: скруглены только верхние углы, радиус 3; углы — двумя четверть-арками при
+  // плоской шапке: одна арка от левого края до правого (colW > 2r) не помещается, и SVG
+  // молча раздувает радиус до colW/2 — выходит купол вместо лёгкого скругления
   const column = (cx: number, top: number, bottom: number) => {
     const radius = Math.min(3, colW / 2, Math.max(1, bottom - top)), left = cx - colW / 2, right = cx + colW / 2;
-    return `M${left},${top + radius} A${radius},${radius} 0 0 1 ${right},${top + radius} L${right},${bottom} L${left},${bottom} Z`;
+    return `M${left},${bottom} L${left},${top + radius} A${radius},${radius} 0 0 1 ${left + radius},${top} L${right - radius},${top} A${radius},${radius} 0 0 1 ${right},${top + radius} L${right},${bottom} Z`;
   };
   // Столбцы — по «2 stats_by_days» 431:0: заливка #18334a @ .22 (union-вектор баров), без градиента
   const columns = values.map(([, bucket], index) => `<path d="${column(x(index), yCount(bucket.count), padT + plotH)}" fill="#18334a" fill-opacity=".22"></path>`).join("");
