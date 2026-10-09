@@ -181,11 +181,11 @@ function renderChart() {
     }
     return lines.join("");
   };
-  // Столбец: скруглены только верхние углы, радиус 3; углы — двумя четверть-арками при
-  // плоской шапке: одна арка от левого края до правого (colW > 2r) не помещается, и SVG
-  // молча раздувает радиус до colW/2 — выходит купол вместо лёгкого скругления
+  // Столбец: скруглены только верхние углы, радиус 6 — как у горизонтальных полос «По типам»
+  // (.htrack i, 6px на 24px); углы — двумя четверть-арками при плоской шапке: одна арка от
+  // левого края до правого (colW > 2r) не помещается, и SVG молча раздувает радиус до colW/2
   const column = (cx: number, top: number, bottom: number) => {
-    const radius = Math.min(3, colW / 2, Math.max(1, bottom - top)), left = cx - colW / 2, right = cx + colW / 2;
+    const radius = Math.min(6, colW / 2, Math.max(1, bottom - top)), left = cx - colW / 2, right = cx + colW / 2;
     return `M${left},${bottom} L${left},${top + radius} A${radius},${radius} 0 0 1 ${left + radius},${top} L${right - radius},${top} A${radius},${radius} 0 0 1 ${right},${top + radius} L${right},${bottom} Z`;
   };
   // Столбцы — по «2 stats_by_days» 431:0: заливка #18334a @ .22 (union-вектор баров), без градиента
