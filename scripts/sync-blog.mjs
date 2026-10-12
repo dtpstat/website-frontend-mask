@@ -43,4 +43,7 @@ const posts = await Promise.all(cards.map(async ([, slug, cover, before, rawTitl
   };
 }));
 await writeFile(path.join(root, "src", "blog", "posts.ts"), `export type Post = { slug: string; title: string; tags: string[]; cover: string; date: string; content: string };\nexport const posts: Post[] = ${JSON.stringify(posts)};\n`);
+// Лёгкий индекс карточек (без content — он даёт ~110 КБ): его импортирует страница
+// ДТП ради «Новостей по теме», полные тексты ей не нужны
+await writeFile(path.join(root, "src", "blog", "posts-index.ts"), `export type PostCard = { slug: string; title: string; tags: string[]; cover: string; date: string };\nexport const postCards: PostCard[] = ${JSON.stringify(posts.map(({ content: _content, ...card }) => card))};\n`);
 console.log(`Downloaded ${posts.length} posts and ${local.size} images.`);

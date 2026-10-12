@@ -1,5 +1,6 @@
-// Локально (npm run serve) API доступен по тому же origin: serve.mjs проксирует /api на dtpstat-backend.7190805.xyz
-const api = ["localhost", "127.0.0.1"].includes(location.hostname) ? "/api" : "https://dtpstat-backend.7190805.xyz/api";
+// Origin API задаётся в .env (API_ORIGIN попадает в dist/maps-config.js); пусто/не задан —
+// /api того же origin: локально его проксирует serve.mjs, на своём домене — nginx (см. README)
+const api = ((window as any).API_ORIGIN || "") + "/api";
 const $ = (selector) => document.querySelector(selector);
 const state = { language: new URLSearchParams(location.search).get("lang") || localStorage.getItem("language") || "ru" };
 const copy = {

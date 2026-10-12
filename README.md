@@ -13,10 +13,10 @@
     npm run test:mobile  # e2e панелей фильтров (мобайл 390/320 + десктоп-санити); нужны build, Chrome и бэкенд
 
 Ключи карт задаются в `.env` (`YANDEX_MAPS_KEY`, `MAPBOX_ACCESS_TOKEN`): на сборке они
-попадают в `dist/maps-config.js`, который подключается в HTML до `app.js`. Там же можно
-задать `API_ORIGIN` — origin бэкенда, вшиваемый в статику (по умолчанию
-`https://dtpstat-backend.7190805.xyz`; локально без него `/api` проксируется serve-скриптом).
-В репозитории ключей нет.
+попадают в `dist/maps-config.js`, который подключается в HTML до `app.js`. Там же задаётся
+`API_ORIGIN` — origin бэкенда, вшиваемый в статику (шаблон — `.env.example`). Без него
+страница ходит на `/api` того же origin: локально его проксирует serve-скрипт, на своём
+домене — nginx (см. «Самостоятельный хостинг»). В репозитории ключей нет.
 
 ## Деплой
 
@@ -44,12 +44,12 @@ Cloudflare Pages, direct upload:
 
 2. Выбрать схему API (фронтенд читает `API_ORIGIN` из `maps-config.js`):
 
-   - **Без прокси** — не задавать `API_ORIGIN`: страница будет ходить напрямую
-     на дефолтный бэкенд `https://dtpstat-backend.7190805.xyz` (CORS открыт),
-     на своём сервере ничего настраивать не нужно.
-   - **Через nginx (same-origin, без CORS)** — задать в `.env` свой домен
-     (`API_ORIGIN=https://map.example.ru`) и проксировать `/api/` на
-     Express-бэкенд [geoJSON_dtp_API](https://github.com/dtpstat/dtpstat-map).
+   - **Напрямую на бэкенд, без прокси** — оставить `API_ORIGIN` из `.env.example`
+     (или указать другой публичный бэкенд): страница ходит на него в обход nginx
+     (CORS на бэкенде открыт), на своём сервере ничего настраивать не нужно.
+   - **Через nginx (same-origin, без CORS)** — оставить `API_ORIGIN` пустым
+     (или задать свой домен `API_ORIGIN=https://map.example.ru`) и проксировать
+     `/api/` на Express-бэкенд [geoJSON_dtp_API](https://github.com/dtpstat/dtpstat-map).
 
 3. nginx (схема с прокси):
 

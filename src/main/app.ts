@@ -5,7 +5,7 @@ import { t, number } from "./i18n.js";
 import { period, renderDateFields, closeDateMenu, openDateMenu, blurDateRange } from "./dates.js";
 import { renderParticipants, renderAdvancedControls } from "./participants.js";
 import { refreshCascade, renderAdvancedFilters, openAdvanced, syncAdvancedRegion, drawAdvancedRegionSuggest, advancedRegionCommit, closeAdvanced, setAdvancedCollapsed, setFiltersCollapsed, filteredPoints } from "./filters.js";
-import { map, renderMapSwitcher, switchMapClient, renderHeatControls, updateHeatControls } from "./maps.js";
+import { map, renderMapSwitcher, switchMapClient, renderHeatControls, updateHeatControls, updateMaskControls } from "./maps.js";
 import { updateTerritoryCard, drawRegionSuggest, syncRegionFields } from "./territory.js";
 import { renderChart, setChartMode, chartAxis, chartDatesAvailable } from "./chart.js";
 import { loadMapData, loadFilters, applyHeatMode, refreshRender } from "./pipeline.js";
@@ -163,7 +163,8 @@ function downloadData() {
   setTimeout(() => URL.revokeObjectURL(url), 10000);
   setStatus(`${t("data")}: GeoJSON, ${number().format(items.length)} ${t("accidents").toLowerCase()}`);
 }
-document.querySelectorAll("#heat-controls input").forEach((input) => input.addEventListener("input", updateHeatControls));
+document.querySelectorAll("#heat-radius, #heat-blur, #heat-opacity").forEach((input) => input.addEventListener("input", updateHeatControls));
+document.querySelectorAll("#mask-blur, #mask-opacity").forEach((input) => input.addEventListener("input", updateMaskControls));
 let moveTimer;
 function scheduleMapLoad() { clearTimeout(moveTimer); state.abort?.abort(); state.dataLoadId++; moveTimer = setTimeout(loadMapData, 350); }
 map.on("moveend", () => { if (state.mapClient === "leaflet") { scheduleMapLoad(); scheduleRegionLookup(); } });

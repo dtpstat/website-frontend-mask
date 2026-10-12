@@ -1,14 +1,20 @@
-// Локальный сервер разработки: раздаёт dist/ и проксирует /api на бэкенд dtp-stat
-// (запасной origin через env DTP_ORIGIN; по умолчанию — стенд за cloudflare-туннелем).
-// Запуск: npm run build && npm run serve → http://localhost:8080
+// Локальный сервер разработки: раздаёт dist/ и проксирует /api на бэкенд —
+// origin берётся из .env (API_ORIGIN; запасной — DTP_ORIGIN). Запуск:
+// npm run build && npm run serve → http://localhost:8080
+// TLS: задай DTP_CERT и DTP_KEY — сервер поднимется по https (нужно, чтобы
+// встраивать его в https-сайт айфреймом). Сертификат читается на старте:
+// после перевыпуска сервис надо перезапустить.
 import { createServer, request as plainRequest } from "node:http";
-import { request as tlsRequest } from "node:https";
-import { statSync, createReadStream } from "node:fs";
+import { createServer as tlsServer, request as tlsRequest } from "node:https";
+import { statSync, createReadStream, readFileSync } from "node:fs";
 import { join, extname, normalize } from "node:path";
 
 const port = Number(process.env.PORT) || 8080;
-const origin = process.env.DTP_ORIGIN || "https://dtpstat-backend.7190805.xyz";
+const origin = process.env.DTP_ORIGIN || process.env.API_ORIGIN;
 const root = new URL("../dist/", import.meta.url).pathname;
+const tlsOptions = process.env.DTP_CERT && process.env.DTP_KEY
+  ? { cert: readFileSync(process.env.DTP_CERT), key: readFileSync(process.env.DTP_KEY) }
+  : null;
 
 const types = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".mjs": "text/javascript; charset=utf-8",
@@ -17,11 +23,12 @@ const types = {
   ".woff": "font/woff", ".woff2": "font/woff2", ".txt": "text/plain; charset=utf-8", ".xml": "text/xml",
 };
 
-const server = createServer((req, res) => {
+const server = (tlsOptions ? tlsServer : createServer)(tlsOptions || {}, (req, res) => {
   const url = new URL(req.url, "http://localhost");
 
   // /api/* — без изменений в бэкенд (тело и заголовки отдаются как есть, включая gzip)
   if (url.pathname.startsWith("/api/")) {
+    if (!origin) { res.writeHead(502); res.end("API origin не задан: укажите API_ORIGIN или DTP_ORIGIN в .env (см. .env.example)"); return; }
     const target = new URL(origin);
     const http = target.protocol === "http:" ? plainRequest : tlsRequest;
     const upstream = http({
@@ -52,4 +59,4 @@ const server = createServer((req, res) => {
   createReadStream(file).pipe(res);
 });
 
-server.listen(port, () => console.log(`dtpstat-pages on http://localhost:${port} → API ${origin}`));
+server.listen(port, () => console.log(`dtpstat-pages on http${tlsOptions ? "s" : ""}://localhost:${port} → API ${origin}`));

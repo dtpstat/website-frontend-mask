@@ -1,6 +1,6 @@
 // Карта: Leaflet/Яндекс/Mapbox — инициализация, рендеры, тепло, переключение клиентов
 
-import { $, state, setStatus, lastRender, actions, mapQuery } from "./context.js";
+import { $, state, setStatus, lastRender, actions, mapQuery, debugMode } from "./context.js";
 import { t } from "./i18n.js";
 import { markerColor, markerPopup } from "./popups.js";
 import { syncPopupUrl, clearPopupUrl } from "./deeplink.js";
@@ -11,20 +11,224 @@ const initialCenter = (mapQuery.get("center") || "").split(":").map(Number), zoo
 const map = L.map("leaflet-map", { zoomControl: false, minZoom: 4, preferCanvas: true }).setView(initialCenter.length === 2 && initialCenter.every(Number.isFinite) ? initialCenter : [55.76, 37.64], Number.isFinite(initialZoom) ? initialZoom : 11);
 map.on("popupopen", (event: any) => { const item = popupItems.get(event.popup); if (item) syncPopupUrl(item.id, item.point.latitude, item.point.longitude, map.getZoom()); });
 map.on("popupclose", clearPopupUrl);
+// Маску-антивыделение на зум-жесте не успевает — на зум прячем (как тепло, DTP-30),
+// а рисуем только после ответа лукапа места (getRegionUnderPoint): иначе маска сперва
+// моргает старой геометрией. zoomstart прячет канву, zoomend ставит
+// placeMaskWaitLookup; снимает его flushPlaceMaskHold() в geom.ts по приходе ответа
+// (или кэш-хита). Паны догоняют канвой сразу, на каждый move
+let placeMaskWaitLookup = false, leafletMaskHold = false;
+map.on("zoomstart", () => { if (state.mapClient === "leaflet") { leafletMaskHold = true; if (leafletMask.canvas) leafletMask.canvas.style.display = "none"; } });
+map.on("zoomend", () => { if (state.mapClient === "leaflet") { leafletMaskHold = false; placeMaskWaitLookup = true; } });
+map.on("move", () => { if (state.mapClient === "leaflet") drawLeafletPlaceMask(); });
 // Префикс атрибуции по умолчанию содержит флаг (svg) перед «Leaflet» — оставляем просто ссылку
 map.attributionControl.setPrefix('<a href="https://leafletjs.com" title="A JavaScript library for interactive maps">Leaflet</a>');
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap contributors" }).addTo(map);
+// Канва маски-антивыделения: даже канвас-рендерер Leaflet не умеет растушёвки края,
+// а отдельной канве край даёт destination-out с blur — как у Яндекса
+const leafletMask = { canvas: null as HTMLCanvasElement | null, ctx: null as CanvasRenderingContext2D | null };
+leafletMask.canvas = document.createElement("canvas");
+leafletMask.canvas.className = "place-mask-canvas";
+// z 401: над .leaflet-map-pane (400) — тайлами, точками и теплом; под контролами (1000)
+leafletMask.canvas.style.zIndex = "401";
+$("#leaflet-map").append(leafletMask.canvas);
+leafletMask.ctx = leafletMask.canvas.getContext("2d");
 const accidents = L.layerGroup().addTo(map);
 const markers = new Map<string, any>();
+// Флажок границы затемнения: древко в самой точке границы, вымпел вверх-вправо. Один
+// data-URL на всех клиентов: html divIcon у Leaflet, iconImageHref у Яндекса, addImage у Mapbox
+const FLAG_SRC = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath d='M2 13.5V2' stroke='%2318334A' stroke-width='1.5' stroke-linecap='round'/%3E%3Cpath d='M3.5 2h8.5L9.5 5l2.5 3h-8.5z' fill='%23FF001A'/%3E%3C/svg%3E";
+let flagIconMemo: any = null;
+const flagIcon = () => flagIconMemo ||= L.divIcon({ className: "dtp-flag", html: `<img src="${FLAG_SRC}" alt="" width="14" height="14">`, iconSize: [14, 14], iconAnchor: [2, 13] });
+// Равномерная выборка вершин колец маски: флажки обводят границу светлой области — видно,
+// где реально проходит затемнение. Бюджет фиксированный: плотность на экране примерно
+// одинакова на любом зуме. Кэш по ссылке на кольца — они меняются только со сменой
+// ячейки лукапа или замка
+const flagBudget = 300;
+const boundaryFlagsCache = { rings: null as number[][][] | null, points: [] as number[][] };
+function boundaryFlags() {
+  const rings = state.maskRings;
+  if (!rings.length) { boundaryFlagsCache.rings = null; boundaryFlagsCache.points = []; return []; }
+  if (boundaryFlagsCache.rings === rings) return boundaryFlagsCache.points;
+  boundaryFlagsCache.rings = rings;
+  const total = rings.reduce((sum, ring) => sum + ring.length, 0);
+  const points: number[][] = [];
+  for (const ring of rings) {
+    const stride = Math.max(1, ring.length / Math.max(1, Math.round((flagBudget * ring.length) / total)));
+    for (let index = 0; index < ring.length; index += stride) points.push(ring[Math.floor(index)]);
+  }
+  boundaryFlagsCache.points = points;
+  return points;
+}
 // Попап → точка: по нему popupopen узнаёт, какое ДТП открыто (для адресной строки)
 const popupItems = new WeakMap<object, any>();
 const heatSettings = { radius: 6, blur: 9, minOpacity: .05 };
+// Затемнение снаружи места: сила veil'а и растушёвка его границы — ползунки #mask-rows
+const maskSettings = { opacity: .2, blur: 12 };
 const heatGradient = { 0: "rgba(126, 171, 85, 0)", .2: "rgba(126, 171, 85, 0.6)", .4: "rgba(255, 254, 85, 0.7)", .6: "rgba(245, 193, 66, 0.8)", .8: "rgba(223, 130, 68, 0.9)", 1: "rgba(176, 36, 24, 1)" };
 const heat = L.heatLayer([], { ...heatSettings, maxZoom: 12, gradient: heatGradient }).addTo(map);
 const yandexHeatSettings = { radius: 15, opacity: .5, intensityOfMidpoint: .5 };
-const yandex = { map: null as any, points: null as any, heatCanvas: null as HTMLCanvasElement | null, heatCtx: null as CanvasRenderingContext2D | null, loading: null as Promise<void> };
+const yandex = { map: null as any, points: null as any, maskCanvas: null as HTMLCanvasElement | null, maskCtx: null as CanvasRenderingContext2D | null, heatCanvas: null as HTMLCanvasElement | null, heatCtx: null as CanvasRenderingContext2D | null, loading: null as Promise<void> };
 const mapboxHeatSettings = { radius: 15, opacity: .5, intensity: .5 };
-const mapbox = { map: null as any, loading: null as Promise<void> };
+const mapbox = { map: null as any, loading: null as Promise<void>, maskCanvas: null as HTMLCanvasElement | null, maskCtx: null as CanvasRenderingContext2D | null };
+// Холд зум-жеста Mapbox: канва маски спрятана до zoomend (как leafletMaskHold)
+let mapboxMaskHold = false;
+
+// Обратное затемнение: когда у карточки есть место (state.place — geom getRegionUnderPoint),
+// всё снаружи его границ приглушается. Геометрия — even-odd полигон «рамка вокруг вида +
+// кольца места»: точка внутри места накрывает нечётное число колец и остаётся светлой,
+// снаружи — чётное и гаснет. Кольца места — плоский мешок с чётностью (внешнее
+// мир-кольцо getRegionUnderPoint уже отброшено в makePlace). Маска живёт поверх данных:
+// снаружи места приглушено всё (подложка, точки, тепло), внутри — карта как обычно
+function signedLoop(ring: number[][]) { let area = 0; for (let index = 0; index < ring.length; index++) { const [x, y] = ring[index], [px, py] = ring[(index + 1) % ring.length]; area += x * py - px * y; } return area; }
+function placeMaskRings() {
+  // Кольца маски живут отдельно от места счётчиков (state.maskRings): на уровнях
+  // округа/района они совпадают с местом, а на уровне субъекта место не строится
+  // (считать нечего) — затемнение работает и там
+  const rings = state.maskRings || [];
+  // Обмотку выравниваем (кольца места — по часовой) для рендеров с правилом ненулевой
+  // обмотки; even-odd-рендерам порядок безразличен
+  return rings.map((ring) => (signedLoop(ring) > 0 ? [...ring].reverse() : ring));
+}
+// Рисовальщик маски для канв Leaflet/Mapbox: сплошное затемнение экраном, из которого
+// место вырезается (destination-out) с растушёвкой наружу — тот же приём, что у
+// Яндекса. Вырезаем непрозрачной заливкой: в destination-out важна только альфа кисти,
+// а fillStyle после затемнения полупрозрачен — стирал бы лишь 30% за раз
+function paintPlaceMask(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, container: HTMLElement, project: (latitude: number, longitude: number) => [number, number]) {
+  const rings = placeMaskRings();
+  if (!rings.length) { canvas.style.display = "none"; return; }
+  canvas.style.display = "block";
+  const dpr = window.devicePixelRatio || 1, width = container.clientWidth, height = container.clientHeight;
+  if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) { canvas.width = Math.round(width * dpr); canvas.height = Math.round(height * dpr); }
+  // CSS-размер — явно: inset:0 заменяемый элемент не растягивает, и канва с атрибутами
+  // в физических пикселях отображается dpr-кратно больше контейнера (на dpr=2 вырез
+  // уезжал от левого верхнего угла на полэкрана). Яндекс-канвы размер ставят сами
+  canvas.style.width = `${width}px`; canvas.style.height = `${height}px`;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = `rgba(24, 51, 74, ${maskSettings.opacity})`;
+  ctx.fillRect(0, 0, width, height);
+  ctx.globalCompositeOperation = "destination-out";
+  // Растушёвка края — тенью, не ctx.filter: фильтр blur() в Chrome растреняет источник
+  // с понижением разрешения, и мелкие вырезы (эксклавы, узкие перешейки полигона)
+  // разбавляются до нуля — остаются тёмными пятнами внутри места, а край «не совпадает
+  // с границами». Тень — честная гауссиана (σ = blur/2) в полном разрешении: сам путь
+  // уводим за экран, на его место ставим его же тень (в destination-out важна только
+  // альфа). Сдвиг тени матрицей не гнётся — компенсируем dpr вручную
+  ctx.save();
+  ctx.fillStyle = "#000";
+  ctx.shadowColor = "#000";
+  ctx.shadowBlur = maskSettings.blur * dpr; // тень живёт в физических пикселях — перо в CSS-пикселях
+  ctx.shadowOffsetX = 10000 * dpr;
+  ctx.translate(-10000, 0);
+  ctx.beginPath();
+  for (const ring of rings) {
+    for (let index = 0; index < ring.length; index++) {
+      const [x, y] = project(ring[index][0], ring[index][1]);
+      index ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+    ctx.closePath();
+  }
+  ctx.fill("evenodd");
+  ctx.restore();
+  ctx.globalCompositeOperation = "source-over";
+}
+function drawLeafletPlaceMask() {
+  if (!leafletMask.canvas || !leafletMask.ctx) return;
+  // Вне дебаг-режима вуали нет вовсе (как и поверх тепла: оно само показывает
+  // картину целиком, вуаль гасила бы его по краям)
+  if (!debugMode || lastRender.heatVisible || leafletMaskHold || placeMaskWaitLookup) { leafletMask.canvas.style.display = "none"; return; }
+  // project принимает пару кольца (долгота, широта)
+  paintPlaceMask(leafletMask.canvas, leafletMask.ctx, $("#leaflet-map") as HTMLElement, (longitude, latitude) => { const point = map.latLngToContainerPoint([latitude, longitude]); return [point.x, point.y]; });
+}
+function drawMapboxPlaceMask() {
+  if (!mapbox.maskCanvas || !mapbox.maskCtx || !mapbox.map) return;
+  if (!debugMode || lastRender.heatVisible || mapboxMaskHold || placeMaskWaitLookup) { mapbox.maskCanvas.style.display = "none"; return; }
+  paintPlaceMask(mapbox.maskCanvas, mapbox.maskCtx, mapbox.map.getContainer(), (longitude, latitude) => { const point = mapbox.map.project([longitude, latitude]); return [point.x, point.y]; });
+}
+function renderPlaceMask() {
+  drawLeafletPlaceMask();
+  if (yandex.map) drawYandexPlaceMask();
+  if (mapbox.map) drawMapboxPlaceMask();
+}
+// Ответ лукапа места приехал (или кэш-хит, или замок): маску можно рисовать.
+// force — безусловная перерисовка (сброс маски). Панель ползунков здесь же: видимость
+// строк затемнения привязана к state.maskRings, а ждать рендера данных (точки по
+// медленному набору) ползунки не должны — лукапgeom их не касается
+function flushPlaceMaskHold(force = false) {
+  if (!placeMaskWaitLookup && !force) return;
+  placeMaskWaitLookup = false;
+  renderPlaceMask();
+  renderHeatControls();
+}
+// Возврат канвы в хост панелей, если Яндекс пересобрал его и выкинул канву из DOM
+function yandexReattach(canvas: HTMLCanvasElement) {
+  if (canvas.isConnected) return;
+  const host = document.querySelector('#yandex-map [class*="inner-panes"]')?.parentElement;
+  (host ?? $("#yandex-map")).append(canvas);
+}
+// У Polygon Яндекса мировое кольцо не выживает: рендер отбрасывает кольцо ±85°/±180°
+// (та же непосильность 3395, что и в v=72) и заливает сами кольца места — эффект
+// наоборот. Поэтому маска на Яндексе — своя канва поверх карты: сплошное затемнение
+// экраном, из которого место вырезается (destination-out) с растушёвкой наружу —
+// внутрь места чисто, от границы затемнение тает. Путь лёгкий (кольца — пара сотен
+// точек), так что догоняем карту перерисовкой на каждый actiontick, без
+// transform-механики тепла
+// Зум-жест: зум последней отрисовки и холд «прячь до actionend» (как yandexHeatZoomHold)
+let yandexMaskZoom: number | null = null, yandexMaskZoomHold = false;
+function drawYandexPlaceMask(tick?: { globalPixelCenter?: [number, number]; zoom?: number }) {
+  const canvas = yandex.maskCanvas, map = yandex.map;
+  if (!canvas || !map) return;
+  yandexReattach(canvas);
+  const rings = placeMaskRings(), container = $("#yandex-map") as HTMLElement, dpr = window.devicePixelRatio || 1;
+  // Поверх тепла затемнения нет (тепло само показывает картину целиком), вне дебага — тем более
+  if (!debugMode || !rings.length || lastRender.heatVisible) { canvas.style.display = "none"; return; }
+  // После зум-жеста канву возвращает только ответ лукапа места (flushPlaceMaskHold):
+  // рисовать старой геометрией — моргать перед приездом новой
+  if (placeMaskWaitLookup) { canvas.style.display = "none"; return; }
+  // Зум-жест: перерисовка с blur не успевает за тиками (как тепло, DTP-30) — канву
+  // прячем до actionend; холд не даёт промежуточным тикам вернуть её посреди жеста
+  if (tick?.zoom !== undefined && yandexMaskZoom !== null && tick.zoom !== yandexMaskZoom) yandexMaskZoomHold = true;
+  if (yandexMaskZoomHold) { canvas.style.display = "none"; return; }
+  canvas.style.display = "block";
+  const width = container.clientWidth, height = container.clientHeight;
+  if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) { canvas.width = Math.round(width * dpr); canvas.height = Math.round(height * dpr); }
+  // Позицию канвы держим явной: хост панелей не обязан совпадать с контейнером карты
+  canvas.style.left = "0px"; canvas.style.top = "0px"; canvas.style.width = `${width}px`; canvas.style.height = `${height}px`;
+  const ctx = yandex.maskCtx!, projection = map.options.get("projection");
+  // В жесте map.getCenter()/getZoom() отстаёт от вида (см. комментарий к actiontick
+  // тепла) — маска по ним «уезжает»; живые центр и зум приходим из тика, вне жеста
+  // берём саму карту
+  const zoom = tick?.zoom ?? map.getZoom();
+  const [centerX, centerY] = tick?.globalPixelCenter ?? projection.toGlobalPixels(map.getCenter(), zoom);
+  const offsetX = width / 2 - centerX, offsetY = height / 2 - centerY;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = `rgba(24, 51, 74, ${maskSettings.opacity})`;
+  ctx.fillRect(0, 0, width, height);
+  ctx.globalCompositeOperation = "destination-out";
+  // Растушёвка края — тенью, не ctx.filter (растреняет источник с понижением
+  // разрешения: мелкие вырезы разбавляются до нуля — см. комментарий в paintPlaceMask)
+  // Вырезаем непрозрачной заливкой: в destination-out важна только альфа кисти,
+  // а fillStyle после затемнения полупрозрачен — стирал бы лишь 30% за раз
+  ctx.save();
+  ctx.fillStyle = "#000";
+  ctx.shadowColor = "#000";
+  ctx.shadowBlur = maskSettings.blur * dpr; // тень живёт в физических пикселях — перо в CSS-пикселях
+  ctx.shadowOffsetX = 10000 * dpr;
+  ctx.translate(-10000, 0);
+  ctx.beginPath();
+  for (const ring of rings) {
+    for (let index = 0; index < ring.length; index++) {
+      const [gx, gy] = projection.toGlobalPixels(ring[index], zoom), x = gx + offsetX, y = gy + offsetY;
+      index ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+    ctx.closePath();
+  }
+  ctx.fill("evenodd");
+  ctx.restore();
+  ctx.globalCompositeOperation = "source-over";
+  yandexMaskZoom = zoom;
+}
 // Флаг зум-жеста: тепло Mapbox на время жеста скрыто (DTP-30)
 let mapboxHeatHold = false;
 function mapboxHeatPaint() {
@@ -34,7 +238,7 @@ function mapboxHeatPaint() {
 
 function leafletView() { const bounds = map.getBounds(), center = map.getCenter(); return { center: { latitude: center.lat, longitude: center.lng }, zoom: map.getZoom(), bounds: { west: bounds.getWest(), south: bounds.getSouth(), east: bounds.getEast(), north: bounds.getNorth() } }; }
 function yandexView() { const center = yandex.map.getCenter(), bounds = yandex.map.getBounds(); return { center: { latitude: center[1], longitude: center[0] }, zoom: yandex.map.getZoom(), bounds: { west: bounds[0][0], south: bounds[0][1], east: bounds[1][0], north: bounds[1][1] } }; }
-function mapboxView() { const center = mapbox.map.getCenter(), bounds = mapbox.map.getBounds(); return { center: { latitude: center.lat, longitude: center.lng }, zoom: mapbox.map.getZoom(), bounds: { west: bounds.getWest(), south: bounds.getSouth(), east: bounds.getEast(), north: bounds.getNorth() } }; }
+function mapboxView() { const center = mapbox.map.getCenter(), bounds = mapbox.map.getBounds(); return { center: { latitude: center.lat, longitude: center.lng }, bounds: { west: bounds.getWest(), south: bounds.getSouth(), east: bounds.getEast(), north: bounds.getNorth() }, zoom: mapbox.map.getZoom() + 1 }; }
 function currentView() { return state.mapClient === "yandex" && yandex.map ? yandexView() : state.mapClient === "mapbox" && mapbox.map ? mapboxView() : leafletView(); }
 function heatFeatures(points) { return points.map(([latitude, longitude, weight]) => ({ type: "Feature", geometry: { type: "Point", coordinates: [longitude, latitude] }, properties: { weight: weight || 1 } })); }
 // Тепловая карта живёт на отдалённом масштабе (регион/город), при приближении
@@ -66,9 +270,26 @@ function renderMarkers(markersVisible) {
     markers.set(item.id, marker);
   }
 }
+// Флажки границы затемнения — свой слой поверх маркеров; пересобирается только со сменой
+// колец (выборка вершин кэшируется), при тепле прячется вместе с маской
+const boundaryFlagLayer = L.layerGroup();
+let boundaryFlagRings: number[][][] | null = null;
+function drawLeafletFlags() {
+  const flags = !debugMode || lastRender.heatVisible || !state.maskRings.length ? [] : boundaryFlags();
+  if (!flags.length) { map.removeLayer(boundaryFlagLayer); boundaryFlagRings = null; return; }
+  if (boundaryFlagRings !== state.maskRings) {
+    boundaryFlagRings = state.maskRings;
+    boundaryFlagLayer.clearLayers();
+    for (const [lng, lat] of flags) boundaryFlagLayer.addLayer(L.marker([lat, lng], { icon: flagIcon(), interactive: false, keyboard: false }));
+  }
+  if (!map.hasLayer(boundaryFlagLayer)) boundaryFlagLayer.addTo(map);
+}
 function renderLeaflet(visible, heatPoints, heatVisible) {
   renderMarkers(heatVisible ? [] : visible);
   heat.setLatLngs(heatVisible ? heatPoints : []);
+  drawLeafletFlags();
+  // Маска поверх слоёв: bringToFront обязан идти после добавления маркеров этого рендера
+  renderPlaceMask();
 }
 const yandexMarkers = new Map<string, { placemark: any; latitude: number }>();
 // Слой тепла рисуем своим canvas: ymaps.Heatmap синхронно перерисовывает все тайлы
@@ -116,6 +337,7 @@ const yandexHeatMargin = 200;
 function drawYandexHeat(heatPoints, heatVisible) {
   const canvas = yandex.heatCanvas, map = yandex.map;
   if (!canvas || !map) return;
+  yandexReattach(canvas);
   if (!heatVisible || !heatPoints.length) { canvas.style.display = "none"; canvas.style.transform = ""; yandexHeatAnchor = null; return; }
   canvas.style.display = "block";
   canvas.style.opacity = yandexHeatZoomHold ? "0" : String(yandexHeatSettings.opacity);
@@ -190,8 +412,32 @@ function updateYandexPointRadius() {
   const zoom = yandex.map.getZoom();
   yandexMarkers.forEach((entry) => entry.placemark.geometry.setRadius(yandexMetersPerPixel(entry.latitude, zoom) * yandexPointRadiusPx));
 }
+// Флажки границы затемнения — отдельной коллекцией: пересобирается только со сменой
+// колец, при тепле прячется вместе с маской
+const yandexBoundaryFlags = { collection: null as any, rings: null as number[][][] | null };
+function drawYandexFlags() {
+  if (!yandex.map) return;
+  const flags = !debugMode || lastRender.heatVisible || !state.maskRings.length ? [] : boundaryFlags();
+  if (!flags.length) {
+    if (yandexBoundaryFlags.collection) { yandex.points.remove(yandexBoundaryFlags.collection); yandexBoundaryFlags.collection = null; yandexBoundaryFlags.rings = null; }
+    return;
+  }
+  if (!yandexBoundaryFlags.collection) {
+    yandexBoundaryFlags.collection = new (window as any).ymaps.GeoObjectCollection();
+    yandex.points.add(yandexBoundaryFlags.collection);
+  }
+  if (yandexBoundaryFlags.rings !== state.maskRings) {
+    yandexBoundaryFlags.rings = state.maskRings;
+    yandexBoundaryFlags.collection.removeAll();
+    for (const [lng, lat] of flags) yandexBoundaryFlags.collection.add(new (window as any).ymaps.GeoObject({
+      geometry: { type: "Point", coordinates: [lng, lat] },
+      properties: {},
+    }, { iconLayout: "default#image", iconImageHref: FLAG_SRC, iconImageSize: [14, 14], iconImageOffset: [-2, -13] }));
+  }
+}
 function renderYandex(allVisible, heatPoints, heatVisible) {
   if (!yandex.map) return;
+  renderPlaceMask();
   const visible = allVisible.length > yandexMarkerLimit ? allVisible.slice(0, yandexMarkerLimit) : allVisible;
   // Placemark'и обновляем диффом, а не пересозданием всех на каждый сдвиг карты
   const alive = new Set(heatVisible ? [] : visible.map((item) => item.id));
@@ -206,6 +452,7 @@ function renderYandex(allVisible, heatPoints, heatVisible) {
     yandexMarkers.set(item.id, { placemark, latitude: item.point.latitude });
     yandex.points.add(placemark);
   }
+  drawYandexFlags();
   drawYandexHeat(heatPoints, heatVisible);
 }
 function renderMapbox(visible, heatPoints, heatVisible) {
@@ -213,8 +460,12 @@ function renderMapbox(visible, heatPoints, heatVisible) {
   // isStyleLoaded() у стиля Standard подолгу остаётся false, поэтому ориентируемся
   // на сами источники: данные можно заливать, как только они созданы
   if (!map || !map.getSource("dtp-heat") || !map.getSource("dtp-points")) return;
+  renderPlaceMask();
   map.getSource("dtp-heat")?.setData({ type:"FeatureCollection", features: heatVisible ? heatFeatures(heatPoints) : [] });
   map.getSource("dtp-points")?.setData({ type:"FeatureCollection", features: heatVisible ? [] : visible.map((item) => ({ type:"Feature", geometry:{ type:"Point", coordinates:[item.point.longitude, item.point.latitude] }, properties:{ severity:item.severity, popup:markerPopup(item), id:item.id } })) });
+  // Флажки границы затемнения — точками отдельного источника (выборка вершин кэшируется)
+  const flagFeatures = !debugMode || heatVisible || !state.maskRings.length ? [] : boundaryFlags();
+  map.getSource("dtp-boundary")?.setData({ type:"FeatureCollection", features: flagFeatures.map(([lng, lat]) => ({ type:"Feature", geometry:{ type:"Point", coordinates:[lng, lat] }, properties:{} })) });
   const paint = mapboxHeatPaint();
   map.setPaintProperty("dtp-heat", "heatmap-radius", paint.radius); map.setPaintProperty("dtp-heat", "heatmap-intensity", paint.intensity); map.setPaintProperty("dtp-heat", "heatmap-opacity", paint.opacity);
 }
@@ -232,11 +483,25 @@ async function ensureYandex(view) {
   await ymaps.ready();
   yandex.map = new ymaps.Map("yandex-map", { center: [view.center.longitude, view.center.latitude], zoom: view.zoom, controls: ["zoomControl"] }, { maxZoom: 20, minZoom: 1, avoidFractionalZoom: true, yandexMapDisablePoiInteractivity: true, suppressMapOpenBlock: true });
   yandex.points = new ymaps.GeoObjectCollection(); yandex.map.geoObjects.add(yandex.points);
+  // Канвы тепла и маски живут внутри хоста панелей Яндекса, а не прямыми детьми
+  // #yandex-map: корень карты — стековый контекст z-index:0, поэтому снаружи любая
+  // канва с положительным z ложится поверх ВСЕЙ карты, включая открытый балун
+  // (тепло перекрывало попап при смене масштаба). Внутри z считаем по панелям,
+  // которые при открытом балуне надуваются (ground 501→601, areas 1004→1205,
+  // balloon 4204): тепло 1500 — над тайлами всегда, под балуном; маска 3000 —
+  // над точками, под балуном. Яндекс иногда пересобирает хост панелей — при
+  // отрисовке канва возвращается на место, если её выкинуло из DOM
+  const paneHost = document.querySelector('#yandex-map [class*="inner-panes"]')?.parentElement ?? $("#yandex-map");
   const canvas = document.createElement("canvas");
   canvas.className = "yandex-heat";
-  $("#yandex-map").append(canvas);
+  paneHost.append(canvas);
   yandex.heatCanvas = canvas;
   yandex.heatCtx = canvas.getContext("2d", { willReadFrequently: true });
+  const maskCanvas = document.createElement("canvas");
+  maskCanvas.className = "yandex-place-mask";
+  paneHost.append(maskCanvas);
+  yandex.maskCanvas = maskCanvas;
+  yandex.maskCtx = maskCanvas.getContext("2d");
   renderYandex(lastRender.visible, lastRender.heatPoints, lastRender.heatVisible);
   yandex.map.events.add("boundschange", () => { if (state.mapClient === "yandex") actions.scheduleMapLoad(); });
   // Закрытие балуна (крестик/клик мимо) убирает ?popup= из адреса; при открытии
@@ -248,6 +513,7 @@ async function ensureYandex(view) {
   // жеста отстаёт, а приватные поля action (_zoom, _globalPixelCenter) ненадёжны
   yandex.map.events.add("actiontick", (e: any) => {
     if (state.mapClient !== "yandex") return;
+    drawYandexPlaceMask(e?.originalEvent?.tick);
     const anchor = yandexHeatAnchor, canvas = yandex.heatCanvas;
     const tick = e?.originalEvent?.tick;
     if (!anchor || !canvas || canvas.style.display === "none" || !tick?.globalPixelCenter) { actions.applyHeatMode(); return; }
@@ -259,7 +525,9 @@ async function ensureYandex(view) {
     const [cx, cy] = tick.globalPixelCenter;
     canvas.style.transform = `translate3d(${Math.round(anchor.x - cx)}px, ${Math.round(anchor.y - cy)}px, 0)`;
   });
-  yandex.map.events.add("actionend", () => { if (state.mapClient === "yandex") { yandexHeatZoomHold = false; actions.applyHeatMode(); scheduleYandexHeat(); updateYandexPointRadius(); actions.scheduleRegionLookup(); } });
+  // Зум-жест: маску вернёт ответ лукапа места (flushPlaceMaskHold), пан — рисуем сразу,
+  // чтобы затемнение ехало за картой без задержки
+  yandex.map.events.add("actionend", () => { if (state.mapClient === "yandex") { const zoomGesture = yandexMaskZoomHold; yandexMaskZoomHold = false; if (zoomGesture) placeMaskWaitLookup = true; else drawYandexPlaceMask(); yandexHeatZoomHold = false; actions.applyHeatMode(); scheduleYandexHeat(); updateYandexPointRadius(); actions.scheduleRegionLookup(); } });
 }
 function loadMapboxScript() {
   const key = (window as any).MAPBOX_ACCESS_TOKEN;
@@ -268,34 +536,66 @@ function loadMapboxScript() {
   return mapbox.loading;
 }
 async function ensureMapbox(view) {
-  if (mapbox.map) { mapbox.map.jumpTo({ center:[view.center.longitude, view.center.latitude], zoom:view.zoom }); return; }
+  // Тайлы Mapbox 512px: его зум на единицу крупнее 256-схемы Яндекса/Leaflet — «зум 8»
+  // Mapbox показывает вдвое меньшую территорию, и маска места на том же номере зума
+  // выглядела вдвое больше (затемнение «сжато» в рамку). Приложение считает зум в общей
+  // 256-схеме (mapboxView прибавляет единицу) — сюда приходит именно оно, в GL идёт −1
+  if (mapbox.map) { mapbox.map.jumpTo({ center:[view.center.longitude, view.center.latitude], zoom:view.zoom - 1 }); return; }
   await loadMapboxScript(); const mapboxgl = (window as any).mapboxgl; mapboxgl.accessToken = (window as any).MAPBOX_ACCESS_TOKEN;
-  mapbox.map = new mapboxgl.Map({ container:"mapbox-map", style:"mapbox://styles/mapbox/standard", config:{ basemap:{ theme:"monochrome", lightPreset:"day" } }, center:[view.center.longitude, view.center.latitude], zoom:view.zoom });
+  mapbox.map = new mapboxgl.Map({ container:"mapbox-map", style:"mapbox://styles/mapbox/standard", config:{ basemap:{ theme:"monochrome", lightPreset:"day" } }, center:[view.center.longitude, view.center.latitude], zoom:view.zoom - 1 });
   // Слои точек и тепла: 'load' у Standard-стиля может не приходить долго, а 'style.load'
   // срабатывает сразу после разбора стиля — создаём источники там (идемпотентно)
   const setup = () => {
     const map = mapbox.map;
     if (!map || map.getSource("dtp-heat")) return;
     map.addSource("dtp-heat", { type:"geojson", data:{ type:"FeatureCollection", features:[] } }); map.addSource("dtp-points", { type:"geojson", data:{ type:"FeatureCollection", features:[] } });
+    map.addSource("dtp-boundary", { type:"geojson", data:{ type:"FeatureCollection", features:[] } });
     const paint = mapboxHeatPaint();
     map.addLayer({ id:"dtp-heat", type:"heatmap", source:"dtp-heat", paint:{ "heatmap-weight":["get", "weight"], "heatmap-intensity":paint.intensity, "heatmap-radius":paint.radius, "heatmap-opacity":paint.opacity, "heatmap-color":["interpolate", ["linear"], ["heatmap-density"], 0,"rgba(126, 171, 85, 0)", .2,"rgba(126, 171, 85, .6)", .4,"rgba(255, 254, 85, .7)", .6,"rgba(245, 193, 66, .8)", .8,"rgba(223, 130, 68, .9)", 1,"rgba(176, 36, 24, 1)"] } });
     map.addLayer({ id:"dtp-points", type:"circle", source:"dtp-points", paint:{ "circle-radius":5, "circle-color":["match", ["get", "severity"], 4,"#FF001A", 3,"#FF7F24", 1,"#FFB81F", "rgba(24, 51, 74, 0.5)"], "circle-stroke-width":0, "circle-opacity":1 } });
+    // Флажки границы затемнения — символами из отдельного источника (клики по ним не
+    // нужны). Картинку декодируем заранее: addImage неполного <img> кидает ошибку;
+    // слой создаём вместе с картинкой, чтобы символы не жили без спрайта (GL тогда
+    // молчит в консоль на каждый кадр)
+    const addFlagLayer = () => {
+      if (!mapbox.map || map.getLayer("dtp-flags") || !map.getSource("dtp-boundary")) return;
+      map.addLayer({ id:"dtp-flags", type:"symbol", source:"dtp-boundary", layout:{ "icon-image":"dtp-flag", "icon-size":1, "icon-anchor":"bottom-left", "icon-allow-overlap":true, "icon-ignore-placement":true } });
+    };
+    if (map.hasImage("dtp-flag")) addFlagLayer();
+    else {
+      const image = new Image();
+      image.onload = () => { if (mapbox.map === map && !map.hasImage("dtp-flag")) map.addImage("dtp-flag", image); addFlagLayer(); };
+      image.src = FLAG_SRC;
+    }
+    // Маска — канва поверх GL-канвы (fill-слой не умеет растушёвки краёв): z 1 — над
+    // картой, под контролами и попапами
+    if (!mapbox.maskCanvas) {
+      mapbox.maskCanvas = document.createElement("canvas");
+      mapbox.maskCanvas.className = "place-mask-canvas";
+      mapbox.maskCanvas.style.zIndex = "1";
+      map.getContainer().append(mapbox.maskCanvas);
+      mapbox.maskCtx = mapbox.maskCanvas.getContext("2d");
+    }
     map.on("click", "dtp-points", (event) => {
       // focusAfterOpen выключаем: авт-фокус кнопки рисует рамку, которой нет у Leaflet/Яндекса;
       // клавиатурным пользователям ссылка по-прежнему доступна по Tab (обводка :focus-visible)
       const feature = event.features[0], popup = new mapboxgl.Popup({ focusAfterOpen: false }).setLngLat(feature.geometry.coordinates).setHTML(feature.properties.popup).addTo(map);
       popup.on("close", clearPopupUrl);
-      syncPopupUrl(feature.properties.id, feature.geometry.coordinates[1], feature.geometry.coordinates[0], map.getZoom());
+      // В deep-link зум уходит в общей 256-схеме — как его отдаёт mapboxView
+      syncPopupUrl(feature.properties.id, feature.geometry.coordinates[1], feature.geometry.coordinates[0], map.getZoom() + 1);
     });
     renderMapbox(lastRender.visible, lastRender.heatPoints, lastRender.heatVisible);
   };
   mapbox.map.on("style.load", setup);
   mapbox.map.on("load", setup);
   mapbox.map.on("moveend", () => { if (state.mapClient === "mapbox") { actions.scheduleMapLoad(); actions.scheduleRegionLookup(); } });
-  // На время зум-жеста тепло скрывается (DTP-30), точки остаются видимыми;
-  // прозрачность возвращаем по значению слайдера, а не запомненную
-  mapbox.map.on("zoomstart", () => { if (state.mapClient !== "mapbox" || mapboxHeatHold || !mapbox.map.getLayer("dtp-heat")) return; mapboxHeatHold = true; mapbox.map.setPaintProperty("dtp-heat", "heatmap-opacity", 0); });
-  mapbox.map.on("zoomend", () => { if (state.mapClient !== "mapbox") return; if (mapboxHeatHold) { mapboxHeatHold = false; mapbox.map.setPaintProperty("dtp-heat", "heatmap-opacity", mapboxHeatPaint().opacity); } actions.applyHeatMode(); });
+  // Маска едет за картой: перерисовка на каждом move (GL шлёт их и в жесте)
+  mapbox.map.on("move", () => { if (state.mapClient === "mapbox") drawMapboxPlaceMask(); });
+  // На время зум-жеста тепло и маска скрываются (DTP-30), точки остаются видимыми;
+  // прозрачность тепла возвращаем по значению слайдера, а не запомненную. Маску после
+  // зума возвращает ответ лукапа места (placeMaskWaitLookup)
+  mapbox.map.on("zoomstart", () => { if (state.mapClient !== "mapbox") return; mapboxMaskHold = true; if (mapbox.maskCanvas) mapbox.maskCanvas.style.display = "none"; if (mapboxHeatHold || !mapbox.map.getLayer("dtp-heat")) return; mapboxHeatHold = true; mapbox.map.setPaintProperty("dtp-heat", "heatmap-opacity", 0); });
+  mapbox.map.on("zoomend", () => { if (state.mapClient !== "mapbox") return; mapboxMaskHold = false; placeMaskWaitLookup = true; if (mapboxHeatHold) { mapboxHeatHold = false; mapbox.map.setPaintProperty("dtp-heat", "heatmap-opacity", mapboxHeatPaint().opacity); } actions.applyHeatMode(); });
 }
 function renderMapSwitcher() { document.querySelectorAll("[data-map-client], [data-quick-map]").forEach((button) => button.classList.toggle("active", (button.dataset.mapClient || button.dataset.quickMap) === state.mapClient)); }
 async function switchMapClient(client) {
@@ -310,13 +610,27 @@ async function switchMapClient(client) {
 }
 
 function renderHeatControls() {
-  // Панель ползунков спрятана (настройки вынесены в код); вернуть видимость —
-  // снова показывать её по тепловой карте: $("#heat-controls").hidden = !lastRender.heatVisible;
-  $("#heat-controls").hidden = true;
+  // Панель видна, пока есть что настраивать: тепло живёт на дальних зумах,
+  // затемнение — с зума 6; каждая группа строк прячется по своему признаку.
+  // Строки затемнения спрятаны и при показанном тепле — маска поверх него выключена.
+  // Вся панель — дебаг-инструмент: без ?debug в URL не показывается никому
+  $("#heat-rows").hidden = !lastRender.heatVisible;
+  $("#mask-rows").hidden = !state.maskRings.length || lastRender.heatVisible;
+  $("#heat-controls").hidden = !debugMode || ($("#heat-rows").hidden && $("#mask-rows").hidden);
+  // Ползунки затемнения глобальны (клиент карты не влияет) — синхронизируем до веток тепла,
+  // remoteActive-ветка ниже завершается return
+  $("#mask-blur").value = String(maskSettings.blur); $("#mask-opacity").value = String(Math.round(maskSettings.opacity * 100));
+  $("#mask-blur-value").textContent = `${maskSettings.blur} px`; $("#mask-opacity-value").textContent = `${Math.round(maskSettings.opacity * 100)}%`;
   const remoteActive = state.mapClient === "yandex" || state.mapClient === "mapbox", remoteRadius = state.mapClient === "mapbox" ? mapboxHeatSettings.radius : yandexHeatSettings.radius, remoteIntensity = state.mapClient === "mapbox" ? mapboxHeatSettings.intensity : yandexHeatSettings.intensityOfMidpoint, remoteOpacity = state.mapClient === "mapbox" ? mapboxHeatSettings.opacity : yandexHeatSettings.opacity;
   $("#heat-blur-label").textContent = t(remoteActive ? "heatIntensity" : "heatBlur"); $("#heat-opacity-label").textContent = t(remoteActive ? "heatMapOpacity" : "heatOpacity");
   if (remoteActive) { $("#heat-radius").max = state.mapClient === "mapbox" ? "100" : "30"; $("#heat-radius").value = String(remoteRadius); $("#heat-blur").min = "1"; $("#heat-blur").max = "100"; $("#heat-blur").value = String(remoteIntensity * 100); $("#heat-opacity").max = "100"; $("#heat-opacity").value = String(remoteOpacity * 100); $("#heat-radius-value").textContent = `${remoteRadius} px`; $("#heat-blur-value").textContent = `${Math.round(remoteIntensity * 100)}%`; $("#heat-opacity-value").textContent = `${Math.round(remoteOpacity * 100)}%`; return; }
   $("#heat-radius").max = "30"; $("#heat-radius").value = String(heatSettings.radius); $("#heat-blur").min = "0"; $("#heat-blur").max = "30"; $("#heat-blur").value = String(heatSettings.blur); $("#heat-opacity").max = "50"; $("#heat-opacity").value = String(heatSettings.minOpacity * 100); $("#heat-radius-value").textContent = `${heatSettings.radius} px`; $("#heat-blur-value").textContent = `${heatSettings.blur} px`; $("#heat-opacity-value").textContent = `${Math.round(heatSettings.minOpacity * 100)}%`;
+}
+function updateMaskControls() {
+  maskSettings.blur = Number($("#mask-blur").value);
+  maskSettings.opacity = Number($("#mask-opacity").value) / 100;
+  renderPlaceMask();
+  renderHeatControls();
 }
 function updateHeatControls() {
   if (state.mapClient === "yandex") { yandexHeatSettings.radius = Number($("#heat-radius").value); yandexHeatSettings.intensityOfMidpoint = Number($("#heat-blur").value) / 100; yandexHeatSettings.opacity = Number($("#heat-opacity").value) / 100; drawYandexHeat(lastRender.heatPoints, lastRender.heatVisible); }
@@ -325,4 +639,4 @@ function updateHeatControls() {
   renderHeatControls();
 }
 
-export { map, markers, yandex, mapbox, currentView, heatZoomMax, heatInView, renderLeaflet, renderYandex, renderMapbox, renderMapSwitcher, switchMapClient, renderHeatControls, updateHeatControls };
+export { map, markers, yandex, mapbox, currentView, heatZoomMax, heatInView, renderLeaflet, renderYandex, renderMapbox, renderMapSwitcher, switchMapClient, renderHeatControls, updateHeatControls, updateMaskControls, renderPlaceMask, flushPlaceMaskHold };

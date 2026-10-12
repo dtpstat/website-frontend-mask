@@ -3,8 +3,8 @@
 import { $, state, regionIndex, regionName, actions } from "./context.js";
 import { t } from "./i18n.js";
 import { refreshCascade } from "./filters.js";
-import { cancelRegionLookup, scheduleRegionLookup } from "./geom.js";
-import { map, yandex, mapbox } from "./maps.js";
+import { cancelRegionLookup, scheduleRegionLookup, resetPlaceMask } from "./geom.js";
+import { map, yandex, mapbox, flushPlaceMaskHold } from "./maps.js";
 
 const regionShapes = fetch("assets/regions.geojson").then((response) => response.ok ? response.json() : Promise.reject(new Error("Region boundaries unavailable")));
 function inRing(point, ring) { let inside = false; for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index++) { const [x, y] = ring[index], [px, py] = ring[previous]; if ((y > point[1]) !== (py > point[1]) && point[0] < (px - x) * (point[1] - y) / (py - y) + x) inside = !inside; } return inside; }
@@ -43,7 +43,16 @@ function updateTerritoryCard(keepPlace = false) {
   const isLocked = Boolean(state.territory);
   const changed = isLocked !== lockedMemo;
   lockedMemo = isLocked;
-  if (changed && (!keepPlace || !isLocked)) state.place = null;
+  if (changed && (!keepPlace || !isLocked)) {
+    state.place = null;
+    // Маска затемнения гаснет вместе с местом: закрепление из поиска не должно
+    // оставлять чужое затемнение до лукапа, а сброс замка — искать его заново
+    resetPlaceMask();
+  }
+  // Замок без места (выбор региона в поиске, авто-замок каскада, замок вне РФ):
+  // лукап места выключен, больше маску не вернёт никто — затемнение даём сразу
+  // кольцами субъекта из справочника границ
+  if (isLocked && changed) applyTerritoryMask();
   if (isLocked) cancelRegionLookup(); else if (changed) scheduleRegionLookup();
   // Мгновенный отклик на закрепление/снятие до пересчёта конвейера: та же формула, что
   // в renderMapData — место счётчиков, без него субъект данных; «Все регионы» остаётся
@@ -55,6 +64,23 @@ function updateTerritoryCard(keepPlace = false) {
   $("#lock-button").title = locked ? t("unlock") : t("lockPin");
   applyRegionLock();
   syncRegionFields();
+}
+// Кольца затемнения при замке. Маска обязана совпадать с карточкой: живое место
+// (пережившее сброс колец — гейт зума, замок на общепланетном зуме) затемняется
+// собственными кольцами, без места — субъектом из справочника границ. Границы едут
+// из assets асинхронно: к приезду замок может быть снят или перевыбран — проверяем
+// id, чужой ответ не применяем
+function applyTerritoryMask() {
+  if (state.maskRings.length) return;
+  if (state.place) { state.maskRings = state.place.rings; flushPlaceMaskHold(true); return; }
+  const id = state.territory!.id;
+  regionShapes.then((data) => {
+    if (state.territory?.id !== id || state.maskRings.length) return;
+    const feature = (data.features || []).find((item) => Number(item.properties.id) === id);
+    if (!feature) return;
+    state.maskRings = makePlace(state.territory!.name, feature.geometry).rings;
+    flushPlaceMaskHold(true);
+  }).catch(() => {});
 }
 // Поля региона показывают фактический регион данных: закреплённую территорию, пока она
 // закреплена, иначе субъект под центром (loadMapData дёргает синх после каждого
@@ -149,4 +175,4 @@ function makePlace(name: string, geometry: any) {
   return { name, rings, boxes };
 }
 
-export { regionAtCenter, applyPlace, makePlace, updateTerritoryCard, selectRegion, drawRegionSuggest, syncRegionFields };
+export { regionAtCenter, applyPlace, makePlace, updateTerritoryCard, applyTerritoryMask, selectRegion, drawRegionSuggest, syncRegionFields };

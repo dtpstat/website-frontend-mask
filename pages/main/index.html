@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" />
-    <link rel="stylesheet" href="styles.css?v=100" />
+    <link rel="stylesheet" href="styles.css?v=128" />
     <link rel="stylesheet" href="mapbox.css" />
   </head>
   <body>
@@ -20,10 +20,18 @@
       <div id="yandex-map" class="yandex-map" hidden aria-label="Интерактивная карта ДТП" data-i18n-aria="mapAria"></div>
       <div id="mapbox-map" class="mapbox-map" hidden aria-label="Интерактивная карта ДТП" data-i18n-aria="mapAria"></div>
       <div id="leaflet-map" class="leaflet-map" aria-label="Интерактивная карта ДТП" data-i18n-aria="mapAria"></div>
-      <section id="heat-controls" class="heat-controls" aria-label="Настройка тепловой карты">
-        <label class="heat-slider"><span id="heat-radius-label" data-i18n="heatRadius">Радиус</span><output id="heat-radius-value">6 px</output><input id="heat-radius" type="range" min="1" max="30" value="6"></label>
-        <label class="heat-slider"><span id="heat-blur-label" data-i18n="heatBlur">Размытие</span><output id="heat-blur-value">9 px</output><input id="heat-blur" type="range" min="0" max="30" value="9"></label>
-        <label class="heat-slider"><span id="heat-opacity-label" data-i18n="heatOpacity">Мин. непрозрачность</span><output id="heat-opacity-value">5%</output><input id="heat-opacity" type="range" min="0" max="50" value="5"></label>
+      <!-- hidden в разметке: JS-прятанье (renderHeatControls) срабатывает только после
+           загрузки модуля — без атрибута панель успевает мигнуть при перезагрузке -->
+      <section id="heat-controls" class="heat-controls" aria-label="Настройки тепловой карты и затемнения" hidden>
+        <div id="heat-rows">
+          <label class="heat-slider"><span id="heat-radius-label" data-i18n="heatRadius">Радиус</span><output id="heat-radius-value">6 px</output><input id="heat-radius" type="range" min="1" max="30" value="6"></label>
+          <label class="heat-slider"><span id="heat-blur-label" data-i18n="heatBlur">Размытие</span><output id="heat-blur-value">9 px</output><input id="heat-blur" type="range" min="0" max="30" value="9"></label>
+          <label class="heat-slider"><span id="heat-opacity-label" data-i18n="heatOpacity">Мин. непрозрачность</span><output id="heat-opacity-value">5%</output><input id="heat-opacity" type="range" min="0" max="50" value="5"></label>
+        </div>
+        <div id="mask-rows">
+          <label class="heat-slider"><span data-i18n="maskOpacity">Затемнение</span><output id="mask-opacity-value">20%</output><input id="mask-opacity" type="range" min="0" max="100" value="20"></label>
+          <label class="heat-slider"><span data-i18n="maskBlur">Размытие границы</span><output id="mask-blur-value">12 px</output><input id="mask-blur" type="range" min="0" max="30" value="12"></label>
+        </div>
       </section>
       <aside id="filters" class="filters" aria-label="Фильтры карты">
         <div class="filters-heading">
@@ -164,6 +172,6 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <script src="maps-config.js"></script>
-    <script type="module" src="main/app.js?v=100"></script>
+    <script type="module" src="main/app.js?v=129"></script>
   </body>
 </html>

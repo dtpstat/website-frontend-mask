@@ -10,8 +10,8 @@
 // только Россией — вне её name пустой
 
 import { api, $, state, actions } from "./context.js";
-import { currentView } from "./maps.js";
-import { regionAtCenter, makePlace } from "./territory.js";
+import { currentView, flushPlaceMaskHold, renderHeatControls } from "./maps.js";
+import { regionAtCenter, makePlace, applyTerritoryMask } from "./territory.js";
 
 // Кэш ответов по точкам (координаты, округлённые до 0.001° ≈ 50 м — заодно дедуп
 // дрожащего центра). Кэшируются и пустые имена — центр вне России
@@ -19,6 +19,8 @@ const regionCache = new Map<string, { name: string; geometry: any }>();
 // Родитель подписи: только у субъекта — страна (у округа/района его роль берёт строка региона)
 const parentLevel: Record<number, number> = { 4: 2 };
 let regionKey = "", regionSeq = 0, regionTimer = 0, regionAbort: AbortController | null = null;
+// Ячейка, чья геометрия уже в маске: та же ячейка = те же кольца, перерисовки нет
+let maskKey = "";
 
 function scheduleRegionLookup(delay = 250) { clearTimeout(regionTimer); regionTimer = setTimeout(lookupRegion, delay); }
 
@@ -44,16 +46,23 @@ async function lookupName(level: number, lat: string, lng: string) {
 
 async function lookupRegion() {
   const view = currentView();
-  // Под замком место под центром не определяем: контекст карточки — закреплённый субъект
-  if (state.territory) { showResolving(false); return; }
-  // Ниже зума 6 карточка скрыта гейтом конвейера — подписи не нужны
-  if (view.zoom < 6) { showResolving(false); return; }
+  // Ниже зума 6 карточка скрыта гейтом конвейера — подписи не нужны, затемнение
+  // без адреса на общепланетном зуме тоже не имеет смысла. regionKey забываем вместе
+  // с кольцами: иначе возврат в ту же ячейку решит по дедупу, что место «живо», и
+  // маска после зума наружу/обратно не вернётся (кольца-то стёрты)
+  if (view.zoom < 6) { showResolving(false); regionKey = ""; resetPlaceMask(); return; }
+  // Под замком место под центром не определяем: контекст карточки — закреплённый
+  // субъект. Кольца после сброса (гейт выше, замок на общем зуме) восстанавливаем
+  // сами — лукапа при замке не будет: место в карточке, затемнение обязано ему
+  // соответствовать (живое место — его кольцами, без него — субъектом)
+  if (state.territory) { applyTerritoryMask(); showResolving(false); flushPlaceMaskHold(); return; }
   const level = view.zoom <= 10 ? 4 : view.zoom <= 13 ? 6 : 8;
   const { lat, lng } = centerKey(view.center.latitude, view.center.longitude);
   const key = `${level}|${lat}|${lng}`;
   // Дедуп пропускает ход, только если место по этому ключу живо: стёртое место
-  // (смена замка) должно пере-примениться повторным лукапом — из кэша, без запроса
-  if (key === regionKey && state.place) return;
+  // (смена замка) должно пере-примениться повторным лукапом — из кэша, без запроса.
+  // Ответа не будет, но маска после зума ждёт именно его — снимаем ожидание сами
+  if (key === regionKey && state.place) { flushPlaceMaskHold(); return; }
   regionKey = key;
   showResolving(level !== 4); // место будет только у округа/района — на уровне субъекта не обещаем
   const loadId = ++regionSeq;
@@ -61,7 +70,7 @@ async function lookupRegion() {
   try {
     const plate = await lookupName(level, lat, lng);
     if (loadId !== regionSeq) return;
-    await applyRegion(plate, level);
+    await applyRegion(plate, level, key);
     // Родитель нужен только подписи уровня субъекта (страна) — и он не должен задерживать
     // место: субъект-plate уже в applyRegion, страна доедет следом. Сбой молча: строка не критична
     const parent = parentLevel[level];
@@ -72,7 +81,9 @@ async function lookupRegion() {
       parentEl.hidden = !plate.name || !parentPlace.name;
     }).catch(() => {});
   } catch (error) {
-    if (loadId === regionSeq && (error as Error).name !== "AbortError") { regionKey = ""; showResolving(false); } // сбой — подпись не трогаем, повторим на следующем ходе
+    // Сбой — подпись не трогаем, повторим на следующем ходе; маску возвращаем прежней —
+    // ждать ответа, который не приедет, хуже, чем показать старую геометрию
+    if (loadId === regionSeq && (error as Error).name !== "AbortError") { regionKey = ""; showResolving(false); flushPlaceMaskHold(); }
   }
 }
 
@@ -89,7 +100,7 @@ function showResolving(visible: boolean) { ($("#region-resolving") as HTMLElemen
 // а данные остаются закреплёнными). Место — география: живёт до следующего вызова
 // applyRegion (смена периода/фильтров пересчитывает те же точки, движка карты не
 // требует; иначе заголовок остался бы, а счётчики молча переехали бы на весь регион)
-async function applyRegion(plate: { name: string; geometry: any }, level: number) {
+async function applyRegion(plate: { name: string; geometry: any }, level: number, key: string) {
   showResolving(false);
   const name = plate.name;
   const within = Boolean(name) && plate.geometry && level !== 4 && (!state.territory || (await regionAtCenter(currentView().center.latitude, currentView().center.longitude)) === state.territory.id);
@@ -100,7 +111,21 @@ async function applyRegion(plate: { name: string; geometry: any }, level: number
   // Геометрия и имя приезжают одним ответом — имя меняется только вместе с местом
   const changed = (state.place?.name ?? null) !== (next?.name ?? null);
   state.place = next;
+  // Кольца маски обновляем ДО refreshRender: рендеры карт внутри перерисовывают и
+  // маску — со старыми кольцами она моргнула бы перед новыми. Маска затемнения —
+  // геометрия подписи на любом уровне: на уровне субъекта место счётчиков не строится
+  // (весь набор региона и так субъект), но затемнить снаружи субъекта нужно так же,
+  // как вокруг округа/района. Перерисовка — по смене ячейки: в её пределах ответ тот
+  // же (кэш), гонять растушёвку на каждый пан не нужно
+  if (maskKey !== key) {
+    maskKey = key;
+    state.maskRings = next ? next.rings : name && plate.geometry ? makePlace(name, plate.geometry).rings : [];
+    // Ползунки затемнения — по факту колец: рендер данных может ехать долго (точки
+    // большого набора), а маска уже сменилась
+    renderHeatControls();
+  }
   if (changed) actions.refreshRender(); // место доехало позже данных — пересчитать счётчики и график
+  flushPlaceMaskHold(); // ответ лукапа приехал — маску после зума можно рисовать
 }
 
 // Замок: прибить текущий лукап (ответ не должен перезаписать подпись после
@@ -111,6 +136,16 @@ function cancelRegionLookup() {
   regionKey = "";
   showResolving(false);
   ($("#region-parent") as HTMLElement).hidden = true;
+  // Маску здесь не трогаем: ручной замок закрепляет место вместе с затемнением,
+  // а сброс случится в updateTerritoryCard при смене состояния замка
 }
 
-export { scheduleRegionLookup, cancelRegionLookup };
+// Сброс маски извне (гейт зума здесь, смена замка в territory): ячейка забывается,
+// иначе следующий лукап по той же ячейке решит, что геометрия всё ещё в маске
+function resetPlaceMask() {
+  maskKey = "";
+  state.maskRings = [];
+  flushPlaceMaskHold(true);
+}
+
+export { scheduleRegionLookup, cancelRegionLookup, resetPlaceMask };

@@ -155,6 +155,22 @@ function renderChart() {
       row.append(name, count, crashTrack, dead, deadTrack);
       return row;
     }));
+    // Порог «подпись внутри бара» (0.15 от максимума) рассчитан на десктопную дорожку;
+    // на узких экранах бар бывает уже подписи, и подпись, прижатая к правому краю бара,
+    // вылезает влево на колонку числа. Такие переносим наружу: обычно — за кончик бара,
+    // а если даже так не помещается — к правому краю дорожки (подпись лежит на пустой
+    // дорожке или хвосте бара, число остаётся читаемым)
+    bars.querySelectorAll(".htrack").forEach((track) => {
+      const bar = track.querySelector("i");
+      const pct = bar?.querySelector(".hpct");
+      if (!bar || !pct) return;
+      const barW = bar.getBoundingClientRect().width, pctW = pct.getBoundingClientRect().width;
+      if (pctW <= barW) return;
+      const left = Math.max(0, Math.min(barW + 8, track.getBoundingClientRect().width - pctW));
+      pct.classList.add("hpct-out");
+      pct.style.left = `${Math.round(left * 10) / 10}px`;
+      track.append(pct);
+    });
     return;
   }
   // Разрезы по времени: комбо — полупрозрачные navy-столбцы (основа прямая, верх сильно
@@ -163,23 +179,39 @@ function renderChart() {
   // График занимает всю ширину панели без пустоты справа; шаг колонок не сжимаем ниже 24px
   // (в разрезе дней их до 90) — при нехватке ширины svg длиннее контейнера, .bars-combo
   // даёт горизонтальный скролл, позиция которого сохраняется между перерисовками
-  const minSlot = 24, height = 300, padL = 46, padR = 46, padT = 14, padB = 24;
+  const minSlot = 24, height = 300, padT = 14, padB = 24;
+  const tick = (value) => number().format(value);
+  // Поля под числа осей — по фактической ширине самых длинных подписей, а не фиксированные
+  // 46px: на узких экранах пустые поля съедали до трети ширины. Плашки .combo-axis получают
+  // те же размеры через --pad-l/--pad-r (46px в css — запасной значение)
+  const tickW = (value) => tick(value).length * 5.5 + 2;
+  const padL = Math.round(Math.min(56, Math.max(26, tickW(maxCount) + 12)));
+  const padR = Math.round(Math.min(56, Math.max(26, tickW(maxDead) + 12)));
   const width = Math.max(bars.clientWidth || 900, padL + padR + values.length * minSlot, 320);
   const plotW = width - padL - padR, plotH = height - padT - padB;
   const slot = plotW / values.length;
   const x = (index) => padL + slot * (index + 0.5);
   const colW = Math.max(8, Math.min(36, Math.round(slot * 0.7)));
   const yCount = (value) => padT + plotH * (1 - value / maxCount), yDead = (value) => padT + plotH * (1 - value / maxDead);
-  const tick = (value) => number().format(value);
-  const axis = (max, scale, side) => {
+  // Сетка — по «2 stats_by_days» 431:0: линии #18334a @ .1; числа осей рисуются отдельно
+  // в липких плашках (axisLabels), чтобы оставаться на виду при горизонтальном скролле
+  const gridlines = (max, scale, side) => {
     const lines = [], steps = 5;
     for (let step = 0; step <= steps; step++) {
       const value = max / steps * step, y = scale(value);
-      // Сетка и оси — по «2 stats_by_days» 431:0: линии #18334a @ .1, подписи Regular 10 @ .5
       lines.push(`<line x1="${side === "l" ? padL : padL + plotW}" y1="${y}" x2="${side === "l" ? padL + plotW : padL + plotW}" y2="${y}" stroke="#18334a" stroke-opacity=".1"></line>`);
-      lines.push(`<text x="${side === "l" ? padL - 8 : padL + plotW + 8}" y="${y + 4}" text-anchor="${side === "l" ? "end" : "start"}" font-size="10" fill="#18334a" fill-opacity=".5">${tick(value)}</text>`);
     }
     return lines.join("");
+  };
+  // Числа осей: Regular 10 @ .5. Координаты локальные для своей плашки (левая перекрывает
+  // край svg 0…padL, правая — padL+plotW…+padR, см. .combo-axis в styles.css)
+  const axisLabels = (max, scale, side) => {
+    const texts = [], steps = 5;
+    for (let step = 0; step <= steps; step++) {
+      const value = max / steps * step, y = scale(value);
+      texts.push(`<text x="${side === "l" ? padL - 8 : 8}" y="${y + 4}" text-anchor="${side === "l" ? "end" : "start"}" font-size="10" fill="#18334a" fill-opacity=".5">${tick(value)}</text>`);
+    }
+    return texts.join("");
   };
   // Столбец: скруглены только верхние углы, радиус = 35% ширины столбца (у узких —
   // не выше самого столбика); углы — двумя четверть-арками при плоской шапке: одна арка от
@@ -231,7 +263,17 @@ function renderChart() {
   if (values.length > 1) shown[0] = fits(0, previous, 2);
   const labels = values.map(([label], index) => shown[index] ? `<text x="${x(index)}" y="${height - 6}" text-anchor="middle" font-size="10" fill="#18334a" fill-opacity=".5">${axisLabel(String(label)).replace(/&/g, "&amp;").replace(/</g, "&lt;")}</text>` : "").join("");
   const scrollLeft = bars.scrollLeft;
-  bars.replaceChildren(Object.assign(document.createElement("div"), { innerHTML: `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${axis(maxCount, yCount, "l")}${axis(maxDead, yDead, "r")}<line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="#18334a" stroke-opacity=".1"></line>${columns}${line}${markers}${labels}</svg>` }));
+  // Числа осей — липкие плашки по краям скролла: сам svg остаётся полноразмерным с исходными
+  // координатами, плашки с отрицательными полями лежат поверх его пустых полей padL/padR;
+  // при прокрутке под ними уходит график, а числа (ДТП слева, погибшие справа) остаются на виду
+  const node = (className: string, markup: string) => Object.assign(document.createElement("div"), { className, innerHTML: markup });
+  bars.style.setProperty("--pad-l", `${padL}px`);
+  bars.style.setProperty("--pad-r", `${padR}px`);
+  bars.replaceChildren(
+    node("combo-axis combo-axis-l", `<svg width="${padL}" height="${height}" viewBox="0 0 ${padL} ${height}">${axisLabels(maxCount, yCount, "l")}</svg>`),
+    node("combo-plot", `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${gridlines(maxCount, yCount, "l")}${gridlines(maxDead, yDead, "r")}<line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="#18334a" stroke-opacity=".1"></line>${columns}${line}${markers}${labels}</svg>`),
+    node("combo-axis combo-axis-r", `<svg width="${padR}" height="${height}" viewBox="0 0 ${padR} ${height}">${axisLabels(maxDead, yDead, "r")}</svg>`),
+  );
   bars.scrollLeft = scrollLeft;
 }
 

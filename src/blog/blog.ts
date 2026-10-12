@@ -1,4 +1,5 @@
 import { posts } from './posts.js';
+import { initMobileMenu } from '../site/menu.js';
 
 (() => {
   const text = {
@@ -46,6 +47,6 @@ import { posts } from './posts.js';
   $('.calendar-toggle').addEventListener('click', e => { const panel=$('.calendar-panel'), open=panel.hidden; panel.hidden=!open; e.currentTarget.setAttribute('aria-expanded',open); });
   $('.search-toggle').addEventListener('click', e => { const form=$('.search'), open=form.hidden; form.hidden=!open; e.currentTarget.setAttribute('aria-expanded',open); if(open) form.querySelector('input').focus(); });
   $('.search').addEventListener('submit', e => { e.preventDefault(); query=e.currentTarget.querySelector('input').value.trim().toLowerCase(); renderPosts(); });
-  $('.menu').addEventListener('click', e => { const open=document.body.classList.toggle('menu-open'); e.currentTarget.setAttribute('aria-expanded',open); });
+  initMobileMenu();
   translate();
 })();

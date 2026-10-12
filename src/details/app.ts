@@ -1,5 +1,8 @@
-// Локально (npm run serve) API доступен по тому же origin: serve.mjs проксирует /api на dtpstat-backend.7190805.xyz
-const api = ["localhost", "127.0.0.1"].includes(location.hostname) ? "/api" : "https://dtpstat-backend.7190805.xyz/api";
+// Карточки блога (лёгкий индекс без контента) — «Новости по теме» внизу страницы
+import { postCards } from "../blog/posts-index.js";
+// Origin API задаётся в .env (API_ORIGIN попадает в dist/maps-config.js); пусто/не задан —
+// /api того же origin: локально его проксирует serve.mjs, на своём домене — nginx (см. README)
+const api = ((window as any).API_ORIGIN || "") + "/api";
 const root = document.querySelector("#detail") as HTMLElement;
 const query = new URLSearchParams(location.search), id = query.get("id") || "", language = query.get("lang") === "en" ? "en" : localStorage.getItem("language") === "en" ? "en" : "ru";
 // Страница деталей живёт и во встраивании (WP-сайт: кросс-доменный iframe) —
@@ -32,7 +35,7 @@ parentOrigin.then((origin) => {
   // карточка ещё не отрисована (pill.search пуст) — ссылку соберёт load()
   if (origin && pill && pill.search) pill.href = origin + "/" + pill.search;
 });
-const text = language === "en" ? { title:"Accident details", missing:"Accident was not found.", nearby:"Show accident nearby", map:"Map", panorama:"Panorama", transport:"Vehicles", users:"Road users", injured:"Injured", dead:"Deaths", official:"Official traffic police data", address:"Address unknown", scheme:"Crash scheme", noViolations:"No violations", violations:"Traffic violations" } : { title:"Подробности ДТП", missing:"ДТП не найдено.", nearby:"Показать ДТП рядом", map:"Карта", panorama:"Панорама", transport:"Транспорт", users:"Участники", injured:"Пострадали", dead:"Погибли", official:"Официальные данные ГИБДД", address:"Адрес неизвестен", scheme:"Схема ДТП", noViolations:"Нет нарушений", violations:"Нарушения ПДД" };
+const text = language === "en" ? { title:"Accident details", missing:"Accident was not found.", nearby:"Show accident nearby", map:"Map", panorama:"Panorama", transport:"Vehicles", users:"Road users", injured:"Injured", dead:"Deaths", official:"Official traffic police data", address:"Address unknown", scheme:"Crash scheme", noViolations:"No violations", violations:"Traffic violations", news:"Related news" } : { title:"Подробности ДТП", missing:"ДТП не найдено.", nearby:"Показать ДТП рядом", map:"Карта", panorama:"Панорама", transport:"Транспорт", users:"Участники", injured:"Пострадали", dead:"Погибли", official:"Официальные данные ГИБДД", address:"Адрес неизвестен", scheme:"Схема ДТП", noViolations:"Нет нарушений", violations:"Нарушения ПДД", news:"Новости по теме" };
 const escape = (value: unknown) => String(value ?? "").replace(/[&<>\"]/g, (character) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '\"':"&quot;" } as Record<string, string>)[character]);
 const list = (value: unknown) => Array.isArray(value) ? value.filter(Boolean).map(String) : value ? [String(value)] : [];
 const objects = (value: unknown) => Array.isArray(value) ? value : value ? [value] : [];
@@ -73,7 +76,9 @@ function initMap(detail: any) {
   const point = [detail.point.latitude, detail.point.longitude];
   loadYandex().then((ymaps) => {
     const map = new ymaps.Map("detail-map", { center:point, zoom:16, controls:["zoomControl"] }, { maxZoom:20, minZoom:1, avoidFractionalZoom:true, yandexMapDisablePoiInteractivity:true, suppressMapOpenBlock:true });
-    map.geoObjects.add(new ymaps.Placemark(point, {}, { preset:"islands#redCircleDotIcon" }));
+    // Метка и балун как на старом сайте: фирменный pin.svg 36×50 (носик в точку),
+    // балун показывает координаты
+    map.geoObjects.add(new ymaps.Placemark(point, { balloonContent: `${point[0]}, ${point[1]}` }, { iconLayout:"default#image", iconImageHref:"../assets/pin.svg", iconImageSize:[36,50], iconImageOffset:[-18,-50] }));
     // У Яндекса «Как добраться» и «Создать свою карту» живут в панели копирайтов —
     // убираем их точечно, оставляя «© Яндекс Условия использования». Кнопки
     // дорисовываются позже карты, поэтому чистим и по мере появления (MutationObserver)
@@ -89,7 +94,7 @@ function initMap(detail: any) {
   }).catch(() => {
     const map = L.map("detail-map", { zoomControl:true, scrollWheelZoom:false }).setView(point, 16);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom:19, attribution:"© OpenStreetMap contributors" }).addTo(map);
-    L.circleMarker(point, { radius:7, weight:0, fillColor:"#FF001A", fillOpacity:1 }).addTo(map);
+    L.marker(point, { icon: L.icon({ iconUrl:"../assets/pin.svg", iconSize:[36,50], iconAnchor:[18,50] }) }).addTo(map).bindPopup(`${point[0]}, ${point[1]}`);
   });
 }
 
@@ -106,7 +111,13 @@ async function load() {
     category_name:source.EM_TYPE,
     address:[source.PLACE, source.STREET, source.HOUSE].filter(Boolean).join(", ") || source.ROADS || text.address,
     schema:Number(source.SCHEMA_ID) || 0,
-    tags:[...list(source.LIGHT_TYPE), ...list(source.CLOUDS), ...list(source.TRAFFIC_AREA_STATE), ...list(source.MT_RATE)],
+    // Теги тремя группами-параграфами как на старом сайте: условия (дорога,
+    // погода, свет, обстоятельство), окрестность (объекты УДС рядом), категория (вид ДТП)
+    tagGroups:[
+      [...list(source.TRAFFIC_AREA_STATE), ...list(source.CLOUDS), ...list(source.LIGHT_TYPE), ...list(source.MT_RATE)],
+      [...list(source.RD_CONSTR_HERES), ...list(source.RD_CONSTR_THERES)],
+      [...list(source.EM_TYPE)],
+    ].map((group) => group.filter((tag, index, all) => all.indexOf(tag) === index && !/^сведения отсутств/i.test(tag))),
     people:objects(source.PERSONS), vehicles:objects(source.VEHICLES),
   };
   document.documentElement.lang = language;
@@ -121,7 +132,11 @@ async function load() {
     const title = [vehicle.MARK, vehicle.COLOR, vehicle.YEAR].filter(Boolean).join(", ");
     return `<div class="person-group">${title ? `<h3>${escape(title)}</h3>` : ""}<div class="person-cards">${objects(vehicle.PERSONS).map(personCard).join("")}</div></div>`;
   }).join("")}</div>`;
-  root.innerHTML = `<section class="map-stage"><div id="detail-map" class="detail-map" aria-label="${language === "en" ? "Accident location" : "Место ДТП"}"></div><div id="detail-panorama" class="detail-map" hidden aria-label="${text.panorama}"></div><div class="map-tools"><a class="pill" href="${nearbyHref(detail.point)}" target="_blank" rel="noopener">${text.nearby}</a><span class="pill-group"><button id="show-map" class="active" type="button">${text.map}</button><button id="show-panorama" type="button" disabled>${text.panorama}</button></span></div></section><article class="content"><div class="head-grid${detail.schema ? "" : " no-scheme"}">${detail.schema && schemeImage(detail.schema) ? `<figure class="scheme"><img src="${schemeImage(detail.schema)}" alt="${text.scheme}" onerror="this.closest('figure').remove();document.querySelector('.head-grid').classList.add('no-scheme')"><figcaption>${text.scheme}</figcaption></figure>` : ""}<div class="head"><p class="meta">${escape(formatDate(detail.datetime))} <i>|</i> ${escape(detail.address)}</p><h1>${escape(detail.category_name || text.title)}</h1><div class="counters">${counter("all", text.transport, detail.vehiclesCount)}${counter("participants", text.users, detail.participants)}${counter("injured", text.injured, detail.injured, "injured")}${counter("dead", text.dead, detail.dead, "dead")}</div>${detail.tags.length ? `<div class="chips">${detail.tags.map((tag: string) => `<span>${escape(tag)}</span>`).join("")}</div>` : ""}</div></div><section class="participants"><h2>${text.users}</h2>${groups}</section><p class="official"><a href="https://gibdd.ru" target="_blank" rel="noopener"><img src="https://wp.dtp-stat.ru/wp-content/uploads/2026/09/gibdd-5ee641.svg" alt="">${text.official}</a></p></article>`;
+  // «Новости по теме» — три самые свежие карточки блога (старый сайт брал случайные
+  // три). Ссылки в новой вкладке: во встраивании (WP-сайт) нельзя уводить айфрейм
+  const stamp = (date: string) => Number(date.split(".").reverse().join("")) || 0;
+  const news = `<section class="news"><h2>${text.news}</h2><div class="news-grid">${[...postCards].sort((a, b) => stamp(b.date) - stamp(a.date)).slice(0, 3).map((post) => `<a class="news-card" href="../blog/?post=${encodeURIComponent(post.slug)}" target="_blank" rel="noopener"><span class="news-card-image"><img src="../blog/${post.cover}" alt="" loading="lazy"></span><h3>${escape(post.title)}</h3></a>`).join("")}</div></section>`;
+  root.innerHTML = `<section class="map-stage"><div id="detail-map" class="detail-map" aria-label="${language === "en" ? "Accident location" : "Место ДТП"}"></div><div id="detail-panorama" class="detail-map" hidden aria-label="${text.panorama}"></div><div class="map-tools"><a class="pill" href="${nearbyHref(detail.point)}" target="_blank" rel="noopener">${text.nearby}</a><span class="pill-group"><button id="show-map" class="active" type="button">${text.map}</button><button id="show-panorama" type="button" disabled>${text.panorama}</button></span></div></section><article class="content"><div class="head-grid${detail.schema ? "" : " no-scheme"}">${detail.schema && schemeImage(detail.schema) ? `<figure class="scheme"><img src="${schemeImage(detail.schema)}" alt="${text.scheme}" onerror="this.closest('figure').remove();document.querySelector('.head-grid').classList.add('no-scheme')"><figcaption>${text.scheme}</figcaption></figure>` : ""}<div class="head"><p class="meta">${escape(formatDate(detail.datetime))} <i>|</i> ${escape(detail.address)}</p><h1>${escape(detail.category_name || text.title)}</h1><div class="counters">${counter("all", text.transport, detail.vehiclesCount)}${counter("participants", text.users, detail.participants)}${counter("injured", text.injured, detail.injured, "injured")}${counter("dead", text.dead, detail.dead, "dead")}</div></div></div>${detail.tagGroups.some((group: string[]) => group.length) ? `<section class="tags">${detail.tagGroups.map((group: string[]) => `<p>${group.map((tag: string) => `<span>${escape(tag)}</span>`).join("")}</p>`).join("")}</section>` : ""}<section class="participants"><h2>${text.users}</h2>${groups}</section><p class="official"><a href="https://gibdd.ru" target="_blank" rel="noopener"><img src="https://wp.dtp-stat.ru/wp-content/uploads/2026/09/gibdd-5ee641.svg" alt="">${text.official}</a></p>${news}</article>`;
   initMap(detail);
 }
 

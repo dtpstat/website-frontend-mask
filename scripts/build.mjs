@@ -14,8 +14,10 @@ for (const name of readdirSync(pages)) {
   if (name === "main") cpSync(join(pages, "main"), dist, { recursive: true });
   else cpSync(join(pages, name), join(dist, name), { recursive: true });
 }
-// Ключи карт: подключаются в html до app.js как window.YANDEX_MAPS_KEY / window.MAPBOX_ACCESS_TOKEN
+// Ключи карт и origin бэкенда: подключаются в html до app.js
+// как window.YANDEX_MAPS_KEY / window.MAPBOX_ACCESS_TOKEN / window.API_ORIGIN
 writeFileSync(join(dist, "maps-config.js"),
   "window.YANDEX_MAPS_KEY=" + JSON.stringify(process.env.YANDEX_MAPS_KEY || "") + ";" +
-  "window.MAPBOX_ACCESS_TOKEN=" + JSON.stringify(process.env.MAPBOX_ACCESS_TOKEN || "") + ";");
+  "window.MAPBOX_ACCESS_TOKEN=" + JSON.stringify(process.env.MAPBOX_ACCESS_TOKEN || "") + ";" +
+  "window.API_ORIGIN=" + JSON.stringify(process.env.API_ORIGIN || "") + ";");
 console.log("dist assembled");

@@ -1,3 +1,4 @@
+import { initMobileMenu } from '../site/menu.js';
 const translations = {
   ru: {
     title: 'Поддержать проект', button: 'Поддержать проект', raised: 'Собрано: 15\u00a0546 ₽ из 50\u00a0000 ₽', days: 'До конца сбора 6 дней', other: 'и другие', large: 'Для крупных пожертвований', largeText: 'Если хотите внести большую сумму — напишите нам в Телеграм', write: 'Написать', thanks: 'Особая благодарность крупным спонсорам', intro: '«Карта ДТП» — сайт, на котором можно получить информацию о ДТП в России в наглядном формате. Наш проект существует с 2017 года и с тех пор активно используется проектировщиками, активистами и просто неравнодушными людьми, заинтересованными в том, чтобы сделать улицы наших городов безопасней. «Карта ДТП» — некоммерческий проект, он существует только за счёт пожертвований пользователей. Все собранные деньги мы вкладываем в работу над сайтом и контентом. Сейчас мы планируем добавить «Карте ДТП» новые функции, а также хотим масштабировать проект на Казахстан и Сербию. Начиная с августа, на стабильную работу проекта нужно собирать по 50 тыс. рублей в месяц. На эти деньги мы будем оплачивать хостинг, время разработчиков, редактора и авторов, дизайнеров, модераторов. Мы будем рады любой поддержке, но особенно ценим подписку на регулярные пожертвования, пусть даже небольшие, потому что они позволяют нам планировать свою деятельность. Помните, ДТП — это не просто точки на карте или цифры в статистике. Это сломанные человеческие судьбы. Это травмы и смерти, которые можно было предотвратить.',
@@ -21,6 +22,5 @@ function setLanguage(next) {
 }
 document.querySelectorAll('[data-lang-toggle]').forEach(button => button.addEventListener('click', () => setLanguage(language === 'ru' ? 'en' : 'ru')));
 document.querySelectorAll('[data-scroll-support]').forEach(button => button.addEventListener('click', () => document.querySelector('#support').scrollIntoView({ behavior: 'smooth' })));
-const menu = document.querySelector('#mobile-menu');
-document.querySelector('[data-menu-toggle]').addEventListener('click', event => { const open = menu.hidden; menu.hidden = !open; event.currentTarget.setAttribute('aria-expanded', String(open)); });
+initMobileMenu();
 setLanguage(language);

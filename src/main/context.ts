@@ -1,8 +1,8 @@
 // Общий контекст приложения: состояние, утилиты DOM/API и реестр восходящих вызовов
 
-// Локально (npm run serve) API доступен по тому же origin: serve.mjs проксирует /api на dtpstat-backend.7190805.xyz;
-// иначе — напрямую на бэкенд через cloudflare-туннель (там валидный сертификат, CORS открыт)
-const api = ["localhost", "127.0.0.1"].includes(location.hostname) ? "/api" : "https://dtpstat-backend.7190805.xyz/api";
+// Origin API задаётся в .env (API_ORIGIN попадает в dist/maps-config.js); пусто/не задан —
+// /api того же origin: локально его проксирует serve.mjs, на своём домене — nginx (см. README)
+const api = ((window as any).API_ORIGIN || "") + "/api";
 const $ = (selector) => document.querySelector(selector);
 // Полоска загрузки в верхней строке — как на dtp-stat.ru: серые штрихи ползут, пока идёт
 // хотя бы один запрос к бэкенду (статику не считаем). dtp-stat.ru держит счётчик loadingCount
@@ -15,10 +15,11 @@ const apiFetch = (input: string, init?: RequestInit) => {
   });
 };
 const dataRange = { min:"2015-01-01", max:"2026-08-31" };
-type MapState = { language: string; mapClient: "leaflet" | "yandex" | "mapbox"; participants: any[]; filters: any[]; selectedFilters: Record<string, any[]>; selectedIntervals: Record<string, { from: string; to: string }>; territory: { id: number; name: string } | null; place: { name: string; rings: number[][][]; boxes: { west: number; south: number; east: number; north: number }[] } | null; abort: AbortController | null; items: any[]; rawItems: any[]; rawItemsKey: string; dataLoadId: number; chartMode: string; minDate: string; maxDate: string; dataRegion: number | null; outsideRegions: boolean; chartOpen: boolean };
+type MapState = { language: string; mapClient: "leaflet" | "yandex" | "mapbox"; participants: any[]; filters: any[]; selectedFilters: Record<string, any[]>; selectedIntervals: Record<string, { from: string; to: string }>; territory: { id: number; name: string } | null; place: { name: string; rings: number[][][]; boxes: { west: number; south: number; east: number; north: number }[] } | null; maskRings: number[][][]; abort: AbortController | null; items: any[]; rawItems: any[]; rawItemsKey: string; dataLoadId: number; chartMode: string; minDate: string; maxDate: string; dataRegion: number | null; outsideRegions: boolean; chartOpen: boolean };
 type Bounds = { west: number; south: number; east: number; north: number };
 const persistedMapClient = localStorage.getItem("map-client");
-const state: MapState = { language: new URLSearchParams(location.search).get("lang") || localStorage.getItem("language") || "ru", mapClient: persistedMapClient === "yandex" || persistedMapClient === "mapbox" ? persistedMapClient : "leaflet", participants: [], filters: [], selectedFilters: {}, selectedIntervals: {}, territory: null, place: null, abort: null, items: [], rawItems: [], rawItemsKey: "", dataLoadId: 0, chartMode: "days", minDate: "2015-01-01", maxDate: "2024-12-31", dataRegion: null, outsideRegions: false, chartOpen: false };
+// По умолчанию — Яндекс (и на мобайле, и на десктопе); сохранённый выбор пользователя важнее дефолта
+const state: MapState = { language: new URLSearchParams(location.search).get("lang") || localStorage.getItem("language") || "ru", mapClient: persistedMapClient === "mapbox" || persistedMapClient === "leaflet" ? persistedMapClient : "yandex", participants: [], filters: [], selectedFilters: {}, selectedIntervals: {}, territory: null, place: null, maskRings: [], abort: null, items: [], rawItems: [], rawItemsKey: "", dataLoadId: 0, chartMode: "days", minDate: "2015-01-01", maxDate: "2024-12-31", dataRegion: null, outsideRegions: false, chartOpen: false };
 // Кэш загруженных точек: ключ запроса (период + фильтры) → ключ набора (регион или рамка) → точки.
 // Новые наборы докачиваются по одному, уже скачанные не запрашиваются повторно.
 const regionCache = new Map<string, Map<string, any[]>>();
@@ -35,6 +36,10 @@ const regionName = (id: number | null) => id === null ? "" : regionIndex.find((r
 
 // Параметры адресной строки: центр/зум читает maps, ?popup/?region — deeplink и loadFilters
 const mapQuery = new URLSearchParams(location.search);
+// Дебаг-режим (?debug в URL): вуаль затемнения, флажки её границы и панель ползунков
+// тепла/затемнения. Обычному посетителю ничего из этого не показываем — в интерфейсе
+// переключателя нет, только прямая ссылка с параметром
+const debugMode = mapQuery.has("debug");
 
 // Реестр «восходящих» вызовов: модули в начале графа зовут поздние только через actions —
 // без бандлера это держит граф импортов ацикличным. Заполняется один раз в app.ts до boot
@@ -49,5 +54,5 @@ interface AppActions {
 }
 const actions: AppActions = {} as AppActions;
 
-export { api, $, apiFetch, dataRange, state, regionCache, emTypeNames, EMPTY_HEAT, lastRender, regionIndex, regionName, setStatus, actions, mapQuery };
+export { api, $, apiFetch, dataRange, state, regionCache, emTypeNames, EMPTY_HEAT, lastRender, regionIndex, regionName, setStatus, actions, mapQuery, debugMode };
 export type { Bounds };

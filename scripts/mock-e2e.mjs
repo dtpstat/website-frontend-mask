@@ -8,7 +8,8 @@ import { statSync, createReadStream } from "node:fs";
 import { join, extname, normalize } from "node:path";
 
 const port = Number(process.env.PORT) || 8124;
-const origin = "https://dtpstat-backend.7190805.xyz";
+const origin = process.env.DTP_ORIGIN || process.env.API_ORIGIN;
+if (!origin) { console.error("Задайте DTP_ORIGIN или API_ORIGIN (см. .env.example)"); process.exit(1); }
 const root = new URL("../dist/", import.meta.url).pathname;
 
 const types = {

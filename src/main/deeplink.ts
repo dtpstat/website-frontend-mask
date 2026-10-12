@@ -80,11 +80,14 @@ function openLinkedPopup() {
     return true;
   }
   if (state.mapClient === "mapbox" && mapbox.map && (window as any).mapboxgl) {
-    mapbox.map.jumpTo({ center: [item.point.longitude, item.point.latitude], zoom });
+    // Тайлы Mapbox 512px: его зум на единицу крупнее 256-схемы приложения (см. ensureMapbox),
+    // а heatZoomMax/текущий зум здесь именно в ней — в GL идёт минус единица
+    mapbox.map.jumpTo({ center: [item.point.longitude, item.point.latitude], zoom: zoom - 1 });
     // focusAfterOpen: false — как в maps.ts: авт-фокус рисует рамку на кнопке
     const popup = new (window as any).mapboxgl.Popup({ focusAfterOpen: false }).setLngLat([item.point.longitude, item.point.latitude]).setHTML(markerPopup(item)).addTo(mapbox.map);
     popup.on("close", clearPopupUrl);
-    syncPopupUrl(item.id, item.point.latitude, item.point.longitude, mapbox.map.getZoom());
+    // В адресную строку — зум приложения (256-схема): GL на единицу крупнее (см. выше)
+    syncPopupUrl(item.id, item.point.latitude, item.point.longitude, mapbox.map.getZoom() + 1);
     return true;
   }
   return false;

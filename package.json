@@ -4,10 +4,12 @@
   "scripts": {
     "build": "rm -rf dist && tsc && node --env-file=.env scripts/build.mjs",
     "check": "tsc --noEmit",
-    "serve": "node scripts/serve.mjs",
-    "dev": "npm run build && node scripts/serve.mjs"
+    "test:mobile": "node tests/mobile.cjs",
+    "serve": "node --env-file=.env scripts/serve.mjs",
+    "dev": "npm run build && npm run serve"
   },
   "devDependencies": {
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "ws": "^8.22.0"
   }
 }
