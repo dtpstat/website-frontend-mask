@@ -2,7 +2,9 @@
 
 Статический фронтенд карты ДТП: ванильный TypeScript без бандлера (`tsc` → `dist/`).
 Главная карта, индивидуальные страницы ДТП (`details/`), блог, данные, о проекте.
-Данные читаются AJAX-запросами к API (Express + PostGIS).
+Данные читаются AJAX-запросами к API; бэкенд (Express + PostGIS) —
+[dtpstat-map](https://github.com/dtpstat/dtpstat-map), его адрес задаётся в `.env`
+(см. `.env.example`).
 
 ## Сборка и проверки
 
@@ -83,9 +85,9 @@ Cloudflare Pages, direct upload:
             location / { try_files $uri $uri/ =404; }
         }
 
-   Вместо `127.0.0.1:3100` можно проксировать сразу на стенд
-   `https://dtpstat-backend.7190805.xyz` — тогда добавьте в `location /api/`
-   `proxy_ssl_server_name on;` и `proxy_set_header Host dtpstat-backend.7190805.xyz;`.
+   Если бэкенд отвечает по HTTPS не на localhost (например, на отдельном домене),
+   добавьте в `location /api/` `proxy_ssl_server_name on;` и
+   `proxy_set_header Host <домен бэкенда>;`.
 
    Важно: `?v=` в ссылках на JS/CSS бампается вручную в `pages/main/index.html`
    перед сборкой — без нового `?v=` браузеры возьмут старые файлы из кэша.
