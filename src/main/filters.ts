@@ -15,6 +15,32 @@ const serverSectionLabels: Record<string, string> = { EM_TYPE:"accidentTypes", C
 // Каскадные секции: словарь тянется с сервера только при выбранном родителе
 // (у улиц/дорог/НП сотни тысяч записей — сразу не грузим). PLACE живёт под регионом.
 const sectionParents: Record<string, string> = { PLACE:"REGION", ROAD:"PLACE", STREET:"PLACE", NP:"PLACE", MODEL:"MARK" };
+// Секции, чьи словари — готовые СКЛЕЙКИ атомарных признаков через " | " (стат. ГИБДД
+// хранит места повреждений и неисправности ТС комбинациями: 478 и 265 позиций вместо
+// 16 и 36 атомов). Пользователю показываем атомы; выбранные атомы разворачиваются
+// в id ВСЕХ содержащих их комбинаций — на бэкенде условие «arrays» (пересечение
+// массивов), так что объединение id даёт «повреждение в любом из отмеченных мест»,
+// ИЛИ внутри секции, как и у остальных словарей. В словаре повреждений несколько
+// записей с битым UTF-8 — осколки примеряются к целым атомам по краям (совпадение
+// до и после испорченных байтов), иначе у атома появились бы фантому-дубли
+const comboSections: Record<string, string> = { DAMAGE_DISPOSITION:" | ", TECH_FAILURE_TYPE:" | " };
+// filter.combos = [{id, atoms:[..]}] — комбинации словаря, разложенные на индексы атомов
+function decomposeCombos(filter, rows: any[]) {
+  const sep = comboSections[filter.name];
+  const names = new Set<string>();
+  for (const row of rows || []) for (const part of String(row.name).split(sep)) names.add(part.trim());
+  const atoms = new Map<string, number>(), resolve = new Map<string, number>();
+  for (const name of names) if (!name.includes("�")) { atoms.set(name, atoms.size); resolve.set(name, atoms.get(name)); }
+  for (const name of names) {
+    if (resolve.has(name)) continue;
+    const head = name.slice(0, name.indexOf("�")), tail = name.slice(name.lastIndexOf("�") + 1);
+    const known = [...atoms.keys()].find((item) => item.startsWith(head) && item.endsWith(tail));
+    if (known === undefined) { atoms.set(name, atoms.size); resolve.set(name, atoms.get(name)); }
+    else resolve.set(name, atoms.get(known));
+  }
+  filter.combos = [...(rows || [])].map((row) => ({ id:Number(row.id), atoms:String(row.name).split(sep).map((part) => resolve.get(part.trim())) }));
+  filter.values = [...atoms].map(([name, value]) => ({ value, preview:name }));
+}
 // Значение параметра-маски — сама битовая маска столбца: ADDITIONAL_ATTR (SIM=4, камеры=8, наркотики=1, отказ=2), CHILDREN_ATTR (3/7/71/135)
 const maskFeatures = [
   { value:4, param:"SIM", preview:"ДТП с СИМ" },
@@ -78,6 +104,7 @@ async function loadLazyDicts() {
     filter.loaded = true; filter.loading = true;
     jobs.push(apiFetch(`${api}/dict/${filter.dict}`).then((response) => response.ok ? response.json() : []).then((rows) => {
       filter.loading = false;
+      if (comboSections[filter.name]) return decomposeCombos(filter, rows);
       filter.values = (rows || []).map((row) => ({ value:Number(row.id), preview:String(row.name) }));
     }).catch(() => { filter.loading = false; filter.loaded = false; }));
   }
@@ -235,6 +262,9 @@ function renderAdvancedFilters() {
     const search = filter.key === "street" || filter.values.length > 8 ? advancedSearchInput(key, saved?.queries?.[key]) : null;
     title.append(name);
     checkboxOptions(filter, options, search);
+    // В источнике места повреждений ТС есть только до января 2018 — на современных
+    // периодах секция честно даёт ноль; подсказка, чтобы ноль не читался как поломка
+    if (filter.name === "DAMAGE_DISPOSITION") { const note = document.createElement("div"); note.className = "advanced-hint"; note.textContent = t("damageLegacy"); options.append(note); }
     if (search) section.append(title, search, options);
     else section.append(title, options);
     return section;
@@ -318,7 +348,15 @@ function serverQuery() {
   for (const [name, values] of Object.entries(state.selectedFilters)) {
     if (!values.length) continue;
     if (name === "masks") for (const value of values) { const feature = maskFeatures.find((item) => item.value === value); if (feature) params.append(feature.param, String(feature.value)); }
-    else if (serverSections.includes(name)) params.append(`${name}_IDS`, values.join(","));
+    else if (serverSections.includes(name)) {
+      // Секции-комбинации: выбраны атомы — разворачиваем в id всех содержащих их комбинаций
+      const combos = state.filters.find((item) => item.name === name)?.combos;
+      if (combos) {
+        const ids = new Set();
+        for (const combo of combos) if (combo.atoms.some((atom) => values.includes(atom))) ids.add(combo.id);
+        if (ids.size) params.append(`${name}_IDS`, [...ids].join(","));
+      } else params.append(`${name}_IDS`, values.join(","));
+    }
   }
   for (const [param, range] of Object.entries(state.selectedIntervals)) {
     if (range.from) params.append(`${param}_FROM`, range.from);
