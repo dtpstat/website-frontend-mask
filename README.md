@@ -9,22 +9,31 @@
 ## Сборка и проверки
 
     npm install
-    npm run build   # tsc → dist/, копировка статики, генерация dist/maps-config.js
+    npm run build   # tsc → dist/, копировка статики, dist/maps-config.js (см. ниже)
     npm run check   # tsc --noEmit
     npm run serve   # локальный сервер: раздаёт dist/ и проксирует /api
+    npm run config  # пересоздать dist/maps-config.js из .env без пересборки
     npm run test:mobile  # e2e панелей фильтров (мобайл 390/320 + десктоп-санити); нужны build, Chrome и бэкенд
 
-Ключи карт задаются в `.env` (`YANDEX_MAPS_KEY`, `MAPBOX_ACCESS_TOKEN`): на сборке они
-попадают в `dist/maps-config.js`, который подключается в HTML до `app.js`. Там же задаётся
-`API_ORIGIN` — origin бэкенда, вшиваемый в статику (шаблон — `.env.example`). Без него
-страница ходит на `/api` того же origin: локально его проксирует serve-скрипт, на своём
-домене — nginx (см. «Самостоятельный хостинг»). В репозитории ключей нет.
+Конфиг развёртывания — отдельный файл `dist/maps-config.js`, подключаемый в HTML до `app.js`:
+`YANDEX_MAPS_KEY`, `MAPBOX_ACCESS_TOKEN`, `API_ORIGIN` (origin бэкенда; шаблон — `.env.example`).
+Без `API_ORIGIN` страница ходит на `/api` того же origin: локально его проксирует serve-скрипт,
+на своём домене — nginx (см. «Самостоятельный хостинг»). В репозитории ключей нет.
+
+Файл правится на месте **без пересборки** — `npm run build` его не перетирает. Пересоздать
+из `.env` целиком: `npm run config` (первый конфиг на пустом `dist/` создаётся сборкой
+автоматически). После правки конфига выкатывать заново всю статику не нужно — только
+изменённый файл (см. «Обновление» ниже).
 
 ## Деплой
 
 Cloudflare Pages, direct upload:
 
     npx wrangler pages deploy dist --project-name dtpstat-pages
+
+Перед этим — `npm run build`. Смена только конфига (ключи карт, `API_ORIGIN`) без
+пересборки: `npm run config` (или правка `dist/maps-config.js` руками) и снова
+команда `wrangler` выше.
 
 ### Самостоятельный хостинг (статика + nginx)
 
@@ -33,7 +42,7 @@ Cloudflare Pages, direct upload:
 (`?region=`, `?popup=`), поэтому SPA-fallback не нужен — хватает
 `try_files $uri $uri/ =404`. Подойдёт любой статический сервер; ниже — nginx.
 
-1. Собрать статику (ключи карт вшиваются в `dist/maps-config.js`):
+1. Собрать статику (ключи карт и `API_ORIGIN` пишутся в `dist/maps-config.js`):
 
         npm install
         printf 'YANDEX_MAPS_KEY=…\nMAPBOX_ACCESS_TOKEN=…\n' > .env
@@ -77,6 +86,12 @@ Cloudflare Pages, direct upload:
                 add_header Cache-Control "public";
             }
 
+            # Конфиг правится без пересборки — браузеры должны забирать его свежим,
+            # поэтому из долгого кэша его исключаем (точный location бьёт regex-правило)
+            location = /maps-config.js {
+                add_header Cache-Control "no-cache";
+            }
+
             # HTML всегда свежий, чтобы новые ?v= подхватывались сразу
             location ~* \.html$ {
                 add_header Cache-Control "no-cache";
@@ -92,10 +107,21 @@ Cloudflare Pages, direct upload:
    Важно: `?v=` в ссылках на JS/CSS бампается вручную в `pages/main/index.html`
    перед сборкой — без нового `?v=` браузеры возьмут старые файлы из кэша.
 
-4. Обновление — пересборка и rsync на сервер:
+4. Обновление. Статика и конфиг обновляются независимо:
 
+        # новая статика (конфиг на сервере не трогаем — исключаем из rsync)
         npm run build
-        rsync -r --delete dist/ www@server:/var/www/dtpstat-pages/dist/
+        rsync -r --delete --exclude=maps-config.js dist/ www@server:/var/www/dtpstat-pages/dist/
+
+        # смена конфига (ключи, API_ORIGIN) — без пересборки, одним файлом:
+        # поправить maps-config.js на сервере и скопировать его отдельно
+        scp dist/maps-config.js www@server:/var/www/dtpstat-pages/dist/
+
+   Удобно держать конфиг вне `dist/` (например, `/var/www/dtpstat-pages/maps-config.js`)
+   и симлинком внутрь: `ln -sfn ../maps-config.js dist/maps-config.js`. Тогда конфиг
+   вообще не живёт в раздаваемом дереве, и `--exclude` в rsync страхует симлинк
+   от удаления. Ключи карт после правки не требуют ничего, кроме перезагрузки
+   страницы посетителем.
 
 Блог наполняется скриптом `scripts/sync-blog.mjs` (тянет посты со старого WP-сайта
 и складывает ассеты в `pages/blog/assets/`); запустите его перед сборкой, если нужен
