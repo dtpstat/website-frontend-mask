@@ -148,6 +148,11 @@ async function dashboard(tab, label) {
     await sleep(800);
     let s = await read(tab);
     check("дэшборд открыт на весь экран", s.chart.display !== "none" && s.chart.w === VIEW.w && s.chart.h >= VIEW.h - 6, JSON.stringify(s.chart));
+    // Пока точки едут, счётчики честно показывают «—» — ждём реальные числа, а не фикс-паузу
+    for (let waited = 0; s.chartCount === "—" && waited < 30000; waited += 500) {
+      await sleep(500);
+      s = await read(tab);
+    }
     check("в шапке счётчики заполнены", s.chartCount !== "—", `ДТП=${s.chartCount}`);
     check("диаграмма отрисована", s.barsCount > 0, `детей в #bars: ${s.barsCount}`);
     // регресс узких дорожек (v=106): подпись процентов, прижатая к правому краю бара,

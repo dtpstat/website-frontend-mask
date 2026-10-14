@@ -1,6 +1,6 @@
 // Конвейер данных: renderMapData/loadMapData/loadFilters, гейт дэшборда, режим тепло/точки
 
-import { $, state, api, apiFetch, regionCache, dataRange, emTypeNames, lastRender, regionIndex, regionName, EMPTY_HEAT, setStatus, actions, mapQuery } from "./context.js";
+import { $, state, api, apiFetch, regionCache, dataRange, emTypeNames, lastRender, regionIndex, regionName, EMPTY_HEAT, setStatus, countsLoading, countsPending, actions, mapQuery } from "./context.js";
 import { t, number } from "./i18n.js";
 import { period } from "./dates.js";
 import { serverQuery, renderAdvancedFilters, refreshCascade, enrichFilters, filteredPoints, geoSelectionNames, serverSections, serverSectionLabels, maskFeatures, intervalFields } from "./filters.js";
@@ -36,9 +36,16 @@ function renderMapData(view) {
   // фильтра (клип по месту под центром обнулил бы карточку — см. geoSelectionNames)
   const geo = geoSelectionNames();
   const counted = geo.length ? filtered : applyPlace(filtered);
-  $("#count").textContent = number().format(counted.length);
-  $("#injured").textContent = number().format(counted.reduce((sum, item) => sum + Number(item.injured || 0), 0));
-  $("#dead").textContent = number().format(counted.reduce((sum, item) => sum + Number(item.dead || 0), 0));
+  // «—» вместо чисел: старт (набор ещё ни разу не приходил) или едут новые данные;
+  // пульс — только пока реально идёт запрос
+  const pending = countsLoading() || !state.rawItemsKey;
+  $("#statistics").classList.toggle("counts-loading", countsLoading());
+  if (pending) countsPending();
+  else {
+    $("#count").textContent = number().format(counted.length);
+    $("#injured").textContent = number().format(counted.reduce((sum, item) => sum + Number(item.injured || 0), 0));
+    $("#dead").textContent = number().format(counted.reduce((sum, item) => sum + Number(item.dead || 0), 0));
+  }
   if (!$("#chart").hidden) renderChart();
   // На отдалении плотность читается только теплом (точек сотни тысяч), вблизи —
   // точки-маркеры: поверх точек плотность не читается
@@ -60,7 +67,7 @@ function renderMapData(view) {
   const plateNode = ($("#region-plate") as HTMLElement);
   plateNode.textContent = region || "";
   plateNode.hidden = !region || region === name;
-  setStatus(`${number().format(counted.length)} ${t("accidents").toLowerCase()}${name ? ` — ${name}` : ""}`);
+  setStatus(pending ? t("loadingMap") : `${number().format(counted.length)} ${t("accidents").toLowerCase()}${name ? ` — ${name}` : ""}`);
 }
 // Перерисовка текущим видом: место из карточки доехало позже данных (geom отвечает
 // медленнее точек) — счётчики и график пересчитываются без нового запроса
@@ -105,6 +112,10 @@ async function loadMapData() {
       if (!bucket.has(cacheKey)) {
         query.set("REGION", cacheKey);
         server.forEach((value, key) => query.append(key, value));
+        // Точки реально едут: счётчики сразу «—» с пульсом (старые числа чужого набора
+        // не ждём), флаг снимается отрисовкой готовых данных ниже
+        state.loadingId = loadId;
+        countsPending();
         const response = await apiFetch(`${api}/dtp/points?${query}`, { signal: controller.signal });
         if (!response.ok) throw new Error("API unavailable");
         bucket.set(cacheKey, pointItems(await response.json()));
@@ -120,8 +131,15 @@ async function loadMapData() {
       state.rawItems = bucket.get(cacheKey) ?? [];
     }
     applyDashboardGate();
+    state.loadingId = 0; // готово — отрисовка красит числа и снимает пульс
     renderMapData(view);
   } catch (error) {
+    // Чужой (более свежий) запрос свои классы не трогает — его пульс не гасим
+    if (state.loadingId === loadId) {
+      state.loadingId = 0; // пульс остановлен; счётчики остаются «—»
+      $("#statistics").classList.remove("counts-loading");
+      $("#chart").classList.remove("counts-loading");
+    }
     if (error.name !== "AbortError") setStatus(t("unavailable"));
   }
 }
