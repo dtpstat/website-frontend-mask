@@ -3,13 +3,24 @@ import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-const origin = "https://dtp-stat.ru";
+const source = process.env.BLOG_SOURCE_ORIGIN;
+if (!source) throw new Error("Missing BLOG_SOURCE_ORIGIN in .env");
+const sourceUrl = new URL(source);
+if (!['https:', 'http:'].includes(sourceUrl.protocol) || !sourceUrl.hostname
+    || sourceUrl.username || sourceUrl.password || sourceUrl.search || sourceUrl.hash
+    || sourceUrl.pathname !== '/') {
+  throw new Error("BLOG_SOURCE_ORIGIN must be an http(s) origin without a path");
+}
+const origin = sourceUrl.origin;
+const escapeRegex = (text) => text.replace(/[^a-zA-Z0-9]/g, (char) => '\\' + char);
+const blogHref = new RegExp('href="(?:https?://' + escapeRegex(sourceUrl.host) + ')?/blog/([^/]+)/?"', 'g');
+const remoteHref = new RegExp('href="https?://' + escapeRegex(sourceUrl.host) + '[^"]*"', 'g');
 const root = new URL("..", import.meta.url).pathname;
 const assets = path.join(root, "pages", "blog", "assets");
-const clean = (value: string) => value.replace(/<[^>]*>/g, "").replace(/&quot;/g, '"').replace(/&amp;/g, "&").trim();
-const local = new Map<string, string>();
+const clean = (value) => value.replace(/<[^>]*>/g, "").replace(/&quot;/g, '"').replace(/&amp;/g, "&").trim();
+const local = new Map();
 
-async function asset(value: string) {
+async function asset(value) {
   if (!value || !value.startsWith("/")) return value;
   if (local.has(value)) return local.get(value);
   const source = new URL(value, origin); const name = `${createHash("sha1").update(value).digest("hex").slice(0, 10)}-${path.basename(decodeURIComponent(source.pathname))}`;
@@ -18,14 +29,14 @@ async function asset(value: string) {
   const result = `assets/${name}`; local.set(value, result); return result;
 }
 
-async function localize(html: string) {
+async function localize(html) {
   const sources = [...html.matchAll(/\bsrc="([^"]+)"/g)].map((match) => match[1]);
   for (const source of sources) if (source.startsWith("/")) html = html.replaceAll(`src="${source}"`, `src="${await asset(source)}"`);
   return html
-    .replace(/href="(?:https?:\/\/dtp-stat\.ru)?\/blog\/([^/]+)\/?"/g, 'href="?post=$1"')
-    .replace(/href="https?:\/\/dtp-stat\.ru[^\"]*"/g, 'href="#"')
-    .replaceAll("https://dtp-stat.ru", "сайте проекта")
-    .replaceAll("dtp-stat.ru", "сайте проекта");
+    .replace(blogHref, 'href="?post=$1"')
+    .replace(remoteHref, 'href="#"')
+    .replaceAll(origin, "сайте проекта")
+    .replaceAll(sourceUrl.host, "сайте проекта");
 }
 
 const index = await (await fetch(`${origin}/blog/`)).text();

@@ -27,13 +27,17 @@
 
 ## Деплой
 
-Cloudflare Pages, direct upload:
+Cloudflare Pages и SSH-зеркало настраиваются в локальном `.env`:
+`DTP_CF_PAGES_PROJECT`, `DTP_CF_PAGES_URL`,
+`DTP_MIRROR_TARGET`, `DTP_MIRROR_URL`. Деплой обеих целей:
 
-    npx wrangler pages deploy dist --project-name dtpstat-pages
+    ./scripts/deploy.sh
 
-Перед этим — `npm run build`. Смена только конфига (ключи карт, `API_ORIGIN`) без
-пересборки: `npm run config` (или правка `dist/maps-config.js` руками) и снова
-команда `wrangler` выше.
+Скрипт читает `.env` через Node.js и проверяет параметры до запуска.
+Подробности: [DEPLOY.md](DEPLOY.md). Изменение только клиентского
+конфига (ключей карт, `API_ORIGIN`) не требует пересборки исходников:
+`npm run config` обновит `dist/maps-config.js`; опубликование
+обновлённого файла выполняется отдельно.
 
 ### Самостоятельный хостинг (статика + nginx)
 
@@ -123,6 +127,8 @@ Cloudflare Pages, direct upload:
    от удаления. Ключи карт после правки не требуют ничего, кроме перезагрузки
    страницы посетителем.
 
-Блог наполняется скриптом `scripts/sync-blog.mjs` (тянет посты со старого WP-сайта
-и складывает ассеты в `pages/blog/assets/`); запустите его перед сборкой, если нужен
-актуальный блог, — в рантайме внешний WP не используется.
+Синхронизация блога запускается отдельно командой `npm run sync:blog`.
+Исходный WordPress задаётся через `BLOG_SOURCE_ORIGIN` в локальном `.env`;
+скрипт скачивает записи и медиа в `pages/blog/assets/`. Запускайте его
+перед сборкой, когда требуется обновление материалов. Во время обычной
+работы фронтенд не обращается к исходному WordPress.
