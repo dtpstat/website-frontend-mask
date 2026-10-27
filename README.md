@@ -27,13 +27,17 @@
 
 ## Деплой
 
-Cloudflare Pages, direct upload:
+Cloudflare Pages и SSH-зеркало настраиваются в локальном `.env`:
+`DTP_CF_PAGES_PROJECT`, `DTP_CF_PAGES_URL`,
+`DTP_MIRROR_TARGET`, `DTP_MIRROR_URL`. Деплой обеих целей:
 
-    npx wrangler pages deploy dist --project-name dtpstat-pages
+    ./scripts/deploy.sh
 
-Перед этим — `npm run build`. Смена только конфига (ключи карт, `API_ORIGIN`) без
-пересборки: `npm run config` (или правка `dist/maps-config.js` руками) и снова
-команда `wrangler` выше.
+Скрипт читает `.env` через Node.js и проверяет параметры до запуска.
+Подробности: [DEPLOY.md](DEPLOY.md). Изменение только клиентского
+конфига (ключей карт, `API_ORIGIN`) не требует пересборки исходников:
+`npm run config` обновит `dist/maps-config.js`; опубликование
+обновлённого файла выполняется отдельно.
 
 ### Самостоятельный хостинг (статика + nginx)
 
