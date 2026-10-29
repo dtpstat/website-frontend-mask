@@ -27,13 +27,12 @@ function applyHeatMode() {
   applyDashboardGate();
 }
 function renderMapData(view) {
-  const filtered = filteredPoints(), visible = [];
-  for (const item of filtered) if (contains(view.bounds, item.point)) visible.push(item);
+  const filtered = filteredPoints();
   state.items = filtered;
-  // Счётчики и график — по месту из карточки (округ/район; под замком — закреплённое
-  // место, лукап выключен и ход карты его не меняет). Слои остаются viewport-клипом
-  // региона. Ещё одно исключение — отмеченное место ДТП: контекст счётчиков само место
-  // фильтра (клип по месту под центром обнулил бы карточку — см. geoSelectionNames)
+  // Счётчики, график и слои — по месту из карточки (округ/район; под замком —
+  // закреплённое место, лукап выключен и ход карты его не меняет). Ещё одно исключение —
+  // отмеченное место ДТП: контекст счётчиков само место фильтра (клип по месту под
+  // центром обнулил бы карточку — см. geoSelectionNames)
   const geo = geoSelectionNames();
   // Место чужое набору, пока его субъект не совпал с регионом данных: точки соседнего
   // региона уже приехали, место ещё летит старое — клип по нему даст ложный ноль.
@@ -41,6 +40,11 @@ function renderMapData(view) {
   // региона (уровень субъекта) легитимно считает весь набор
   state.placeAlien = !geo.length && !!state.place && state.place.region !== null && state.place.region !== state.dataRegion;
   const counted = geo.length ? filtered : applyPlace(filtered);
+  // Слои показывают тот же набор, что и статистика: точки и тепло — только внутри
+  // места, снаружи его добирает вуаль. Пока место чужое набору, клип по старому
+  // месту почти пуст — карта под «—» счётчиков честно пустая
+  const visible = [];
+  for (const item of counted) if (contains(view.bounds, item.point)) visible.push(item);
   // «—» вместо чисел: старт (набор ещё ни разу не приходил), едут новые данные или
   // к готовому набору едет место (старое место по новому набору = ложный ноль);
   // пульс горит всё время ожидания
@@ -56,7 +60,7 @@ function renderMapData(view) {
   // На отдалении плотность читается только теплом (точек сотни тысяч), вблизи —
   // точки-маркеры: поверх точек плотность не читается
   const heatVisible = view.zoom < heatZoomMax;
-  const heatPoints = heatVisible ? heatInView(filtered, view) : EMPTY_HEAT;
+  const heatPoints = heatVisible ? heatInView(counted, view) : EMPTY_HEAT;
   // Слои переприсовываются только у активного клиента — остальные догонят при переключении
   Object.assign(lastRender, { visible, heatPoints, heatVisible });
   renderHeatControls();

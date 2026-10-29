@@ -134,15 +134,16 @@ function paintPlaceMask(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D
 }
 function drawLeafletPlaceMask() {
   if (!leafletMask.canvas || !leafletMask.ctx) return;
-  // Вне дебаг-режима вуали нет вовсе (как и поверх тепла: оно само показывает
-  // картину целиком, вуаль гасила бы его по краям)
-  if (!debugMode || lastRender.heatVisible || leafletMaskHold || placeMaskWaitLookup) { leafletMask.canvas.style.display = "none"; return; }
+  // Вуаль — продакшен: данные и тепло рисуются только внутри места (клип слоёв в
+  // pipeline), всё снаружи добирает затемнение — в том числе в режиме тепла. Холды
+  // прежние: зум-жест и ожидание лукапа прячут канву до свежей геометрии
+  if (leafletMaskHold || placeMaskWaitLookup) { leafletMask.canvas.style.display = "none"; return; }
   // project принимает пару кольца (долгота, широта)
   paintPlaceMask(leafletMask.canvas, leafletMask.ctx, $("#leaflet-map") as HTMLElement, (longitude, latitude) => { const point = map.latLngToContainerPoint([latitude, longitude]); return [point.x, point.y]; });
 }
 function drawMapboxPlaceMask() {
   if (!mapbox.maskCanvas || !mapbox.maskCtx || !mapbox.map) return;
-  if (!debugMode || lastRender.heatVisible || mapboxMaskHold || placeMaskWaitLookup) { mapbox.maskCanvas.style.display = "none"; return; }
+  if (mapboxMaskHold || placeMaskWaitLookup) { mapbox.maskCanvas.style.display = "none"; return; }
   paintPlaceMask(mapbox.maskCanvas, mapbox.maskCtx, mapbox.map.getContainer(), (longitude, latitude) => { const point = mapbox.map.project([longitude, latitude]); return [point.x, point.y]; });
 }
 function renderPlaceMask() {
@@ -180,8 +181,8 @@ function drawYandexPlaceMask(tick?: { globalPixelCenter?: [number, number]; zoom
   if (!canvas || !map) return;
   yandexReattach(canvas);
   const rings = placeMaskRings(), container = $("#yandex-map") as HTMLElement, dpr = window.devicePixelRatio || 1;
-  // Поверх тепла затемнения нет (тепло само показывает картину целиком), вне дебага — тем более
-  if (!debugMode || !rings.length || lastRender.heatVisible) { canvas.style.display = "none"; return; }
+  // Затемнение — продакшен (в том числе поверх тепла: оно клипается местом в pipeline)
+  if (!rings.length) { canvas.style.display = "none"; return; }
   // После зум-жеста канву возвращает только ответ лукапа места (flushPlaceMaskHold):
   // рисовать старой геометрией — моргать перед приездом новой
   if (placeMaskWaitLookup) { canvas.style.display = "none"; return; }
@@ -275,7 +276,7 @@ function renderMarkers(markersVisible) {
 const boundaryFlagLayer = L.layerGroup();
 let boundaryFlagRings: number[][][] | null = null;
 function drawLeafletFlags() {
-  const flags = !debugMode || lastRender.heatVisible || !state.maskRings.length ? [] : boundaryFlags();
+  const flags = !debugMode || !state.maskRings.length ? [] : boundaryFlags();
   if (!flags.length) { map.removeLayer(boundaryFlagLayer); boundaryFlagRings = null; return; }
   if (boundaryFlagRings !== state.maskRings) {
     boundaryFlagRings = state.maskRings;
@@ -417,7 +418,7 @@ function updateYandexPointRadius() {
 const yandexBoundaryFlags = { collection: null as any, rings: null as number[][][] | null };
 function drawYandexFlags() {
   if (!yandex.map) return;
-  const flags = !debugMode || lastRender.heatVisible || !state.maskRings.length ? [] : boundaryFlags();
+  const flags = !debugMode || !state.maskRings.length ? [] : boundaryFlags();
   if (!flags.length) {
     if (yandexBoundaryFlags.collection) { yandex.points.remove(yandexBoundaryFlags.collection); yandexBoundaryFlags.collection = null; yandexBoundaryFlags.rings = null; }
     return;
@@ -464,7 +465,7 @@ function renderMapbox(visible, heatPoints, heatVisible) {
   map.getSource("dtp-heat")?.setData({ type:"FeatureCollection", features: heatVisible ? heatFeatures(heatPoints) : [] });
   map.getSource("dtp-points")?.setData({ type:"FeatureCollection", features: heatVisible ? [] : visible.map((item) => ({ type:"Feature", geometry:{ type:"Point", coordinates:[item.point.longitude, item.point.latitude] }, properties:{ severity:item.severity, popup:markerPopup(item), id:item.id } })) });
   // Флажки границы затемнения — точками отдельного источника (выборка вершин кэшируется)
-  const flagFeatures = !debugMode || heatVisible || !state.maskRings.length ? [] : boundaryFlags();
+  const flagFeatures = !debugMode || !state.maskRings.length ? [] : boundaryFlags();
   map.getSource("dtp-boundary")?.setData({ type:"FeatureCollection", features: flagFeatures.map(([lng, lat]) => ({ type:"Feature", geometry:{ type:"Point", coordinates:[lng, lat] }, properties:{} })) });
   const paint = mapboxHeatPaint();
   map.setPaintProperty("dtp-heat", "heatmap-radius", paint.radius); map.setPaintProperty("dtp-heat", "heatmap-intensity", paint.intensity); map.setPaintProperty("dtp-heat", "heatmap-opacity", paint.opacity);
@@ -611,11 +612,11 @@ async function switchMapClient(client) {
 
 function renderHeatControls() {
   // Панель видна, пока есть что настраивать: тепло живёт на дальних зумах,
-  // затемнение — с зума 6; каждая группа строк прячется по своему признаку.
-  // Строки затемнения спрятаны и при показанном тепле — маска поверх него выключена.
-  // Вся панель — дебаг-инструмент: без ?debug в URL не показывается никому
+  // затемнение — везде, где есть кольца (оно работает и в режиме тепла); каждая
+  // группа строк прячется по своему признаку. Вся панель — дебаг-инструмент:
+  // без ?debug в URL не показывается никому
   $("#heat-rows").hidden = !lastRender.heatVisible;
-  $("#mask-rows").hidden = !state.maskRings.length || lastRender.heatVisible;
+  $("#mask-rows").hidden = !state.maskRings.length;
   $("#heat-controls").hidden = !debugMode || ($("#heat-rows").hidden && $("#mask-rows").hidden);
   // Ползунки затемнения глобальны (клиент карты не влияет) — синхронизируем до веток тепла,
   // remoteActive-ветка ниже завершается return
