@@ -103,13 +103,19 @@ function showResolving(visible: boolean) { ($("#region-resolving") as HTMLElemen
 async function applyRegion(plate: { name: string; geometry: any }, level: number, key: string) {
   showResolving(false);
   const name = plate.name;
-  const within = Boolean(name) && plate.geometry && level !== 4 && (!state.territory || (await regionAtCenter(currentView().center.latitude, currentView().center.longitude)) === state.territory.id);
-  const next = within ? makePlace(name, plate.geometry) : null;
+  // Субъект под центром нужен дважды: для проверки закрепления и в самом месте —
+  // место запоминает свой регион, и renderMapData отличает по нему место чужого
+  // набора (точки соседнего региона приехали, а место ещё летит старое): в этом
+  // окне счётчики показывают «—», а не ложный ноль по чужому клипу
+  const center = regionAtCenter(currentView().center.latitude, currentView().center.longitude).catch(() => null);
+  const within = Boolean(name) && plate.geometry && level !== 4 && (!state.territory || (await center) === state.territory.id);
+  const next = within ? makePlace(name, plate.geometry, await center) : null;
   // На уровнях округа/района родительской строки нет — её роль берёт строка региона
   // данных (#region-plate у pipeline); строку страны под субъектом покажет ответ родителя
   if (level !== 4) ($("#region-parent") as HTMLElement).hidden = true;
-  // Геометрия и имя приезжают одним ответом — имя меняется только вместе с местом
-  const changed = (state.place?.name ?? null) !== (next?.name ?? null);
+  // Геометрия и имя приезжают одним ответом — место меняется только целиком: имя или
+  // регион (одноимённые районы соседних субъектов — тоже смена, клип и счётчики другие)
+  const changed = (state.place?.name ?? null) !== (next?.name ?? null) || (state.place?.region ?? null) !== (next?.region ?? null);
   state.place = next;
   // Кольца маски обновляем ДО refreshRender: рендеры карт внутри перерисовывают и
   // маску — со старыми кольцами она моргнула бы перед новыми. Маска затемнения —
@@ -124,7 +130,9 @@ async function applyRegion(plate: { name: string; geometry: any }, level: number
     // большого набора), а маска уже сменилась
     renderHeatControls();
   }
-  if (changed) actions.refreshRender(); // место доехало позже данных — пересчитать счётчики и график
+  // Место доехало — пересчитать счётчики и график: чужое место по новому набору
+  // держало «—» (placeAlien), совпадение региона ожидание снимает
+  if (changed) actions.refreshRender();
   flushPlaceMaskHold(); // ответ лукапа приехал — маску после зума можно рисовать
 }
 

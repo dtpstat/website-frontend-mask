@@ -164,7 +164,7 @@ function applyPlace(rows: any[]) {
 // Эндпоинт отдаёт единицу двумя кодировками: уровни 4/6/8 — «маской» (внешнее кольцо —
 // весь мир, сама единица вырезана дырками, включая вложенные), уровень 2 — обычным
 // мультиполигоном. Храним плоский список колец — чётности достаточно для обеих
-function makePlace(name: string, geometry: any) {
+function makePlace(name: string, geometry: any, region: number | null = null) {
   const polygons: number[][][][] = geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
   const rings = polygons.flatMap((poly) => (poly[0].some(([x]) => Math.abs(x) > 179) ? poly.slice(1) : poly));
   const boxes = rings.map((ring) => {
@@ -172,7 +172,7 @@ function makePlace(name: string, geometry: any) {
     for (const [x, y] of ring) { if (x < west) west = x; if (x > east) east = x; if (y < south) south = y; if (y > north) north = y; }
     return { west, south, east, north };
   });
-  return { name, rings, boxes };
+  return { name, rings, boxes, region };
 }
 
 export { regionAtCenter, applyPlace, makePlace, updateTerritoryCard, applyTerritoryMask, selectRegion, drawRegionSuggest, syncRegionFields };

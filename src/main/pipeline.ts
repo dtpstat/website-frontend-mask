@@ -1,6 +1,6 @@
 // Конвейер данных: renderMapData/loadMapData/loadFilters, гейт дэшборда, режим тепло/точки
 
-import { $, state, api, apiFetch, regionCache, dataRange, emTypeNames, lastRender, regionIndex, regionName, EMPTY_HEAT, setStatus, countsLoading, countsPending, actions, mapQuery } from "./context.js";
+import { $, state, api, apiFetch, regionCache, dataRange, emTypeNames, lastRender, regionIndex, regionName, EMPTY_HEAT, setStatus, countsWait, countsPending, actions, mapQuery } from "./context.js";
 import { t, number } from "./i18n.js";
 import { period } from "./dates.js";
 import { serverQuery, renderAdvancedFilters, refreshCascade, enrichFilters, filteredPoints, geoSelectionNames, serverSections, serverSectionLabels, maskFeatures, intervalFields } from "./filters.js";
@@ -35,11 +35,17 @@ function renderMapData(view) {
   // региона. Ещё одно исключение — отмеченное место ДТП: контекст счётчиков само место
   // фильтра (клип по месту под центром обнулил бы карточку — см. geoSelectionNames)
   const geo = geoSelectionNames();
+  // Место чужое набору, пока его субъект не совпал с регионом данных: точки соседнего
+  // региона уже приехали, место ещё летит старое — клип по нему даст ложный ноль.
+  // Отмеченное место ДТП (geo) считает само себя и клипу не подчиняется; место без
+  // региона (уровень субъекта) легитимно считает весь набор
+  state.placeAlien = !geo.length && !!state.place && state.place.region !== null && state.place.region !== state.dataRegion;
   const counted = geo.length ? filtered : applyPlace(filtered);
-  // «—» вместо чисел: старт (набор ещё ни разу не приходил) или едут новые данные;
-  // пульс — только пока реально идёт запрос
-  const pending = countsLoading() || !state.rawItemsKey;
-  $("#statistics").classList.toggle("counts-loading", countsLoading());
+  // «—» вместо чисел: старт (набор ещё ни разу не приходил), едут новые данные или
+  // к готовому набору едет место (старое место по новому набору = ложный ноль);
+  // пульс горит всё время ожидания
+  const pending = countsWait() || !state.rawItemsKey;
+  $("#statistics").classList.toggle("counts-loading", countsWait());
   if (pending) countsPending();
   else {
     $("#count").textContent = number().format(counted.length);
@@ -83,6 +89,12 @@ async function loadMapData() {
   if (!state.territory && currentView().zoom < dashboardMinZoom) { applyDashboardGate(); return; }
   state.abort?.abort();
   const controller = state.abort = new AbortController(), loadId = ++state.dataLoadId, view = currentView();
+  // Счётчики — «—» с пульсом с первого кадра загрузки: пока едет лукап региона (и вообще
+  // до выдачи запроса точек) renderMapData из любого триггера — пан, доехавшее место,
+  // смена тепло/точки — не должен красить числа чужого набора. Кэш-хит возвращает числа
+  // в тех же микротиках, без вспышки
+  state.loadingId = loadId;
+  countsPending();
   setStatus(t("loadingMap"));
   try {
     const server = serverQuery();
@@ -112,10 +124,6 @@ async function loadMapData() {
       if (!bucket.has(cacheKey)) {
         query.set("REGION", cacheKey);
         server.forEach((value, key) => query.append(key, value));
-        // Точки реально едут: счётчики сразу «—» с пульсом (старые числа чужого набора
-        // не ждём), флаг снимается отрисовкой готовых данных ниже
-        state.loadingId = loadId;
-        countsPending();
         const response = await apiFetch(`${api}/dtp/points?${query}`, { signal: controller.signal });
         if (!response.ok) throw new Error("API unavailable");
         bucket.set(cacheKey, pointItems(await response.json()));
@@ -136,15 +144,19 @@ async function loadMapData() {
   } catch (error) {
     // Чужой (более свежий) запрос свои классы не трогает — его пульс не гасим
     if (state.loadingId === loadId) {
-      state.loadingId = 0; // пульс остановлен; счётчики остаются «—»
-      $("#statistics").classList.remove("counts-loading");
-      $("#chart").classList.remove("counts-loading");
+      state.loadingId = 0; // счётчики остаются «—», пока ждётся новый лукап места — пульс ведёт countsWait
+      $("#statistics").classList.toggle("counts-loading", countsWait());
+      $("#chart").classList.toggle("counts-loading", countsWait());
     }
     if (error.name !== "AbortError") setStatus(t("unavailable"));
   }
 }
 
 async function loadFilters() {
+  // Самая первая загрузка: счётчики «—» уже стоят в разметке, а пульс включаем сразу —
+  // пока едут справочники, loadMapData ещё не стартовал и некому его включить
+  $("#statistics").classList.add("counts-loading");
+  $("#chart").classList.add("counts-loading");
   try {
     const fieldsResponse = await apiFetch(`${api}/dtp/filter_fields`);
     if (!fieldsResponse.ok) throw new Error("API unavailable");
@@ -189,7 +201,12 @@ async function loadFilters() {
     const regionId = Number(mapQuery.get("region"));
     if (Number.isFinite(regionId) && regionId > 0) selectRegion(regionIndex.find((region) => region.id === regionId) || { id:regionId, name:String(regionId) });
     else loadMapData();
-  } catch { setStatus(t("unavailable")); }
+  } catch {
+    // Справочники не доехали: пульс гасим (он больше никем не будет снят), счётчики остаются «—»
+    $("#statistics").classList.remove("counts-loading");
+    $("#chart").classList.remove("counts-loading");
+    setStatus(t("unavailable"));
+  }
 }
 
 export { loadMapData, loadFilters, applyHeatMode, refreshRender };

@@ -1,6 +1,6 @@
 // Дэшборд: разрезы дни/часы/месяцы/годы/типы, SVG-график
 
-import { $, state, regionName, countsLoading, countsPending } from "./context.js";
+import { $, state, regionName, countsWait, countsPending } from "./context.js";
 import { t, number, percent } from "./i18n.js";
 import { period } from "./dates.js";
 import { participantLabel } from "./participants.js";
@@ -91,9 +91,10 @@ function activeFiltersSummary() {
 
 function renderChart() {
   const bars = $("#bars"), empty = $("#chart-empty");
-  // Данные текущего контекста не приехали — в плашке итогов «—» вместо нулей пустого
-  // набора; сам график не трогаем (при перезагрузке старый остаётся до готового)
-  if (countsLoading() || !state.rawItemsKey) {
+  // Данные текущего контекста не приехали (запрос точек или место к готовому набору) —
+  // в плашке итогов «—» вместо нулей пустого набора; сам график не трогаем (при
+  // перезагрузке старый остаётся до готового)
+  if (countsWait() || !state.rawItemsKey) {
     countsPending();
     return;
   }
