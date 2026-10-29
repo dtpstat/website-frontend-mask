@@ -1,5 +1,7 @@
 #!/bin/sh
-# Деплой фронтенда: сборка → Cloudflare Pages → зеркало на dtpstat (ilia.dtp-stat.ru/map).
+# Деплой фронтенда: сборка → Cloudflare Pages → зеркало на dtpstat (~/dtpstat-pages/dist;
+# сейчас оно ничем не раздаётся — карта нового сайта айфреймит frontend.dtp-stat.ru,
+# см. INFRASTRUCTURE.md мета-репо).
 # Конфиг (ключи карт, API_ORIGIN) в деплой не зашит: dist/maps-config.js переживает сборку,
 # на сервере живёт вне dist (~/dtpstat-pages/maps-config.js + симлинк), rsync его не трогает.
 # Смена ключей без пересборки: локально «npm run config» + повторный деплой,

@@ -86,6 +86,18 @@ function refreshRender() {
   renderMapData(currentView());
 }
 
+// Период не длиннее года уходит одним запросом; длинный бэкенд не принимает
+// (400 «no more than 366 days») — режем на календарные годы: границы исходного
+// периода сохраняются точно (первый кусок от start, последний до end), годы
+// между — целиком, каждый кусок заведомо ≤ 366 дней
+function dateSlices(start: string, end: string): [string, string][] {
+  const first = Number(start.slice(0, 4)), last = Number(end.slice(0, 4));
+  if (first === last) return [[start, end]];
+  const slices: [string, string][] = [];
+  for (let year = first; year <= last; year++) slices.push([year === first ? start : `${year}-01-01`, year === last ? end : `${year}-12-31`]);
+  return slices;
+}
+
 async function loadMapData() {
   const { start, end } = period();
   if (!start || !end || end < start) return;
@@ -110,7 +122,7 @@ async function loadMapData() {
     // Единственный режим загрузки: REGION = закреплённая территория или субъект под
     // центром (полигоны regions.geojson, их id = параметру REGION). Кэш по региону:
     // пан внутри региона — ноль запросов, переезд в соседний — ровно один.
-    // Весь период одним запросом — бэкенд с ним справляется
+    // Длинный период — параллельными кусками-годами (см. dateSlices)
     const regionId = state.territory ? state.territory.id : await regionAtCenter(view.center.latitude, view.center.longitude);
     if (state.dataLoadId !== loadId) return;
     const cacheKey = String(regionId ?? "none");
@@ -123,14 +135,20 @@ async function loadMapData() {
     refreshCascade();
     if (!bucket.has(cacheKey)) {
       $("#chart-period").textContent = `${t("forPeriod")}: ${start} — ${end}`;
-      const query = new URLSearchParams({ DATE_TIME_FROM:`${start}T00:00:00`, DATE_TIME_TO:`${end}T23:59:59` });
       if (regionId === null) bucket.set(cacheKey, []); // центр вне субъектов РФ — запрос не нужен
-      if (!bucket.has(cacheKey)) {
-        query.set("REGION", cacheKey);
-        server.forEach((value, key) => query.append(key, value));
-        const response = await apiFetch(`${api}/dtp/points?${query}`, { signal: controller.signal });
-        if (!response.ok) throw new Error("API unavailable");
-        bucket.set(cacheKey, pointItems(await response.json()));
+      else {
+        // Куски не пересекаются — сливаем без дедупликации; любой кусок сорвался —
+        // весь набор не приехал (catch выше покажет недоступность)
+        const parts = await Promise.all(dateSlices(start, end).map(([from, till]) => {
+          const query = new URLSearchParams({ DATE_TIME_FROM:`${from}T00:00:00`, DATE_TIME_TO:`${till}T23:59:59`, REGION: cacheKey });
+          server.forEach((value, key) => query.append(key, value));
+          return apiFetch(`${api}/dtp/points?${query}`, { signal: controller.signal }).then(async (response) => {
+            if (!response.ok) throw new Error("API unavailable");
+            return pointItems(await response.json());
+          });
+        }));
+        if (state.dataLoadId !== loadId) return;
+        bucket.set(cacheKey, parts.flat());
       }
       if (state.dataLoadId !== loadId) return;
       renderAdvancedFilters();
