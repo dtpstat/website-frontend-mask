@@ -18,14 +18,14 @@ function renderDateFields() {
 
 function dateMenuPresets() {
   const today = new Date(), todayValue = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-  const maximum = dataRange.max < todayValue ? dataRange.max : todayValue;
-  const [maxYear, maxMonth] = maximum.split("-").map(Number);
-  const lastMonthStart = `${maxYear}-${String(maxMonth).padStart(2, "0")}-01`;
-  const previous = new Date(maxYear, maxMonth - 2, 1), previousStart = `${previous.getFullYear()}-${String(previous.getMonth() + 1).padStart(2, "0")}-01`;
+  // Последние месяцы катятся от сегодняшней даты, а не от максимума данных (константа —
+  // пресеты застыли бы навсегда): текущий — с 1-го числа по сегодня, прошлый — целиком
+  const currentStart = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-01`;
+  const previous = new Date(today.getFullYear(), today.getMonth() - 1, 1), previousStart = `${previous.getFullYear()}-${String(previous.getMonth() + 1).padStart(2, "0")}-01`;
   const monthName = (start) => { const name = intlFormatter("month", { month: "long" }).format(new Date(`${start}T00:00:00`)); return name.charAt(0).toUpperCase() + name.slice(1); };
-  const firstYear = Math.max(Number(dataRange.min.slice(0, 4)), maxYear - 5);
+  const maxYear = Number(dataRange.max.slice(0, 4)), firstYear = Math.max(Number(dataRange.min.slice(0, 4)), maxYear - 5);
   const presets = [
-    { label: monthName(lastMonthStart), start: lastMonthStart, end: monthEndValue(lastMonthStart) },
+    { label: monthName(currentStart), start: currentStart, end: todayValue },
     { label: monthName(previousStart), start: previousStart, end: monthEndValue(previousStart) },
   ];
   for (let year = maxYear; year >= firstYear; year--) presets.push({ label: String(year), start: `${year}-01-01`, end: `${year}-12-31` });
