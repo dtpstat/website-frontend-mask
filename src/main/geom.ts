@@ -12,6 +12,7 @@
 import { api, $, state, actions } from "./context.js";
 import { currentView, flushPlaceMaskHold, renderHeatControls } from "./maps.js";
 import { regionAtCenter, makePlace, applyTerritoryMask } from "./territory.js";
+import { centerMarkResolving } from "./centermark.js";
 
 // Кэш ответов по точкам (координаты, округлённые до 0.001° ≈ 50 м — заодно дедуп
 // дрожащего центра). Кэшируются и пустые имена — центр вне России
@@ -89,8 +90,9 @@ async function lookupRegion() {
 
 // Лоадер резолва места: строка под регионом в карточке. Показывается на время каждого
 // лукапа уровня округа/района (geom на тяжёлых полигонах отвечает до 4.5с), прячется
-// ответом/сбоем. Кэш-хит проходит тот же путь синхронно — вспышки не будет
-function showResolving(visible: boolean) { ($("#region-resolving") as HTMLElement).hidden = !visible; }
+// ответом/сбоем. Кэш-хит проходит тот же путь синхронно — вспышки не будет. Тот же
+// ритм живёт на карте: кольцо метки центра пульсирует, пока место под центром едет
+function showResolving(visible: boolean) { ($("#region-resolving") as HTMLElement).hidden = !visible; centerMarkResolving(visible); }
 
 // Место — самая конкретная строка подписи и «место» счётчиков: по нему фильтруется
 // набор региона, его имя встаёт в заголовок карточки. Место есть только у округа/района

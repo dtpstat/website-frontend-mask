@@ -355,3 +355,17 @@ body .advanced-filter .advanced-options::-webkit-scrollbar-thumb:hover { backgro
 .bars-combo .combo-axis { position:sticky; z-index:1; background:#fff; }
 .bars-combo .combo-axis-l { left:0; margin-right:calc(-1 * var(--pad-l, 46px)); }
 .bars-combo .combo-axis-r { right:0; margin-left:calc(-1 * var(--pad-r, 46px)); }
+
+/* Метка центра карты: тонкое кольцо с точкой в центре вида — по месту под этой точкой
+   ищется место счётчиков и регион данных. z1 как у панелей, но метка раньше их в DOM —
+   панели поверх; pointer-events:none — клики проходят в карту. Белая подложка кольца
+   и halo держат контраст на любых тайлах (OSM серится фильтром, Яндекс светлый) */
+.map-center { position:absolute; z-index:1; left:50%; top:50%; width:14px; height:14px; margin:-7px 0 0 -7px; pointer-events:none; }
+.map-center::before { content:""; position:absolute; inset:0; border:1.5px solid rgba(24,51,74,.5); border-radius:50%; background:rgba(255,255,255,.25); box-shadow:0 0 0 2px rgba(255,255,255,.3); }
+.map-center::after { content:""; position:absolute; left:50%; top:50%; width:4px; height:4px; margin:-2px 0 0 -2px; border-radius:50%; background:rgba(24,51,74,.7); box-shadow:0 0 0 1.5px rgba(255,255,255,.45); }
+/* Лукап места едет (в карточке крутится «Определяем место…») — кольцо дышит тем же ритмом */
+.map-center.resolving::before { animation:center-pulse 1.4s ease-in-out infinite; }
+@keyframes center-pulse { 50% { transform:scale(1.4); opacity:.4; } }
+/* Плашка с названием места под меткой: появляется на смене места, тает через 2.4с */
+.map-center-label { position:absolute; top:16px; left:50%; transform:translateX(-50%); max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:3px 10px; border-radius:11px; background:rgba(255,255,255,.94); box-shadow:0 2px 10px rgba(24,51,74,.28); color:var(--navy); font-size:12px; line-height:16px; font-weight:500; opacity:0; transition:opacity .45s ease; }
+.map-center-label.visible { opacity:1; }
