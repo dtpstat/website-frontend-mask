@@ -72,7 +72,13 @@ $("#advanced-region").addEventListener("keydown", (event) => {
   event.stopPropagation();
 });
 $("#advanced-region").addEventListener("blur", () => setTimeout(() => { ($("#region-suggest-adv") as HTMLElement).hidden = true; syncRegionFields(); }, 150));
-document.querySelectorAll('input[name="severity"]').forEach((input) => input.addEventListener("change", reload));
+// Последнюю галочку тяжести не снимаем: пустой выбор в этой схеме значит «без фильтра»,
+// то есть снятие всех молча возвращает полный набор — держим хотя бы одну отмеченной
+document.querySelectorAll<HTMLInputElement>('input[name="severity"]').forEach((input) => input.addEventListener("change", () => {
+  const others = [...document.querySelectorAll<HTMLInputElement>('input[name="severity"]:checked')].some((other) => other !== input);
+  if (!input.checked && !others) { input.checked = true; setStatus(t("atLeastOne")); return; }
+  reload();
+}));
 $("#close-advanced").addEventListener("click", () => setAdvancedCollapsed(!document.body.classList.contains("advanced-collapsed")));
 $("#back-to-basic").addEventListener("click", closeAdvanced);
 $("#hide-filters").addEventListener("click", () => setFiltersCollapsed(!$("#filters").classList.contains("collapsed")));

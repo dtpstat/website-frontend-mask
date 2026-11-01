@@ -50,15 +50,23 @@ function renderParticipants() {
 function renderAdvancedControls() {
   const participants = $("#advanced-participants"), severity = $("#advanced-severity");
   participants.replaceChildren(...state.participants.map((participant) => { const label = document.createElement("label"), input = document.createElement("input"); input.type = "checkbox"; input.checked = participant.selected; input.addEventListener("change", () => { // «Все участники» исключает остальные, любой конкретный — снимает «Все»
+    // Пустой выбор участников значит «без фильтра»: последнюю отмеченную галочку не снимаем
+    if (!input.checked && participant.selected && selectedParticipants().every((value) => value === participant.value)) { input.checked = true; setStatus(t("atLeastOne")); return; }
     const filterBefore = participantFilterKey();
     if (input.checked && participant.value === 1) state.participants.forEach((item) => { item.selected = item.value === 1; });
     else { participant.selected = input.checked; if (input.checked) { const all = state.participants.find((item) => item.value === 1); if (all) all.selected = false; } }
     renderParticipants();
+    // Список панели сам не перерисовывается — а «Все участники» снялось программно:
+    // синхронизируем галочки с состоянием, иначе «Все» висит отмеченным у конкретного выбора
+    for (const [index, item] of state.participants.entries()) { const box = participants.children[index]?.querySelector("input"); if (box) box.checked = item.selected; }
     // Мото/общ. транспорт: галочка ставится, но данных в открытом API нет — точки не перезагружаем
     if (participant.selected && !participantHasData(participant)) setStatus(t("participantNoData"));
     else if (participantFilterKey() !== filterBefore) actions.loadMapData();
   }); label.append(input, document.createTextNode(participantLabel(participant))); return label; }));
-  severity.replaceChildren(...[...document.querySelectorAll<HTMLInputElement>('input[name="severity"]')].map((source) => { const value = Number(source.value), tone = state.filters.find((filter) => filter.name === "severity")?.values.find((item) => item.value === value)?.ui_tone || "light", label = document.createElement("label"), input = document.createElement("input"); label.className = `severity-tone ${tone}`; input.type = "checkbox"; input.checked = source.checked; input.disabled = source.disabled; input.addEventListener("change", () => { source.checked = input.checked; actions.loadMapData(); }); label.append(input, document.createTextNode(source.parentElement.textContent.trim())); return label; }));
+  severity.replaceChildren(...[...document.querySelectorAll<HTMLInputElement>('input[name="severity"]')].map((source) => { const value = Number(source.value), tone = state.filters.find((filter) => filter.name === "severity")?.values.find((item) => item.value === value)?.ui_tone || "light", label = document.createElement("label"), input = document.createElement("input"); label.className = `severity-tone ${tone}`; input.type = "checkbox"; input.checked = source.checked; input.disabled = source.disabled; input.addEventListener("change", () => { // Последнюю галочку не снимаем — та же защита, что у базовых галочек тяжести
+    const others = [...document.querySelectorAll('input[name="severity"]:checked')].some((other) => other !== source);
+    if (!input.checked && source.checked && !others) { input.checked = true; setStatus(t("atLeastOne")); return; }
+    source.checked = input.checked; actions.loadMapData(); }); label.append(input, document.createTextNode(source.parentElement.textContent.trim())); return label; }));
 }
 
 // Выбранные участники → набор видов ДТП (приближение по em_type_id); null — без клиентского фильтра.
