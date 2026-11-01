@@ -10,6 +10,7 @@ import { updateTerritoryCard, drawRegionSuggest, syncRegionFields } from "./terr
 import { renderChart, setChartMode, chartAxis, chartDatesAvailable } from "./chart.js";
 import { loadMapData, loadFilters, applyHeatMode, refreshRender } from "./pipeline.js";
 import { scheduleRegionLookup } from "./geom.js";
+import { initCenterMark } from "./centermark.js";
 
 // Реестр восходящих вызовов заполняется до boot: подписки ниже по файлу начинают
 // стрелять только после этого, так что колбэки ранних модулей всегда видят значения
@@ -182,3 +183,6 @@ applyLanguage();
 const savedMapClient = state.mapClient; state.mapClient = "leaflet"; renderMapSwitcher(); if (savedMapClient !== "leaflet") switchMapClient(savedMapClient);
 loadFilters();
 scheduleRegionLookup();
+// Якорь переехал (панель свернули/развернули, брейкпоинт ширины) — место и регион под ним
+// могли смениться: лукапы заново
+initCenterMark(() => { scheduleRegionLookup(0); loadMapData(); });

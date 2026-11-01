@@ -1,5 +1,6 @@
-// Территория под центром карты: эндпоинт /geom/getRegionUnderPoint (lat, lng, level = OSM
-// admin_level) возвращает name админ-единицы под центром. Место (state.place) — самое
+// Территория под якорем карты — центром видимой части, без боковой панели (probeOffsetX
+// в maps.ts): эндпоинт /geom/getRegionUnderPoint (lat, lng, level = OSM admin_level)
+// возвращает name админ-единицы под этой точкой. Место (state.place) — самое
 // конкретное из ответов (с зума дэшборда: 11-13 → 6 округ, 14+ → 8 район города): его
 // имя становится заголовком карточки (#region-name у pipeline), а геометрия фильтрует
 // набор региона для счётчиков; серой строкой под заголовком pipeline показывает регион
@@ -58,7 +59,8 @@ async function lookupRegion() {
   // соответствовать (живое место — его кольцами, без него — субъектом)
   if (state.territory) { applyTerritoryMask(); showResolving(false); flushPlaceMaskHold(); return; }
   const level = view.zoom <= 10 ? 4 : view.zoom <= 13 ? 6 : 8;
-  const { lat, lng } = centerKey(view.center.latitude, view.center.longitude);
+  // Якорь, не центр контейнера: панель фильтров съедает левую часть вида (probeOffsetX)
+  const { lat, lng } = centerKey(view.probe.latitude, view.probe.longitude);
   const key = `${level}|${lat}|${lng}`;
   // Дедуп пропускает ход, только если место по этому ключу живо: стёртое место
   // (смена замка) должно пере-примениться повторным лукапом — из кэша, без запроса.
@@ -109,7 +111,7 @@ async function applyRegion(plate: { name: string; geometry: any }, level: number
   // место запоминает свой регион, и renderMapData отличает по нему место чужого
   // набора (точки соседнего региона приехали, а место ещё летит старое): в этом
   // окне счётчики показывают «—», а не ложный ноль по чужому клипу
-  const center = regionAtCenter(currentView().center.latitude, currentView().center.longitude).catch(() => null);
+  const center = regionAtCenter(currentView().probe.latitude, currentView().probe.longitude).catch(() => null);
   const within = Boolean(name) && plate.geometry && level !== 4 && (!state.territory || (await center) === state.territory.id);
   const next = within ? makePlace(name, plate.geometry, await center) : null;
   // На уровнях округа/района родительской строки нет — её роль берёт строка региона

@@ -124,10 +124,11 @@ async function loadMapData() {
     const bucket = regionCache.get(bucketKey) ?? new Map<string, any[]>();
     regionCache.set(bucketKey, bucket);
     // Единственный режим загрузки: REGION = закреплённая территория или субъект под
-    // центром (полигоны regions.geojson, их id = параметру REGION). Кэш по региону:
-    // пан внутри региона — ноль запросов, переезд в соседний — ровно один.
+    // якорем — центром видимой карты, без боковой панели (view.probe; полигоны
+    // regions.geojson, их id = параметру REGION). Кэш по региону: пан внутри региона —
+    // ноль запросов, переезд в соседний — ровно один.
     // Длинный период — параллельными кусками-годами (см. dateSlices)
-    const regionId = state.territory ? state.territory.id : await regionAtCenter(view.center.latitude, view.center.longitude);
+    const regionId = state.territory ? state.territory.id : await regionAtCenter(view.probe.latitude, view.probe.longitude);
     if (state.dataLoadId !== loadId) return;
     const cacheKey = String(regionId ?? "none");
     state.dataRegion = regionId;

@@ -237,9 +237,21 @@ function mapboxHeatPaint() {
   return { radius:["interpolate", ["linear"], ["zoom"], 4, radius * .75, 7, radius * .9, 10, radius, 12, radius * 1.15], intensity:["interpolate", ["linear"], ["zoom"], 4, intensity * .7, 7, intensity * .85, 10, intensity, 12, intensity * 1.1], opacity };
 }
 
-function leafletView() { const bounds = map.getBounds(), center = map.getCenter(); return { center: { latitude: center.lat, longitude: center.lng }, zoom: map.getZoom(), bounds: { west: bounds.getWest(), south: bounds.getSouth(), east: bounds.getEast(), north: bounds.getNorth() } }; }
-function yandexView() { const center = yandex.map.getCenter(), bounds = yandex.map.getBounds(); return { center: { latitude: center[1], longitude: center[0] }, zoom: yandex.map.getZoom(), bounds: { west: bounds[0][0], south: bounds[0][1], east: bounds[1][0], north: bounds[1][1] } }; }
-function mapboxView() { const center = mapbox.map.getCenter(), bounds = mapbox.map.getBounds(); return { center: { latitude: center.lat, longitude: center.lng }, bounds: { west: bounds.getWest(), south: bounds.getSouth(), east: bounds.getEast(), north: bounds.getNorth() }, zoom: mapbox.map.getZoom() + 1 }; }
+// Якорь данных — центр видимой карты. Панель фильтров съедает левую полосу контейнера
+// (карта живёт и под ней), и центр контейнера скрыт панелью: точка, «куда смотрит карта»,
+// — центр свободной полосы справа. Пока панель развёрнута и эта полоса — большая часть
+// вида (десктоп), якорь сдвигается к её центру; свёрнутая панель или панель во весь экран
+// (телефон) сдвига не дают. Сдвиг в пикселях контейнера — клиенты переводят его в географию
+function probeOffsetX() {
+  if (document.body.classList.contains("filters-collapsed")) return 0;
+  const page = ($(".map-page") as HTMLElement).getBoundingClientRect(), panel = ($(".filters") as HTMLElement).getBoundingClientRect();
+  const free = page.right - panel.right;
+  return free < page.width / 2 ? 0 : (panel.right + page.right) / 2 - (page.left + page.width / 2);
+}
+
+function leafletView() { const bounds = map.getBounds(), center = map.getCenter(), anchor = map.containerPointToLatLng([map.getSize().x / 2 + probeOffsetX(), map.getSize().y / 2]); return { center: { latitude: center.lat, longitude: center.lng }, zoom: map.getZoom(), bounds: { west: bounds.getWest(), south: bounds.getSouth(), east: bounds.getEast(), north: bounds.getNorth() }, probe: { latitude: anchor.lat, longitude: anchor.lng } }; }
+function yandexView() { const center = yandex.map.getCenter(), bounds = yandex.map.getBounds(), zoom = yandex.map.getZoom(), projection = yandex.map.options.get("projection"); const [gx, gy] = projection.toGlobalPixels(center, zoom), anchor = projection.fromGlobalPixels([gx + probeOffsetX(), gy], zoom); return { center: { latitude: center[1], longitude: center[0] }, zoom, bounds: { west: bounds[0][0], south: bounds[0][1], east: bounds[1][0], north: bounds[1][1] }, probe: { latitude: anchor[1], longitude: anchor[0] } }; }
+function mapboxView() { const center = mapbox.map.getCenter(), bounds = mapbox.map.getBounds(), canvas = mapbox.map.getCanvas(), anchor = mapbox.map.unproject([canvas.clientWidth / 2 + probeOffsetX(), canvas.clientHeight / 2]); return { center: { latitude: center.lat, longitude: center.lng }, bounds: { west: bounds.getWest(), south: bounds.getSouth(), east: bounds.getEast(), north: bounds.getNorth() }, zoom: mapbox.map.getZoom() + 1, probe: { latitude: anchor.lat, longitude: anchor.lng } }; }
 function currentView() { return state.mapClient === "yandex" && yandex.map ? yandexView() : state.mapClient === "mapbox" && mapbox.map ? mapboxView() : leafletView(); }
 function heatFeatures(points) { return points.map(([latitude, longitude, weight]) => ({ type: "Feature", geometry: { type: "Point", coordinates: [longitude, latitude] }, properties: { weight: weight || 1 } })); }
 // Тепловая карта живёт на отдалённом масштабе (регион/город), при приближении
@@ -640,4 +652,4 @@ function updateHeatControls() {
   renderHeatControls();
 }
 
-export { map, markers, yandex, mapbox, currentView, heatZoomMax, heatInView, renderLeaflet, renderYandex, renderMapbox, renderMapSwitcher, switchMapClient, renderHeatControls, updateHeatControls, updateMaskControls, renderPlaceMask, flushPlaceMaskHold };
+export { map, markers, yandex, mapbox, currentView, probeOffsetX, heatZoomMax, heatInView, renderLeaflet, renderYandex, renderMapbox, renderMapSwitcher, switchMapClient, renderHeatControls, updateHeatControls, updateMaskControls, renderPlaceMask, flushPlaceMaskHold };
