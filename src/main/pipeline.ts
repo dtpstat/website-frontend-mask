@@ -9,7 +9,7 @@ import { pointItems, contains } from "./popups.js";
 import { renderLeaflet, renderYandex, renderMapbox, renderHeatControls, currentView, heatZoomMax, heatInView } from "./maps.js";
 import { consumeLinkedPopup } from "./deeplink.js";
 import { renderChart } from "./chart.js";
-import { updateCenterMark, pingCenterMark } from "./centermark.js";
+import { updateCenterMark } from "./centermark.js";
 
 // Ниже зума 6 территория не определяется (minZoomForHeatmap старого сайта), вне субъектов
 // РФ её тоже нет: карточка «Статистика» и график скрыты целиком. Глобальный [hidden] с
@@ -77,9 +77,6 @@ function renderMapData(view) {
   // данных (округ/район — часть субъекта), родитель-страна с уровня подписи — третья
   const name = geo.length ? geo.join(", ") : state.place?.name ?? state.territory?.name ?? regionName(state.dataRegion);
   $("#region-name").textContent = name || t("allRegions");
-  // Метка центра: плашку с названием места дёргает только его смена (дедуп в pingCenterMark) —
-  // место счётчиков без замка и есть место под центром; вне РФ имя пустое — пинга нет
-  pingCenterMark(state.place?.name ?? regionName(state.dataRegion));
   const region = state.territory?.name ?? regionName(state.dataRegion);
   const plateNode = ($("#region-plate") as HTMLElement);
   plateNode.textContent = region || "";
