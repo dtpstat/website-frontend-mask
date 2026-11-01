@@ -30,9 +30,10 @@ function chartBuckets() {
   return axis ? axis.map((key) => [key, groups.get(key) || { count: 0, dead: 0 }]) : values;
 }
 
-// Полная ось X временных разрезов — весь период запроса: все дни и все месяцы (лимиты 90 —
-// дальше ось не строится и разрез честно отказывает), годы диапазона, часы 1–24.
-// null = разрез при таком периоде недоступен
+// Полная ось X временных разрезов — весь период запроса: все дни (лимит 90 — дальше ось
+// не строится и разрез честно отказывает), все месяцы без лимита (их ограничивает сам
+// диапазон данных — ~150 колонок на «За всё время», влезают горизонтальным скроллом),
+// годы диапазона, часы 1–24. null = разрез при таком периоде недоступен
 function chartAxis(mode: string) {
   const { start, end } = period();
   const span = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, index) => String(from + index));
@@ -47,7 +48,7 @@ function chartAxis(mode: string) {
   if (mode === "months") {
     const keys: string[] = [];
     for (let d = new Date(`${start.slice(0, 7)}-01T00:00:00Z`); d <= new Date(`${end.slice(0, 7)}-01T00:00:00Z`); d.setUTCMonth(d.getUTCMonth() + 1)) keys.push(d.toISOString().slice(0, 7));
-    return keys.length <= 90 ? keys : null;
+    return keys;
   }
   return null;
 }
