@@ -1,10 +1,10 @@
 // Фильтры: метаданные секций, каскадные словари, про-панель, passesFilters/serverQuery
 
-import { $, state, api, apiFetch, actions, regionIndex, regionName } from "./context.js";
+import { $, state, api, apiFetch, actions, regionIndex, regionName, setStatus } from "./context.js";
 import { t } from "./i18n.js";
 import { period } from "./dates.js";
 import { participantConfig, renderAdvancedControls, selectedParticipants, participantEmTypes, participantProdTypeIds } from "./participants.js";
-import { selectRegion, updateTerritoryCard, syncRegionFields } from "./territory.js";
+import { selectRegion, updateTerritoryCard, syncRegionFields, searchAddresses, suggestAddresses, addressSuggestButtons, goToAddress, cancelAddressSuggest } from "./territory.js";
 
 // Секции проф-фильтра, которые уходят параметрами на сервер в /dtp/points.
 // Серверные секции проф-фильтра уходят параметрами `${name}_IDS` в /dtp/points.
@@ -291,30 +291,42 @@ function drawAdvancedRegionSuggest() {
   if (document.activeElement !== input && !input.value.trim()) { suggest.hidden = true; suggest.replaceChildren(); return; }
   // Замок территории запрещает смену региона — вместо подсказок объясняем почему (DTP-28)
   if (state.territory) {
+    cancelAddressSuggest();
     suggest.hidden = false;
     suggest.replaceChildren(Object.assign(document.createElement("p"), { className:"region-lock-hint", textContent:t("lockHint") }));
     return;
   }
-  const query = input.value.trim().toLowerCase();
-  if (!query) { suggest.hidden = true; suggest.replaceChildren(); return; }
-  const matches = regionIndex.filter((region) => region.lower.includes(query)).slice(0, 8);
-  suggest.hidden = false;
-  suggest.replaceChildren(...matches.map((region) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = region.name;
-    button.addEventListener("mousedown", (event) => { event.preventDefault(); selectRegion(region); syncAdvancedRegion(); suggest.hidden = true; });
-    return button;
-  }));
-  if (!matches.length) suggest.append(Object.assign(document.createElement("p"), { className:"region-suggest-empty", textContent:t("noMatches") }));
+  const query = input.value.trim();
+  if (!query) { cancelAddressSuggest(); suggest.hidden = true; suggest.replaceChildren(); return; }
+  const q = query.toLowerCase();
+  const matches = regionIndex.filter((region) => region.lower.includes(q)).slice(0, 8);
+  const render = (addresses) => {
+    // пока летел геокодер, поле могло заблокироваться или закрыться — не перерисовываем чужой ответ
+    if (state.territory || (suggest.hidden && document.activeElement !== input)) return;
+    suggest.hidden = false;
+    suggest.replaceChildren(...matches.map((region) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = region.name;
+      button.addEventListener("mousedown", (event) => { event.preventDefault(); selectRegion(region); syncAdvancedRegion(); suggest.hidden = true; });
+      return button;
+    }), ...addressSuggestButtons(addresses, (hit) => { input.value = hit.name; goToAddress(hit); syncAdvancedRegion(); suggest.hidden = true; }));
+    if (!matches.length && !addresses.length) suggest.append(Object.assign(document.createElement("p"), { className:"region-suggest-empty", textContent:t("noMatches") }));
+  };
+  render([]); // регионы — сразу из локального индекса
+  suggestAddresses(query, input, render); // города и районы — довозит бэкенд вторым кадром
 }
-function advancedRegionCommit() {
+async function advancedRegionCommit() {
   const input = $("#advanced-region") as HTMLInputElement, suggest = $("#region-suggest-adv");
   if (state.territory) { suggest.hidden = true; return; } // замок: смену региона не даём (DTP-28)
-  const query = input.value.trim().toLowerCase();
+  const query = input.value.trim();
   if (!query) { state.territory = null; updateTerritoryCard(); suggest.hidden = true; refreshCascade(); actions.loadMapData(); return; }
-  const first = regionIndex.find((region) => region.lower.includes(query));
-  if (first) { selectRegion(first); syncAdvancedRegion(); }
+  const first = regionIndex.find((region) => region.lower.includes(query.toLowerCase()));
+  if (first) { await selectRegion(first); syncAdvancedRegion(); suggest.hidden = true; return; }
+  // Регионов с таким текстом нет — ищем адрес: карте летим к нему, территория сама
+  const [hit] = await searchAddresses(query);
+  if (hit) { input.value = hit.name; goToAddress(hit); syncAdvancedRegion(); }
+  else setStatus(t("noMatches"));
   suggest.hidden = true;
 }
 function closeAdvanced() { document.body.classList.remove("advanced-open"); setAdvancedCollapsed(false); $("#advanced-filter").hidden = true; $("#filters").hidden = false; }
