@@ -265,8 +265,4 @@ function makePlace(name: string, geometry: any, region: number | null = null) {
   return { name, rings, boxes, region };
 }
 
-<<<<<<< HEAD
-export { regionAtCenter, applyPlace, makePlace, regionIdByName, updateTerritoryCard, applyTerritoryMask, selectRegion, drawRegionSuggest, syncRegionFields };
-=======
-export { regionAtCenter, applyPlace, makePlace, updateTerritoryCard, applyTerritoryMask, selectRegion, drawRegionSuggest, syncRegionFields, searchAddresses, suggestAddresses, addressSuggestButtons, goToAddress, commitRegionSearch, cancelAddressSuggest };
->>>>>>> origin/main
+export { regionAtCenter, applyPlace, makePlace, regionIdByName, updateTerritoryCard, applyTerritoryMask, selectRegion, drawRegionSuggest, syncRegionFields, searchAddresses, suggestAddresses, addressSuggestButtons, goToAddress, commitRegionSearch, cancelAddressSuggest };
