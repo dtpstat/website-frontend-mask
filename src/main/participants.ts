@@ -50,8 +50,6 @@ function renderParticipants() {
 function renderAdvancedControls() {
   const participants = $("#advanced-participants"), severity = $("#advanced-severity");
   participants.replaceChildren(...state.participants.map((participant) => { const label = document.createElement("label"), input = document.createElement("input"); input.type = "checkbox"; input.checked = participant.selected; input.addEventListener("change", () => { // «Все участники» исключает остальные, любой конкретный — снимает «Все»
-    // Пустой выбор участников значит «без фильтра»: последнюю отмеченную галочку не снимаем
-    if (!input.checked && participant.selected && selectedParticipants().every((value) => value === participant.value)) { input.checked = true; setStatus(t("atLeastOne")); return; }
     const filterBefore = participantFilterKey();
     if (input.checked && participant.value === 1) state.participants.forEach((item) => { item.selected = item.value === 1; });
     else { participant.selected = input.checked; if (input.checked) { const all = state.participants.find((item) => item.value === 1); if (all) all.selected = false; } }
