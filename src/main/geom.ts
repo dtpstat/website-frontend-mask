@@ -107,6 +107,11 @@ function showResolving(visible: boolean) { ($("#region-resolving") as HTMLElemen
 async function applyRegion(plate: { name: string; geometry: any }, level: number, key: string) {
   showResolving(false);
   const name = plate.name;
+  // Лукап сменил ячейку — прежняя проверка нуля (regionOverride из regionFix pipeline)
+  // относится к старому месту: следующий набор резолвим по geojson заново, при новом
+  // лже-нуле проверка повторится. Дедуп той же ячейки сюда не доходит — ход карты
+  // внутри места override не сбрасывает
+  state.regionOverride = null;
   // Субъект под центром нужен дважды: для проверки закрепления и в самом месте —
   // место запоминает свой регион, и renderMapData отличает по нему место чужого
   // набора (точки соседнего региона приехали, а место ещё летит старое): в этом
@@ -160,4 +165,11 @@ function resetPlaceMask() {
   flushPlaceMaskHold(true);
 }
 
-export { scheduleRegionLookup, cancelRegionLookup, resetPlaceMask };
+// Паллиатив ложного нуля (regionFix в pipeline): реальный субъект под точкой по OSM
+// (level 4 = границы субъекта, не огрублённый regions.geojson). Тот же кэш, что у
+// лукапа места, — повторные проверки не дёргают тяжёлый level-4 повторно
+function lookupSubject(lat: string, lng: string) {
+  return lookupName(4, lat, lng);
+}
+
+export { scheduleRegionLookup, cancelRegionLookup, resetPlaceMask, lookupSubject };

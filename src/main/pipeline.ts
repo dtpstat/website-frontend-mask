@@ -4,7 +4,8 @@ import { $, state, api, apiFetch, regionCache, dataRange, emTypeNames, lastRende
 import { t, number } from "./i18n.js";
 import { period } from "./dates.js";
 import { serverQuery, renderAdvancedFilters, refreshCascade, enrichFilters, filteredPoints, geoSelectionNames, serverSections, serverSectionLabels, maskFeatures, intervalFields } from "./filters.js";
-import { regionAtCenter, applyPlace, updateTerritoryCard, selectRegion, syncRegionFields } from "./territory.js";
+import { regionAtCenter, applyPlace, regionIdByName, updateTerritoryCard, selectRegion, syncRegionFields } from "./territory.js";
+import { lookupSubject } from "./geom.js";
 import { pointItems, contains } from "./popups.js";
 import { renderLeaflet, renderYandex, renderMapbox, renderHeatControls, currentView, heatZoomMax, heatInView } from "./maps.js";
 import { consumeLinkedPopup } from "./deeplink.js";
@@ -44,6 +45,13 @@ function renderMapData(view) {
   // региона (уровень субъекта) легитимно считает весь набор
   state.placeAlien = !geo.length && !!state.place && state.place.region !== null && state.place.region !== state.dataRegion;
   const counted = geo.length ? filtered : applyPlace(filtered);
+  // Паллиатив ложного нуля: место обнулило непустой набор — регион под якорем мог
+  // определиться по огрублённому regions.geojson не тем (пояс МКАД, Троицк, аннексы…),
+  // и у набора просто нет точек этого места. regionFix спросит реальный субъект у OSM
+  // и перезагрузит набор с ним; пока проверка для этой пары набор+место не сделана,
+  // счётчики держат «—» — уверенный ложный ноль не показываем вовсе
+  const suspectEmpty = !geo.length && !state.territory && !!state.place && !state.placeAlien && !counted.length && state.rawItems.length > 0;
+  if (suspectEmpty) scheduleRegionFix();
   // Слои показывают тот же набор, что и статистика: точки и тепло — только внутри
   // места, снаружи его добирает вуаль. Пока место чужое набору, клип по старому
   // месту почти пуст — карта под «—» счётчиков честно пустая
@@ -52,7 +60,7 @@ function renderMapData(view) {
   // «—» вместо чисел: старт (набор ещё ни разу не приходил), едут новые данные или
   // к готовому набору едет место (старое место по новому набору = ложный ноль);
   // пульс горит всё время ожидания
-  const pending = countsWait() || !state.rawItemsKey;
+  const pending = countsWait() || !state.rawItemsKey || (suspectEmpty && (fixBusy || `${state.rawItemsKey}|${state.place?.name ?? ""}` !== fixKey));
   $("#statistics").classList.toggle("counts-loading", countsWait());
   if (pending) countsPending();
   else {
@@ -90,6 +98,45 @@ function refreshRender() {
   renderMapData(currentView());
 }
 
+// Проверка подозрительного нуля (детекция в renderMapData): спрашиваем реальный субъект
+// под якорем (lookupSubject — границы OSM, не огрублённый regions.geojson) и матчим его
+// имя по справочнику регионов (regionIdByName). Чужой — перезагружаем набор с ним
+// (regionOverride) и тем же ответом переписываем place.region: иначе placeAlien вечно
+// ждал бы лукап, чей регион считается из того же неверного geojson. Проверка одна на
+// пару набор+место (fixKey) — ходы карты внутри места не спамят запросами; смена любой
+// из пары разрешает новую проверку. Зацикливание исключено: набор уже проверенного
+// региона место снова обнулит только при честном нуле — второй ход ответит «свой»
+let fixTimer = 0, fixBusy = false, fixKey = "";
+function scheduleRegionFix() {
+  const key = `${state.rawItemsKey}|${state.place?.name ?? ""}`;
+  if (fixBusy || key === fixKey) return;
+  clearTimeout(fixTimer);
+  fixTimer = setTimeout(regionFix, 120);
+}
+async function regionFix() {
+  const rawKey = state.rawItemsKey, placeName = state.place?.name ?? "";
+  fixKey = `${rawKey}|${placeName}`;
+  const view = currentView();
+  try {
+    fixBusy = true;
+    const plate = await lookupSubject(view.probe.latitude.toFixed(3), view.probe.longitude.toFixed(3));
+    const id = regionIdByName(plate.name);
+    // Пока проверка летела, место или набор сменились — случай, ради которого она
+    // стартовала, кончился: свежий рендер назначит новую проверку сам, если нужно
+    if (state.rawItemsKey !== rawKey || (state.place?.name ?? "") !== placeName) return;
+    if (id !== null && id !== state.dataRegion && state.place) {
+      state.place.region = id;
+      state.regionOverride = id;
+      actions.loadMapData();
+      return;
+    }
+  } catch {} finally {
+    fixBusy = false;
+    // Честный ноль (или сорвавшаяся проверка) — дорисовать числа: их держали «—»
+    if (state.loadingId === 0) renderMapData(currentView());
+  }
+}
+
 // Период не длиннее года уходит одним запросом; длинный бэкенд не принимает
 // (400 «no more than 366 days») — режем на календарные годы: границы исходного
 // периода сохраняются точно (первый кусок от start, последний до end), годы
@@ -123,12 +170,13 @@ async function loadMapData() {
     if (!regionCache.has(bucketKey)) regionCache.clear();
     const bucket = regionCache.get(bucketKey) ?? new Map<string, any[]>();
     regionCache.set(bucketKey, bucket);
-    // Единственный режим загрузки: REGION = закреплённая территория или субъект под
-    // якорем — центром видимой карты, без боковой панели (view.probe; полигоны
-    // regions.geojson, их id = параметру REGION). Кэш по региону: пан внутри региона —
-    // ноль запросов, переезд в соседний — ровно один.
+    // REGION = закреплённая территория, иначе проверенный паллиативом реальный регион
+    // под якорем (regionOverride ставит regionFix, когда грубые полигоны regions.geojson
+    // наврали), и лишь затем — субъект по огрублённому geojson (view.probe; id =
+    // параметру REGION). Кэш по региону: пан внутри региона — ноль запросов, переезд
+    // в соседний — ровно один.
     // Длинный период — параллельными кусками-годами (см. dateSlices)
-    const regionId = state.territory ? state.territory.id : await regionAtCenter(view.probe.latitude, view.probe.longitude);
+    const regionId = state.territory ? state.territory.id : state.regionOverride ?? await regionAtCenter(view.probe.latitude, view.probe.longitude);
     if (state.dataLoadId !== loadId) return;
     const cacheKey = String(regionId ?? "none");
     state.dataRegion = regionId;

@@ -25,6 +25,19 @@ async function regionAtCenter(latitude: number, longitude: number) {
   }
   return best !== null && Number.isFinite(best) ? best : null;
 }
+// Паллиатив ложного нуля (regionFix в pipeline): имя субъекта от geom идёт с реальных
+// границ OSM («Москва», «Московская область»), справочник /dict/regions пишет чуть иначе
+// («г. Москва»). Сравниваем без регистра и приставки «г.», при промахе — вложением
+// («Крым» ⊂ «Республика Крым»); кандидатов ровно один — иначе (омонимы) не рискуем
+function regionIdByName(name: string) {
+  const norm = (value: string) => value.toLowerCase().replace(/^г\.\s*/, "").trim();
+  const wanted = norm(name);
+  if (!wanted) return null;
+  const exact = regionIndex.filter((region) => norm(region.name) === wanted);
+  if (exact.length === 1) return exact[0].id;
+  const partial = regionIndex.filter((region) => { const own = norm(region.name); return own.includes(wanted) || wanted.includes(own); });
+  return partial.length === 1 ? partial[0].id : null;
+}
 function featureBounds(feature) {
   const geometry = feature.geometry, polygons = geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
   let west = 180, south = 90, east = -180, north = -90;
@@ -45,6 +58,9 @@ function updateTerritoryCard(keepPlace = false) {
   lockedMemo = isLocked;
   if (changed && (!keepPlace || !isLocked)) {
     state.place = null;
+    // Паллиативный регион под якорем (regionOverride) — география прежнего места:
+    // со сменой замка она не наследуется, следующий набор резолвится заново
+    state.regionOverride = null;
     // Маска затемнения гаснет вместе с местом: закрепление из поиска не должно
     // оставлять чужое затемнение до лукапа, а сброс замка — искать его заново
     resetPlaceMask();
@@ -175,4 +191,4 @@ function makePlace(name: string, geometry: any, region: number | null = null) {
   return { name, rings, boxes, region };
 }
 
-export { regionAtCenter, applyPlace, makePlace, updateTerritoryCard, applyTerritoryMask, selectRegion, drawRegionSuggest, syncRegionFields };
+export { regionAtCenter, applyPlace, makePlace, regionIdByName, updateTerritoryCard, applyTerritoryMask, selectRegion, drawRegionSuggest, syncRegionFields };
