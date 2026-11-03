@@ -3,7 +3,7 @@
 import { $, state, api, regionIndex, regionName, actions, setStatus } from "./context.js";
 import { t } from "./i18n.js";
 import { refreshCascade } from "./filters.js";
-import { cancelRegionLookup, scheduleRegionLookup, resetPlaceMask } from "./geom.js";
+import { cancelRegionLookup, scheduleRegionLookup, resetPlaceMask, lookupSubject } from "./geom.js";
 import { map, yandex, mapbox, flushPlaceMaskHold } from "./maps.js";
 
 const regionShapes = fetch("assets/regions.geojson").then((response) => response.ok ? response.json() : Promise.reject(new Error("Region boundaries unavailable")));
@@ -25,10 +25,10 @@ async function regionAtCenter(latitude: number, longitude: number) {
   }
   return best !== null && Number.isFinite(best) ? best : null;
 }
-// Паллиатив ложного нуля (regionFix в pipeline): имя субъекта от geom идёт с реальных
-// границ OSM («Москва», «Московская область»), справочник /dict/regions пишет чуть иначе
-// («г. Москва»). Сравниваем без регистра и приставки «г.», при промахе — вложением
-// («Крым» ⊂ «Республика Крым»); кандидатов ровно один — иначе (омонимы) не рискуем
+// Имя субъекта от geom идёт с реальных границ OSM («Москва», «Московская область»),
+// справочник /dict/regions пишет чуть иначе («г. Москва»). Сравниваем без регистра
+// и приставки «г.», при промахе — вложением («Крым» ⊂ «Республика Крым»); кандидатов
+// ровно один — иначе (омонимы) не рискуем
 function regionIdByName(name: string) {
   const norm = (value: string) => value.toLowerCase().replace(/^г\.\s*/, "").trim();
   const wanted = norm(name);
@@ -37,6 +37,20 @@ function regionIdByName(name: string) {
   if (exact.length === 1) return exact[0].id;
   const partial = regionIndex.filter((region) => { const own = norm(region.name); return own.includes(wanted) || wanted.includes(own); });
   return partial.length === 1 ? partial[0].id : null;
+}
+// Регион под точкой — первоисточник реальных границ OSM (geom level 4 = субъект),
+// не огрублённого regions.geojson: у грубых полигонов Москва — десятиугольник по
+// старой границе, и у МКАД, Троицка и аннексов он назначает регион иначе, чем
+// реальность. Набор точек грузится по этому ответу и место свой субъект берёт
+// отсюда же — оба всегда согласованы, ложный ноль клипа невозможен. Лукап сорвался
+// или имя не опознано — прежний фолбэк regionAtCenter по geojson
+async function resolveRegionAt(latitude: number, longitude: number) {
+  try {
+    const plate = await lookupSubject(latitude.toFixed(3), longitude.toFixed(3));
+    const id = regionIdByName(plate.name);
+    if (id !== null) return id;
+  } catch {}
+  return regionAtCenter(latitude, longitude);
 }
 function featureBounds(feature) {
   const geometry = feature.geometry, polygons = geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
@@ -59,9 +73,6 @@ function updateTerritoryCard(keepPlace = false) {
   lockedMemo = isLocked;
   if (changed && (!keepPlace || !isLocked)) {
     state.place = null;
-    // Паллиативный регион под якорем (regionOverride) — география прежнего места:
-    // со сменой замка она не наследуется, следующий набор резолвится заново
-    state.regionOverride = null;
     // Маска затемнения гаснет вместе с местом: закрепление из поиска не должно
     // оставлять чужое затемнение до лукапа, а сброс замка — искать его заново
     resetPlaceMask();
@@ -265,4 +276,4 @@ function makePlace(name: string, geometry: any, region: number | null = null) {
   return { name, rings, boxes, region };
 }
 
-export { regionAtCenter, applyPlace, makePlace, regionIdByName, updateTerritoryCard, applyTerritoryMask, selectRegion, drawRegionSuggest, syncRegionFields, searchAddresses, suggestAddresses, addressSuggestButtons, goToAddress, commitRegionSearch, cancelAddressSuggest };
+export { regionAtCenter, applyPlace, makePlace, regionIdByName, resolveRegionAt, updateTerritoryCard, applyTerritoryMask, selectRegion, drawRegionSuggest, syncRegionFields, searchAddresses, suggestAddresses, addressSuggestButtons, goToAddress, commitRegionSearch, cancelAddressSuggest };

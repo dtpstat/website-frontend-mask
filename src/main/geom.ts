@@ -12,7 +12,7 @@
 
 import { api, $, state, actions } from "./context.js";
 import { currentView, flushPlaceMaskHold, renderHeatControls } from "./maps.js";
-import { regionAtCenter, makePlace, applyTerritoryMask } from "./territory.js";
+import { resolveRegionAt, makePlace, applyTerritoryMask } from "./territory.js";
 import { centerMarkResolving } from "./centermark.js";
 
 // Кэш ответов по точкам (координаты, округлённые до 0.001° ≈ 50 м — заодно дедуп
@@ -32,12 +32,13 @@ function centerKey(latitude: number, longitude: number) {
 }
 
 // В кэше пара имя+геометрия: место счётчиков строится из геометрии и на кэш-хите
-// должно пересоздаваться так же, как на свежем ответе
-async function lookupName(level: number, lat: string, lng: string) {
+// должно пересоздаваться так же, как на свежем ответе. Сигнал опционален: без него
+// запрос не прерывается общим regionAbort — резолв набора обязан доехать всегда
+async function lookupName(level: number, lat: string, lng: string, signal?: AbortSignal) {
   const key = `${level}|${lat}|${lng}`;
   const cached = regionCache.get(key);
   if (cached !== undefined) return cached;
-  const response = await fetch(`${api}/geom/getRegionUnderPoint?lat=${lat}&lng=${lng}&level=${level}`, { signal: regionAbort!.signal });
+  const response = await fetch(`${api}/geom/getRegionUnderPoint?lat=${lat}&lng=${lng}&level=${level}`, signal ? { signal } : undefined);
   if (!response.ok) throw new Error("region lookup failed");
   const data = await response.json();
   const entry = { name: String(data?.properties?.name || ""), geometry: data?.geometry ?? null };
@@ -71,13 +72,13 @@ async function lookupRegion() {
   const loadId = ++regionSeq;
   regionAbort?.abort(); regionAbort = new AbortController();
   try {
-    const plate = await lookupName(level, lat, lng);
+    const plate = await lookupName(level, lat, lng, regionAbort!.signal);
     if (loadId !== regionSeq) return;
     await applyRegion(plate, level, key);
     // Родитель нужен только подписи уровня субъекта (страна) — и он не должен задерживать
     // место: субъект-plate уже в applyRegion, страна доедет следом. Сбой молча: строка не критична
     const parent = parentLevel[level];
-    if (parent) lookupName(parent, lat, lng).then((parentPlace) => {
+    if (parent) lookupName(parent, lat, lng, regionAbort!.signal).then((parentPlace) => {
       if (loadId !== regionSeq) return;
       const parentEl = ($("#region-parent") as HTMLElement);
       parentEl.textContent = parentPlace.name;
@@ -107,16 +108,13 @@ function showResolving(visible: boolean) { ($("#region-resolving") as HTMLElemen
 async function applyRegion(plate: { name: string; geometry: any }, level: number, key: string) {
   showResolving(false);
   const name = plate.name;
-  // Лукап сменил ячейку — прежняя проверка нуля (regionOverride из regionFix pipeline)
-  // относится к старому месту: следующий набор резолвим по geojson заново, при новом
-  // лже-нуле проверка повторится. Дедуп той же ячейки сюда не доходит — ход карты
-  // внутри места override не сбрасывает
-  state.regionOverride = null;
   // Субъект под центром нужен дважды: для проверки закрепления и в самом месте —
   // место запоминает свой регион, и renderMapData отличает по нему место чужого
   // набора (точки соседнего региона приехали, а место ещё летит старое): в этом
-  // окне счётчики показывают «—», а не ложный ноль по чужому клипу
-  const center = regionAtCenter(currentView().probe.latitude, currentView().probe.longitude).catch(() => null);
+  // окне счётчики показывают «—», а не ложный ноль по чужому клипу. Тот же
+  // резолвер, что у набора (resolveRegionAt — реальный субъект по OSM): регион
+  // места и регион данных согласованы по определению
+  const center = resolveRegionAt(currentView().probe.latitude, currentView().probe.longitude).catch(() => null);
   const within = Boolean(name) && plate.geometry && level !== 4 && (!state.territory || (await center) === state.territory.id);
   const next = within ? makePlace(name, plate.geometry, await center) : null;
   // На уровнях округа/района родительской строки нет — её роль берёт строка региона
@@ -165,9 +163,12 @@ function resetPlaceMask() {
   flushPlaceMaskHold(true);
 }
 
-// Паллиатив ложного нуля (regionFix в pipeline): реальный субъект под точкой по OSM
-// (level 4 = границы субъекта, не огрублённый regions.geojson). Тот же кэш, что у
-// лукапа места, — повторные проверки не дёргают тяжёлый level-4 повторно
+// Реальный субъект под точкой по OSM (level 4 = границы субъекта, не огрублённый
+// regions.geojson) — первоисточник региона набора (resolveRegionAt в territory).
+// Тот же кэш, что у лукапа места: повторные ходы карты по ячейке не дёргают
+// тяжёлый level-4 повторно. Без signal: regionAbort обрывается каждым новым
+// лукапом места — если резолв набора им пользоваться, любой ход карты сбрасывал
+// бы его в geojson-фолбэк ровно в поясах рассогласования границ
 function lookupSubject(lat: string, lng: string) {
   return lookupName(4, lat, lng);
 }
