@@ -1,6 +1,6 @@
 // Территория: границы регионов, regionAtCenter, закрепление региона, поиск
 
-import { $, state, regionIndex, regionName, actions } from "./context.js";
+import { $, state, api, regionIndex, regionName, actions, setStatus } from "./context.js";
 import { t } from "./i18n.js";
 import { refreshCascade } from "./filters.js";
 import { cancelRegionLookup, scheduleRegionLookup, resetPlaceMask } from "./geom.js";
@@ -44,6 +44,7 @@ function featureBounds(feature) {
   for (const polygon of polygons) for (const ring of polygon) for (const [x, y] of ring) { if (x < west) west = x; if (x > east) east = x; if (y < south) south = y; if (y > north) north = y; }
   return { west, south, east, north };
 }
+let geocodeAbort: AbortController | null = null;
 let lockedMemo = false;
 function updateTerritoryCard(keepPlace = false) {
   // Смену состояния считаем по реальной смене замка, а не по факту вызова: карточку
@@ -118,6 +119,71 @@ function applyRegionLock() {
     input.title = state.territory ? t("lockHint") : "";
   }
 }
+// Адресный поиск: поле обещает «регион, город или район» — регионы даёт локальный индекс,
+// остальную географию (города, районы, поселения) — наш бэкенд (/api/geom/search, ILIKE
+// по OSM-полигонам DTP.OSM_ADMIN_PLACES; улиц и домов в базе нет). Выбор летит активной
+// картой к bbox найденного объекта: регион под центром, место карточки и данные
+// подтягивают штатные слушатели хода карты (boundschange/moveend → scheduleMapLoad),
+// замок не ставится — территорией остаётся субъект под точкой
+type AddressHit = { name: string; bounds: { west: number; south: number; east: number; north: number } };
+async function searchAddresses(query: string, signal?: AbortSignal): Promise<AddressHit[]> {
+  try {
+    const response = await fetch(`${api}/geom/search?name=${encodeURIComponent(query)}&limit=6`, { signal });
+    if (!response.ok) return [];
+    const data = await response.json();
+    return ((data?.items || []) as any[]).map((item) => ({ name: String(item.name || ""), bounds: item.bounds })).filter((hit) => hit.name && hit.bounds && Number.isFinite(hit.bounds.west) && Number.isFinite(hit.bounds.south) && Number.isFinite(hit.bounds.east) && Number.isFinite(hit.bounds.north));
+  } catch { return []; }
+}
+// Отложенный довоз находок бэкенда: базовые подсказки (регионы) рисуются сразу,
+// города и районы — вторым кадром. Отмена по перепечатке, снятию фокуса и замку
+// территории проверяется и здесь, и на стороне перерисовки; у обоих полей
+// (стандартное и про-панели) запрос общий
+let geocodeTimer: ReturnType<typeof setTimeout> | undefined;
+function cancelAddressSuggest() { clearTimeout(geocodeTimer); geocodeAbort?.abort(); geocodeAbort = null; }
+function suggestAddresses(query: string, input: HTMLInputElement, done: (hits: AddressHit[]) => void) {
+  cancelAddressSuggest();
+  if (state.territory || query.length < 3) return;
+  geocodeTimer = setTimeout(async () => {
+    const controller = geocodeAbort = new AbortController();
+    const hits = await searchAddresses(query, controller.signal);
+    if (controller.signal.aborted || state.territory || document.activeElement !== input || input.value.trim() !== query) return;
+    done(hits);
+  }, 350);
+}
+// Кнопки находок бэкенда под списком регионов, с заголовком-разделителем
+function addressSuggestButtons(hits: AddressHit[], onPick: (hit: AddressHit) => void) {
+  if (!hits.length) return [];
+  const caption = document.createElement("p");
+  caption.className = "region-suggest-caption";
+  caption.textContent = t("areas");
+  return [caption, ...hits.map((hit) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = hit.name;
+    button.addEventListener("mousedown", (event) => { event.preventDefault(); onPick(hit); });
+    return button;
+  })];
+}
+function goToAddress(hit: AddressHit) {
+  const { west, south, east, north } = hit.bounds;
+  if (state.mapClient === "yandex" && yandex.map) yandex.map.setBounds([[west, south], [east, north]], { checkZoomRange: true });
+  else if (state.mapClient === "mapbox" && mapbox.map) mapbox.map.fitBounds([[west, south], [east, north]], { duration: 0, maxZoom: 16 });
+  else map.fitBounds([[south, west], [north, east]], { animate: false, maxZoom: 16 });
+  actions.loadMapData();
+}
+// Enter в поле региона: первый регион-совпадение, иначе первая находка бэкенда
+async function commitRegionSearch() {
+  const input = $("#region-search") as HTMLInputElement, suggest = $("#region-suggest");
+  if (state.territory) { suggest.hidden = true; return; } // замок: смену региона не даём (DTP-28)
+  const query = input.value.trim();
+  if (!query) return;
+  const first = regionIndex.find((region) => region.lower.includes(query.toLowerCase()));
+  if (first) { await selectRegion(first); suggest.hidden = true; return; }
+  const [hit] = await searchAddresses(query);
+  if (hit) { input.value = hit.name; goToAddress(hit); }
+  else setStatus(t("noMatches"));
+  suggest.hidden = true;
+}
 async function selectRegion(region) {
   const data = await regionShapes;
   const feature = (data.features || []).find((item) => Number(item.properties.id) === region.id);
@@ -140,22 +206,30 @@ function drawRegionSuggest() {
   const input = $("#region-search") as HTMLInputElement, suggest = $("#region-suggest");
   // Замок территории запрещает смену региона — вместо подсказок объясняем почему (DTP-28)
   if (state.territory) {
+    cancelAddressSuggest();
     suggest.hidden = false;
     suggest.replaceChildren(Object.assign(document.createElement("p"), { className:"region-lock-hint", textContent:t("lockHint") }));
     return;
   }
-  const query = input.value.trim().toLowerCase();
-  if (!query) { suggest.hidden = true; suggest.replaceChildren(); return; }
-  const matches = regionIndex.filter((region) => region.lower.includes(query)).slice(0, 8);
-  suggest.hidden = false;
-  suggest.replaceChildren(...(matches.length ? matches : []).map((region) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = region.name;
-    button.addEventListener("mousedown", (event) => { event.preventDefault(); selectRegion(region); });
-    return button;
-  }));
-  if (!matches.length) { const empty = document.createElement("p"); empty.className = "region-suggest-empty"; empty.textContent = t("noMatches"); suggest.append(empty); }
+  const query = input.value.trim();
+  if (!query) { cancelAddressSuggest(); suggest.hidden = true; suggest.replaceChildren(); return; }
+  const q = query.toLowerCase();
+  const matches = regionIndex.filter((region) => region.lower.includes(q)).slice(0, 8);
+  const render = (addresses: AddressHit[]) => {
+    // пока летел геокодер, поле могло заблокироваться или закрыться — не перерисовываем чужой ответ
+    if (state.territory || (suggest.hidden && document.activeElement !== input)) return;
+    suggest.hidden = false;
+    suggest.replaceChildren(...matches.map((region) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = region.name;
+      button.addEventListener("mousedown", (event) => { event.preventDefault(); selectRegion(region); });
+      return button;
+    }), ...addressSuggestButtons(addresses, (hit) => { input.value = hit.name; goToAddress(hit); suggest.hidden = true; }));
+    if (!matches.length && !addresses.length) { const empty = document.createElement("p"); empty.className = "region-suggest-empty"; empty.textContent = t("noMatches"); suggest.append(empty); }
+  };
+  render([]); // регионы — сразу из локального индекса
+  suggestAddresses(query, input, render); // адреса — довозит геокодер вторым кадром
 }
 
 // Место из карточки: geom кладёт в state.place самый конкретный адрес подписи (округ/
@@ -191,4 +265,8 @@ function makePlace(name: string, geometry: any, region: number | null = null) {
   return { name, rings, boxes, region };
 }
 
+<<<<<<< HEAD
 export { regionAtCenter, applyPlace, makePlace, regionIdByName, updateTerritoryCard, applyTerritoryMask, selectRegion, drawRegionSuggest, syncRegionFields };
+=======
+export { regionAtCenter, applyPlace, makePlace, updateTerritoryCard, applyTerritoryMask, selectRegion, drawRegionSuggest, syncRegionFields, searchAddresses, suggestAddresses, addressSuggestButtons, goToAddress, commitRegionSearch, cancelAddressSuggest };
+>>>>>>> origin/main

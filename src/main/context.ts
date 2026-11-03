@@ -14,8 +14,15 @@ const apiFetch = (input: string, init?: RequestInit) => {
     if (--loadingJobs === 0) $("#loader").classList.remove("visible");
   });
 };
+<<<<<<< HEAD
 const dataRange = { min:"2015-01-01", max:"2026-08-31" };
 type MapState = { language: string; mapClient: "leaflet" | "yandex" | "mapbox"; participants: any[]; filters: any[]; selectedFilters: Record<string, any[]>; selectedIntervals: Record<string, { from: string; to: string }>; territory: { id: number; name: string } | null; place: { name: string; rings: number[][][]; boxes: { west: number; south: number; east: number; north: number }[]; region: number | null } | null; maskRings: number[][][]; abort: AbortController | null; items: any[]; rawItems: any[]; rawItemsKey: string; dataLoadId: number; loadingId: number; placeAlien: boolean; chartMode: string; minDate: string; maxDate: string; dataRegion: number | null; regionOverride: number | null; outsideRegions: boolean; chartOpen: boolean };
+=======
+// Границы данных бэкенда (проверено запросами точек 2026-11-02: последняя точка 2026-09-30).
+// Пока без эндпоинта date_range — константа; при появлении свежих данных поднять тут max
+const dataRange = { min:"2015-01-01", max:"2026-09-30" };
+type MapState = { language: string; mapClient: "leaflet" | "yandex" | "mapbox"; participants: any[]; filters: any[]; selectedFilters: Record<string, any[]>; selectedIntervals: Record<string, { from: string; to: string }>; territory: { id: number; name: string } | null; place: { name: string; rings: number[][][]; boxes: { west: number; south: number; east: number; north: number }[]; region: number | null } | null; maskRings: number[][][]; abort: AbortController | null; items: any[]; rawItems: any[]; rawItemsKey: string; dataLoadId: number; loadingId: number; placeAlien: boolean; chartMode: string; minDate: string; maxDate: string; dataRegion: number | null; outsideRegions: boolean; chartOpen: boolean };
+>>>>>>> origin/main
 type Bounds = { west: number; south: number; east: number; north: number };
 const persistedMapClient = localStorage.getItem("map-client");
 // По умолчанию — Яндекс (и на мобайле, и на десктопе); сохранённый выбор пользователя важнее дефолта

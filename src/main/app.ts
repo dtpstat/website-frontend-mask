@@ -6,7 +6,7 @@ import { period, renderDateFields, closeDateMenu, openDateMenu, blurDateRange } 
 import { renderParticipants, renderAdvancedControls } from "./participants.js";
 import { refreshCascade, renderAdvancedFilters, openAdvanced, syncAdvancedRegion, drawAdvancedRegionSuggest, advancedRegionCommit, closeAdvanced, setAdvancedCollapsed, setFiltersCollapsed, filteredPoints } from "./filters.js";
 import { map, renderMapSwitcher, switchMapClient, renderHeatControls, updateHeatControls, updateMaskControls } from "./maps.js";
-import { updateTerritoryCard, drawRegionSuggest, syncRegionFields } from "./territory.js";
+import { updateTerritoryCard, drawRegionSuggest, syncRegionFields, commitRegionSearch } from "./territory.js";
 import { renderChart, setChartMode, chartAxis, chartDatesAvailable } from "./chart.js";
 import { loadMapData, loadFilters, applyHeatMode, refreshRender } from "./pipeline.js";
 import { scheduleRegionLookup } from "./geom.js";
@@ -86,6 +86,11 @@ $("#hide-filters").addEventListener("click", () => setFiltersCollapsed(!$("#filt
 if (matchMedia("(max-width: 800px)").matches) setFiltersCollapsed(true);
 $("#professional-toggle").addEventListener("click", openAdvanced);
 $("#region-search").addEventListener("input", drawRegionSuggest);
+// Как и в про-панели: Enter — выбор первого совпадения (регион или адрес), Escape — возврат показанного региона
+$("#region-search").addEventListener("keydown", (event) => {
+  if (event.key === "Enter") { event.preventDefault(); commitRegionSearch(); }
+  if (event.key === "Escape") { syncRegionFields(); ($("#region-suggest") as HTMLElement).hidden = true; }
+});
 // Сфокусированное поле отдано пользователю: показанный регион мешал бы вводу
 $("#region-search").addEventListener("focus", () => { ($("#region-search") as HTMLInputElement).value = ""; drawRegionSuggest(); });
 $("#region-search").addEventListener("blur", () => setTimeout(syncRegionFields, 150));
